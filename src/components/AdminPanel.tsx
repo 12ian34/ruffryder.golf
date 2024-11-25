@@ -5,9 +5,10 @@ import { importHistoricalScores } from '../utils/importScores';
 import TournamentManagement from './TournamentManagement';
 import StrokeIndexManagement from './StrokeIndexManagement';
 import UserManagement from './UserManagement';
+import PlayerManagement from './PlayerManagement';
 
 export default function AdminPanel() {
-  const [activeSection, setActiveSection] = useState<'scores' | 'tournament' | 'strokeIndex' | 'users'>('scores');
+  const [activeSection, setActiveSection] = useState<'scores' | 'tournament' | 'strokeIndex' | 'users' | 'players'>('scores');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -57,50 +58,64 @@ export default function AdminPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex space-x-4">
-        <button
-          onClick={() => setActiveSection('scores')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeSection === 'scores'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Historical Scores
-        </button>
-        <button
-          onClick={() => setActiveSection('strokeIndex')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeSection === 'strokeIndex'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Stroke Index
-        </button>
-        <button
-          onClick={() => setActiveSection('tournament')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeSection === 'tournament'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Tournament Setup
-        </button>
-        <button
-          onClick={() => setActiveSection('users')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeSection === 'users'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Users
-        </button>
+      {/* Navigation Pills - Now scrollable on mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex space-x-2 min-w-max pb-3 sm:pb-0">
+          <button
+            onClick={() => setActiveSection('scores')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'scores'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Historical Scores
+          </button>
+          <button
+            onClick={() => setActiveSection('strokeIndex')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'strokeIndex'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Stroke Index
+          </button>
+          <button
+            onClick={() => setActiveSection('tournament')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'tournament'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Tournament Setup
+          </button>
+          <button
+            onClick={() => setActiveSection('players')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'players'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Players
+          </button>
+          <button
+            onClick={() => setActiveSection('users')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'users'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Users
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      {/* Content Area - Now properly contained */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 max-w-full overflow-x-hidden">
         {error && (
           <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
@@ -115,7 +130,7 @@ export default function AdminPanel() {
 
         {activeSection === 'scores' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
                 <h2 className="text-xl font-semibold dark:text-white">Manage Historical Scores</h2>
                 {lastImportDate && (
@@ -126,7 +141,7 @@ export default function AdminPanel() {
               </div>
               <button
                 onClick={handleImportScores}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 disabled={isLoading}
               >
                 {isLoading ? 'Importing...' : 'Import All Scores'}
@@ -144,6 +159,10 @@ export default function AdminPanel() {
             <h2 className="text-xl font-semibold dark:text-white">Tournament Setup</h2>
             <TournamentManagement />
           </div>
+        )}
+
+        {activeSection === 'players' && (
+          <PlayerManagement />
         )}
 
         {activeSection === 'users' && (
