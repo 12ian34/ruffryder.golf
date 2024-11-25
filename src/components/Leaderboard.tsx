@@ -55,7 +55,7 @@ export default function Leaderboard() {
   }, []);
 
   const calculateGamePoints = (game: Game): { USA: number, EUROPE: number } => {
-    if (!game.isStarted) return { USA: 0, EUROPE: 0 };
+    if (!game.isStarted && !game.isComplete) return { USA: 0, EUROPE: 0 };
     
     if (game.isComplete) {
       const strokePlayPoint = game.strokePlayScore.USA < game.strokePlayScore.EUROPE ? 1 : 
@@ -97,6 +97,24 @@ export default function Leaderboard() {
     return currentPoints;
   };
 
+  const calculateCurrentScore = (): { USA: number, EUROPE: number } => {
+    let usaTotal = 0;
+    let europeTotal = 0;
+
+    games.forEach(game => {
+      if (game.isComplete) {
+        const points = calculateGamePoints(game);
+        usaTotal += points.USA;
+        europeTotal += points.EUROPE;
+      }
+    });
+
+    return {
+      USA: usaTotal,
+      EUROPE: europeTotal
+    };
+  };
+
   const calculateProjectedScore = (): { USA: number, EUROPE: number } => {
     let usaTotal = 0;
     let europeTotal = 0;
@@ -110,6 +128,32 @@ export default function Leaderboard() {
     return {
       USA: usaTotal,
       EUROPE: europeTotal
+    };
+  };
+
+  const getStrokePlayHighlight = (usaScore: number, europeScore: number): { usa: string, europe: string } => {
+    if (usaScore === 0 && europeScore === 0) return { usa: '', europe: '' };
+    if (usaScore === europeScore) return { usa: '', europe: '' };
+    return {
+      usa: usaScore < europeScore ? 'text-green-500 font-bold' : 'text-gray-500',
+      europe: europeScore < usaScore ? 'text-green-500 font-bold' : 'text-gray-500'
+    };
+  };
+
+  const getMatchPlayHighlight = (usaScore: number, europeScore: number): { usa: string, europe: string } => {
+    if (usaScore === 0 && europeScore === 0) return { usa: '', europe: '' };
+    if (usaScore === europeScore) return { usa: '', europe: '' };
+    return {
+      usa: usaScore > europeScore ? 'text-green-500 font-bold' : 'text-gray-500',
+      europe: europeScore > usaScore ? 'text-green-500 font-bold' : 'text-gray-500'
+    };
+  };
+
+  const getPointsHighlight = (usaPoints: number, europePoints: number): { usa: string, europe: string } => {
+    if (usaPoints === europePoints) return { usa: '', europe: '' };
+    return {
+      usa: usaPoints > europePoints ? 'text-green-500 font-bold' : 'text-gray-500',
+      europe: europePoints > usaPoints ? 'text-green-500 font-bold' : 'text-gray-500'
     };
   };
 
@@ -147,7 +191,9 @@ export default function Leaderboard() {
     );
   }
 
+  const currentScore = calculateCurrentScore();
   const projectedScore = calculateProjectedScore();
+  const overallHighlight = getPointsHighlight(currentScore.USA, currentScore.EUROPE);
 
   return (
     <div className="space-y-8">
@@ -155,14 +201,14 @@ export default function Leaderboard() {
         <h2 className="text-xl font-semibold mb-4 dark:text-white">Current Score</h2>
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className="text-3xl font-bold text-red-500">
-              {tournament.totalScore.USA}
+            <div className={`text-3xl font-bold text-red-500 ${overallHighlight.usa}`}>
+              {currentScore.USA}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-blue-500">
-              {tournament.totalScore.EUROPE}
+            <div className={`text-3xl font-bold text-blue-500 ${overallHighlight.europe}`}>
+              {currentScore.EUROPE}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
           </div>
@@ -194,6 +240,10 @@ export default function Leaderboard() {
         
         {games.map((game) => {
           const points = calculateGamePoints(game);
+          const strokePlayHighlight = getStrokePlayHighlight(game.strokePlayScore.USA, game.strokePlayScore.EUROPE);
+          const matchPlayHighlight = getMatchPlayHighlight(game.matchPlayScore.USA, game.matchPlayScore.EUROPE);
+          const pointsHighlight = getPointsHighlight(points.USA, points.EUROPE);
+
           return (
             <div
               key={game.id}
@@ -211,7 +261,13 @@ export default function Leaderboard() {
                       Stroke Play (Total Strokes)
                     </div>
                     <div className="font-medium dark:text-white">
-                      {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
+                      {(game.isStarted || game.isComplete) ? (
+                        <span>
+                          <span className={strokePlayHighlight.usa}>{game.strokePlayScore.USA}</span>
+                          {' - '}
+                          <span className={strokePlayHighlight.europe}>{game.strokePlayScore.EUROPE}</span>
+                        </span>
+                      ) : '-'}
                     </div>
                   </div>
 
@@ -220,17 +276,25 @@ export default function Leaderboard() {
                       Match Play (Holes Won)
                     </div>
                     <div className="font-medium dark:text-white">
-                      {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
+                      {(game.isStarted || game.isComplete) ? (
+                        <span>
+                          <span className={matchPlayHighlight.usa}>{game.matchPlayScore.USA}</span>
+                          {' - '}
+                          <span className={matchPlayHighlight.europe}>{game.matchPlayScore.EUROPE}</span>
+                        </span>
+                      ) : '-'}
                     </div>
                   </div>
 
-                  {game.isStarted && (
+                  {(game.isStarted || game.isComplete) && (
                     <div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Current Points
+                        {game.isComplete ? 'Final Points' : 'Current Points'}
                       </div>
                       <div className="font-medium dark:text-white">
-                        {points.USA} - {points.EUROPE}
+                        <span className={pointsHighlight.usa}>{points.USA}</span>
+                        {' - '}
+                        <span className={pointsHighlight.europe}>{points.EUROPE}</span>
                       </div>
                     </div>
                   )}
