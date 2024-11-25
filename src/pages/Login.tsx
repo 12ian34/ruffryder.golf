@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,7 +9,14 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { signUp, signIn, resetPassword } = useAuth();
+  const { currentUser, signUp, signIn, resetPassword } = useAuth();
+
+  // Add effect to redirect authenticated users
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +79,11 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  // If user is already authenticated, don't render the login form
+  if (currentUser) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
