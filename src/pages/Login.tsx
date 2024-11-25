@@ -22,7 +22,6 @@ export default function Login() {
     setError(null);
 
     try {
-      // Generate a random temporary password
       const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
       await signUp(signupEmail, tempPassword);
       await resetPassword(signupEmail);
@@ -77,7 +76,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h1 className="text-center text-3xl font-bold text-gray-900">
+        <h1 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
           Ruff Ryders Cup
         </h1>
       </div>
@@ -90,11 +89,11 @@ export default function Login() {
         )}
 
         {/* Sign Up Form */}
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 mb-8">
-          <h2 className="text-xl font-semibold mb-6">Create Account</h2>
+        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 mb-8">
+          <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Create Account</h2>
           <form onSubmit={handleSignUp}>
             <div>
-              <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
               </label>
               <input
@@ -102,13 +101,14 @@ export default function Login() {
                 type="email"
                 value={signupEmail}
                 onChange={(e) => setSignupEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full"
                 disabled={isLoading}
+                placeholder="Enter your email"
               />
             </div>
             <button
               type="submit"
-              className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               disabled={isLoading}
             >
               Create Account
@@ -117,55 +117,55 @@ export default function Login() {
         </div>
 
         {/* Sign In Form */}
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <h2 className="text-xl font-semibold mb-6">Sign In</h2>
-          <form onSubmit={handleSignIn}>
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  id="login-email"
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <input
-                  id="login-password"
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <button
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={isLoading}
-                >
-                  Sign In
-                </button>
-              </div>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-sm text-blue-600 hover:text-blue-500"
-                  disabled={isLoading}
-                >
-                  Forgot password?
-                </button>
-              </div>
+        <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Sign In</h2>
+          <form onSubmit={handleSignIn} className="space-y-6">
+            <div>
+              <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full"
+                disabled={isLoading}
+                placeholder="Enter your email"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                id="login-password"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full"
+                disabled={isLoading}
+                placeholder="Enter your password"
+              />
+            </div>
+            <div>
+              <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                Sign In
+              </button>
+            </div>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                disabled={isLoading}
+              >
+                Forgot password?
+              </button>
             </div>
           </form>
         </div>

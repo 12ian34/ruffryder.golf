@@ -92,8 +92,8 @@ export default function TournamentManagement() {
         name: newTournamentName.trim(),
         year: newTournamentYear,
         isActive: true,
-        totalScore: { usa: 0, europe: 0 },
-        projectedScore: { usa: 0, europe: 0 }
+        totalScore: { USA: 0, EUROPE: 0 },
+        projectedScore: { USA: 0, EUROPE: 0 }
       });
 
       const newTournament = {
@@ -101,8 +101,8 @@ export default function TournamentManagement() {
         name: newTournamentName.trim(),
         year: newTournamentYear,
         isActive: true,
-        totalScore: { usa: 0, europe: 0 },
-        projectedScore: { usa: 0, europe: 0 }
+        totalScore: { USA: 0, EUROPE: 0 },
+        projectedScore: { USA: 0, EUROPE: 0 }
       };
 
       setTournaments([...tournaments, newTournament]);
@@ -149,8 +149,8 @@ export default function TournamentManagement() {
           strokeIndex,
           parScore: 3
         })),
-        strokePlayScore: { usa: 0, europe: 0 },
-        matchPlayScore: { usa: 0, europe: 0 },
+        strokePlayScore: { USA: 0, EUROPE: 0 },
+        matchPlayScore: { USA: 0, EUROPE: 0 },
         isComplete: false,
         isStarted: false,
         playerIds: [selectedUsaPlayer, selectedEuropePlayer]
@@ -169,8 +169,8 @@ export default function TournamentManagement() {
           strokeIndex,
           parScore: 3
         })),
-        strokePlayScore: { usa: 0, europe: 0 },
-        matchPlayScore: { usa: 0, europe: 0 },
+        strokePlayScore: { USA: 0, EUROPE: 0 },
+        matchPlayScore: { USA: 0, EUROPE: 0 },
         isComplete: false,
         isStarted: false,
         playerIds: [selectedUsaPlayer, selectedEuropePlayer]
@@ -353,7 +353,7 @@ export default function TournamentManagement() {
                   >
                     <div className="grid grid-cols-3 items-center">
                       <div className="text-center">
-                        <div className="font-medium text-blue-500">
+                        <div className="font-medium text-red-500">
                           {game.usaPlayerName}
                           <div className="text-sm text-gray-500">
                             Avg: {usaPlayer?.averageScore}
@@ -371,7 +371,7 @@ export default function TournamentManagement() {
                         </div>
                       </div>
                       <div className="text-center">
-                        <div className="font-medium text-red-500">
+                        <div className="font-medium text-blue-500">
                           {game.europePlayerName}
                           <div className="text-sm text-gray-500">
                             Avg: {europePlayer?.averageScore}

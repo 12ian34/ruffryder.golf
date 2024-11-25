@@ -153,11 +153,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
 
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
-            <div className="font-medium text-blue-500">{game.usaPlayerName}</div>
+            <div className="font-medium text-red-500">{game.usaPlayerName}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div className="text-center">
-            <div className="font-medium text-red-500">{game.europePlayerName}</div>
+            <div className="font-medium text-blue-500">{game.europePlayerName}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
           </div>
         </div>

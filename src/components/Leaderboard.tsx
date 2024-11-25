@@ -155,13 +155,13 @@ export default function Leaderboard() {
         <h2 className="text-xl font-semibold mb-4 dark:text-white">Current Score</h2>
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className="text-3xl font-bold text-blue-500">
+            <div className="text-3xl font-bold text-red-500">
               {tournament.totalScore.USA}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-red-500">
+            <div className="text-3xl font-bold text-blue-500">
               {tournament.totalScore.EUROPE}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
@@ -174,13 +174,13 @@ export default function Leaderboard() {
           </h3>
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
-              <div className="text-2xl font-semibold text-blue-500">
+              <div className="text-2xl font-semibold text-red-500">
                 {projectedScore.USA}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
             </div>
             <div>
-              <div className="text-2xl font-semibold text-red-500">
+              <div className="text-2xl font-semibold text-blue-500">
                 {projectedScore.EUROPE}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>
@@ -201,8 +201,8 @@ export default function Leaderboard() {
             >
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="font-medium dark:text-white">{game.usaPlayerName}</div>
-                  <div className="text-sm text-blue-500">USA</div>
+                  <div className="font-medium text-red-500">{game.usaPlayerName}</div>
+                  <div className="text-sm text-gray-500">USA</div>
                 </div>
                 
                 <div className="text-center space-y-2">
@@ -237,10 +237,10 @@ export default function Leaderboard() {
                 </div>
                 
                 <div className="text-center">
-                  <div className="font-medium dark:text-white">
+                  <div className="font-medium text-blue-500">
                     {game.europePlayerName}
                   </div>
-                  <div className="text-sm text-red-500">EUROPE</div>
+                  <div className="text-sm text-gray-500">EUROPE</div>
                 </div>
               </div>
 

@@ -2,11 +2,12 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut,
+  signOut as firebaseSignOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
   confirmPasswordReset,
-  type User
+  type User,
+  type AuthError as FirebaseAuthError
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../config/firebase';
@@ -30,12 +31,7 @@ export function useAuth() {
   return context;
 }
 
-interface AuthError {
-  code: string;
-  message: string;
-}
-
-function getErrorMessage(error: AuthError): string {
+function getErrorMessage(error: FirebaseAuthError): string {
   switch (error.code) {
     case 'auth/email-already-in-use':
       return 'This email is already registered. Please try signing in or use the forgot password option.';
@@ -55,8 +51,11 @@ function getErrorMessage(error: AuthError): string {
       return 'Too many unsuccessful attempts. Please try again later.';
     case 'auth/invalid-credential':
       return 'Invalid email or password. Please check your credentials and try again.';
+    case 'auth/invalid-login-credentials':
+      return 'Invalid email or password. Please check your credentials and try again.';
     default:
-      return 'An error occurred. Please try again.';
+      console.error('Firebase Auth Error:', error);
+      return 'An error occurred during authentication. Please try again.';
   }
 }
 
@@ -88,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date()
       });
 
-      await signOut(auth);
+      await firebaseSignOut(auth);
       await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       throw new Error(getErrorMessage(error));
@@ -105,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOutUser() {
     try {
-      await signOut(auth);
+      await firebaseSignOut(auth);
     } catch (error: any) {
       throw new Error('Failed to sign out. Please try again.');
     }

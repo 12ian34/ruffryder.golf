@@ -56,10 +56,12 @@ export default function GameManagement({ userId }: GameManagementProps) {
               const gamesData = gamesSnapshot.docs
                 .map(doc => ({
                   id: doc.id,
-                  ...doc.data(),
-                  tournamentId
+                  ...doc.data()
                 }))
-                .filter(game => game.playerIds?.includes(linkedPlayerId)) as Game[];
+                .filter(game => 
+                  game.usaPlayerId === linkedPlayerId || 
+                  game.europePlayerId === linkedPlayerId
+                ) as Game[];
 
               setUserGames(gamesData);
               setIsLoading(false);
@@ -86,6 +88,28 @@ export default function GameManagement({ userId }: GameManagementProps) {
 
     return () => unsubscribeTournament();
   }, [userId, linkedPlayerId]);
+
+  const handleStartGame = async (gameId: string) => {
+    try {
+      await updateDoc(doc(db, 'tournaments', activeTournamentId!, 'games', gameId), {
+        isStarted: true,
+        startTime: new Date()
+      });
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleEndGame = async (gameId: string) => {
+    try {
+      await updateDoc(doc(db, 'tournaments', activeTournamentId!, 'games', gameId), {
+        isComplete: true,
+        endTime: new Date()
+      });
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -140,15 +164,15 @@ export default function GameManagement({ userId }: GameManagementProps) {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="text-lg font-medium dark:text-white">
-                {game.usaPlayerName} vs {game.europePlayerName}
+                <span className="text-red-500">{game.usaPlayerName}</span>
+                {" vs "}
+                <span className="text-blue-500">{game.europePlayerName}</span>
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {game.handicapStrokes > 0 && (
-                  <span>
-                    {game.higherHandicapTeam} gets {game.handicapStrokes} strokes
-                  </span>
-                )}
-              </p>
+              {game.handicapStrokes > 0 && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
+                </p>
+              )}
             </div>
             <span className={`px-2 py-1 rounded-full text-xs ${
               game.isComplete
