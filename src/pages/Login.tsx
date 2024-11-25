@@ -11,7 +11,6 @@ export default function Login() {
   const navigate = useNavigate();
   const { currentUser, signUp, signIn, resetPassword } = useAuth();
 
-  // Add effect to redirect authenticated users
   useEffect(() => {
     if (currentUser) {
       navigate('/dashboard');
@@ -80,13 +79,12 @@ export default function Login() {
     }
   };
 
-  // If user is already authenticated, don't render the login form
   if (currentUser) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h1 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
           Ruff Ryders Cup
@@ -113,7 +111,7 @@ export default function Login() {
                 type="email"
                 value={signupEmail}
                 onChange={(e) => setSignupEmail(e.target.value)}
-                className="w-full"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 disabled={isLoading}
                 placeholder="Enter your email"
               />
@@ -141,7 +139,7 @@ export default function Login() {
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 disabled={isLoading}
                 placeholder="Enter your email"
               />
@@ -155,7 +153,7 @@ export default function Login() {
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 disabled={isLoading}
                 placeholder="Enter your password"
               />
