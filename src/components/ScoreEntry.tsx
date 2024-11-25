@@ -111,7 +111,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
           USA: usaHolesWon,
           EUROPE: europeHolesWon
         },
-        isComplete: completedHoles === 18
+        // Don't automatically mark as complete when editing
+        isComplete: game.isComplete
       });
 
       onClose();

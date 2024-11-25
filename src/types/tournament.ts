@@ -1,3 +1,12 @@
+export interface TournamentProgress {
+  timestamp: any; // Firestore Timestamp
+  score: {
+    USA: number;
+    EUROPE: number;
+  };
+  completedGames: number;
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -11,4 +20,5 @@ export interface Tournament {
     USA: number;
     EUROPE: number;
   };
+  progress: TournamentProgress[];
 }

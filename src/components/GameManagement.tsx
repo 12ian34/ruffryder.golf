@@ -57,8 +57,7 @@ export default function GameManagement({ userId }: GameManagementProps) {
             (gamesSnapshot) => {
               const gamesData = gamesSnapshot.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data(),
-                tournamentId: activeTournament.id
+                ...doc.data()
               })) as Game[];
 
               // Filter games based on user role and linked player
@@ -201,7 +200,6 @@ export default function GameManagement({ userId }: GameManagementProps) {
               isUserGame ? 'border-2 border-blue-500' : ''
             } ${isActiveGame ? 'ring-2 ring-yellow-500' : ''}`}
           >
-            {/* User Game Indicator */}
             {isUserGame && (
               <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2">
                 <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
@@ -259,7 +257,7 @@ export default function GameManagement({ userId }: GameManagementProps) {
                 </button>
               )}
 
-              {(game.isStarted && !game.isComplete) || isAdmin ? (
+              {(game.isStarted || (isAdmin && game.isComplete)) && (
                 <>
                   <button
                     onClick={() => setSelectedGameId(game.id)}
@@ -276,13 +274,12 @@ export default function GameManagement({ userId }: GameManagementProps) {
                     </button>
                   )}
                 </>
-              ) : null}
+              )}
             </div>
           </div>
         );
       })}
 
-      {/* Score Entry Modal */}
       {selectedGameId && activeTournamentId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="relative max-w-2xl w-full my-8">
