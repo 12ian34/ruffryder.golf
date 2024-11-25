@@ -6,11 +6,18 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   confirmPasswordReset,
+  setPersistence,
+  browserLocalPersistence,
   type User,
   type AuthError as FirebaseAuthError
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../config/firebase';
+
+// Set persistence to local (persists even after browser restart)
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error('Error setting auth persistence:', error);
+});
 
 interface AuthContextType {
   currentUser: User | null;
