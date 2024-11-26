@@ -1,141 +1,51 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { collection, doc, getDocs, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../config/firebase';
 import type { Player } from '../types/player';
 import type { User } from '../types/user';
+import PlayerAvatar from './PlayerAvatar';
 
-type SortField = 'name' | 'average' | number;
+type SortField = 'name' | 'team' | 'averageScore' | number;
 type SortDirection = 'asc' | 'desc';
 
-function isValidPlayer(data: any): data is Player {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    typeof data.name === 'string' &&
-    data.name.trim() !== '' &&
-    (data.team === 'USA' || data.team === 'EUROPE') &&
-    Array.isArray(data.historicalScores) &&
-    typeof data.averageScore === 'number'
-  );
-}
-
 export default function PlayerStats() {
-  const { currentUser } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [userData, setUserData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'ALL' | 'USA' | 'EUROPE'>('ALL');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [linkedPlayerId, setLinkedPlayerId] = useState<string | null>(null);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (!currentUser) {
-      setError('Please sign in to view player stats');
-      setIsLoading(false);
-      return;
-    }
-
-    // Fetch user data to get linkedPlayerId
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
-          setUserData(userDoc.data() as User);
+        // Fetch user data to get linked player ID
+        if (currentUser) {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            setLinkedPlayerId(userData.linkedPlayerId);
+          }
         }
-      } catch (err) {
-        console.error('Error fetching user data:', err);
+
+        // Fetch players
+        const playersSnapshot = await getDocs(collection(db, 'players'));
+        const playersData = playersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Player[];
+        setPlayers(playersData);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchUserData();
-
-    const unsubscribe = onSnapshot(
-      collection(db, 'players'),
-      (snapshot) => {
-        try {
-          const playersData = snapshot.docs
-            .map(doc => {
-              const data = doc.data();
-              if (!isValidPlayer(data)) {
-                console.error(`Invalid player data for doc ${doc.id}:`, data);
-                return null;
-              }
-              return {
-                id: doc.id,
-                name: data.name.trim(),
-                team: data.team,
-                historicalScores: data.historicalScores.map(score => ({
-                  year: score.year,
-                  score: score.score
-                })),
-                averageScore: data.averageScore
-              } as Player;
-            })
-            .filter((player): player is Player => player !== null)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-          setPlayers(playersData);
-          setIsLoading(false);
-        } catch (err) {
-          console.error('Error processing player data:', err);
-          setError('Error processing player data');
-          setIsLoading(false);
-        }
-      },
-      (err) => {
-        console.error('Error fetching players:', err);
-        setError('Failed to load player data. Please try again later.');
-        setIsLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+    fetchData();
   }, [currentUser]);
-
-  const getYears = (): number[] => {
-    const years = new Set<number>();
-    players.forEach(player => {
-      player.historicalScores?.forEach(score => {
-        if (typeof score?.year === 'number') {
-          years.add(score.year);
-        }
-      });
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  };
-
-  const getScoreForYear = (player: Player, year: number): number | undefined => {
-    const score = player.historicalScores?.find(score => score?.year === year)?.score;
-    return typeof score === 'number' ? score : undefined;
-  };
-
-  const sortedPlayers = [...players]
-    .filter(player => filter === 'ALL' ? true : player.team === filter)
-    .sort((a, b) => {
-      try {
-        if (sortField === 'name') {
-          return sortDirection === 'asc' 
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name);
-        }
-        
-        if (sortField === 'average') {
-          return sortDirection === 'asc'
-            ? a.averageScore - b.averageScore
-            : b.averageScore - a.averageScore;
-        }
-        
-        // Sort by specific year
-        const aScore = getScoreForYear(a, sortField as number) ?? 999;
-        const bScore = getScoreForYear(b, sortField as number) ?? 999;
-        return sortDirection === 'asc' ? aScore - bScore : bScore - aScore;
-      } catch (err) {
-        console.error('Error sorting players:', err);
-        return 0;
-      }
-    });
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -145,6 +55,29 @@ export default function PlayerStats() {
       setSortDirection('asc');
     }
   };
+
+  const sortedPlayers = [...players].sort((a, b) => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    
+    switch (sortField) {
+      case 'name':
+        return direction * a.name.localeCompare(b.name);
+      case 'team':
+        return direction * a.team.localeCompare(b.team);
+      case 'averageScore':
+        return direction * (a.averageScore - b.averageScore);
+      default:
+        const aScore = a.historicalScores.find(s => s.year === sortField)?.score ?? 999;
+        const bScore = b.historicalScores.find(s => s.year === sortField)?.score ?? 999;
+        return direction * (aScore - bScore);
+    }
+  });
+
+  const years = Array.from(
+    new Set(
+      players.flatMap(p => p.historicalScores.map(s => s.year))
+    )
+  ).sort((a, b) => b - a);
 
   if (isLoading) {
     return (
@@ -156,67 +89,43 @@ export default function PlayerStats() {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        {error}
       </div>
     );
   }
-
-  if (!currentUser) {
-    return (
-      <div className="text-center py-12">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          Please sign in to view player stats
-        </div>
-      </div>
-    );
-  }
-
-  const years = getYears();
 
   return (
     <div className="space-y-6">
-      {/* Filter Controls */}
-      <div className="flex space-x-4">
-        {(['ALL', 'USA', 'EUROPE'] as const).map((option) => (
-          <button
-            key={option}
-            onClick={() => setFilter(option)}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              filter === option
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
+      <h2 className="text-xl font-semibold dark:text-white">Player Statistics</h2>
 
-      {/* Players Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
                 onClick={() => toggleSort('name')}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
               >
-                Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Player {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
+                onClick={() => toggleSort('team')}
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => toggleSort('average')}
               >
-                Average {sortField === 'average' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Team {sortField === 'team' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                onClick={() => toggleSort('averageScore')}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+              >
+                Average Score {sortField === 'averageScore' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               {years.map(year => (
                 <th 
                   key={year}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
                   onClick={() => toggleSort(year)}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
                 >
                   {year} {sortField === year && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
@@ -225,14 +134,16 @@ export default function PlayerStats() {
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {sortedPlayers.map((player) => {
-              const isCurrentPlayer = userData?.linkedPlayerId === player.id;
+              const isCurrentPlayer = player.id === linkedPlayerId;
               return (
-                <tr 
-                  key={player.id}
-                  className={isCurrentPlayer ? 'bg-blue-50 dark:bg-blue-900' : ''}
-                >
+                <tr key={player.id} className={isCurrentPlayer ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
+                    <div className="flex items-center space-x-2">
+                      <PlayerAvatar
+                        playerId={player.id}
+                        name={player.name}
+                        profilePicUrl={player.profilePicUrl}
+                      />
                       <span className={`font-medium ${
                         player.team === 'USA' ? 'text-red-500' : 'text-blue-500'
                       }`}>
@@ -245,12 +156,21 @@ export default function PlayerStats() {
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      player.team === 'USA'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    }`}>
+                      {player.team}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {player.averageScore}
                   </td>
                   {years.map(year => (
                     <td key={year} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {getScoreForYear(player, year) || '-'}
+                      {player.historicalScores.find(s => s.year === year)?.score || '-'}
                     </td>
                   ))}
                 </tr>

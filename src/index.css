@@ -12,16 +12,18 @@ input {
 }
 
 /* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-gray-900 text-white;
-  }
-  
-  input {
-    @apply bg-gray-800 border-gray-700 text-white;
-  }
-  
-  .bg-white {
-    @apply bg-gray-800;
-  }
+.dark {
+  @apply bg-gray-900;
+}
+
+.dark body {
+  @apply text-white;
+}
+
+.dark input {
+  @apply bg-gray-800 border-gray-700 text-white;
+}
+
+.dark .bg-white {
+  @apply bg-gray-800;
 }

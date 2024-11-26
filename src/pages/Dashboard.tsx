@@ -5,6 +5,7 @@ import Leaderboard from '../components/Leaderboard';
 import PlayerStats from '../components/PlayerStats';
 import GameManagement from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
+import ThemeSwitcher from '../components/ThemeSwitcher';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
@@ -88,6 +89,7 @@ export default function Dashboard() {
               Ruff Ryders Cup
             </h1>
             <div className="flex items-center space-x-4">
+              <ThemeSwitcher />
               <span className="text-gray-600 dark:text-gray-300">
                 {userData?.name || currentUser?.email}
               </span>

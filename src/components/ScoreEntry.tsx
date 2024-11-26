@@ -111,8 +111,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
           USA: usaHolesWon,
           EUROPE: europeHolesWon
         },
-        // Don't automatically mark as complete when editing
-        isComplete: game.isComplete
+        isStarted: true
       });
 
       onClose();
@@ -125,123 +124,135 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     );
   }
 
   if (error || !game) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-500">{error || 'Game not found'}</p>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+          <p className="text-red-500">{error || 'Game not found'}</p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+          >
+            Close
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-h-[90vh] overflow-y-auto">
-      <div className="sticky top-0 bg-white dark:bg-gray-800 pb-4 border-b dark:border-gray-700">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold dark:text-white">Enter Scores</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center">
-            <div className="font-medium text-red-500">{game.usaPlayerName}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 pb-4 border-b dark:border-gray-700">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold dark:text-white">Enter Scores</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+            >
+              ×
+            </button>
           </div>
-          <div className="text-center">
-            <div className="font-medium text-blue-500">{game.europePlayerName}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
-          </div>
-        </div>
 
-        {game.handicapStrokes > 0 && game.higherHandicapTeam && (
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-            {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 space-y-4">
-        {game.holes.map((hole, index) => {
-          const usaScore = scores[index].USA;
-          const europeScore = scores[index].EUROPE;
-          const adjustedUsaScore = typeof usaScore === 'number' ? 
-            calculateAdjustedScore(usaScore, index + 1, 'USA') : null;
-          const adjustedEuropeScore = typeof europeScore === 'number' ? 
-            calculateAdjustedScore(europeScore, index + 1, 'EUROPE') : null;
-
-          return (
-            <div key={hole.holeNumber} className="grid grid-cols-3 gap-4 items-center">
-              <div className="text-sm">
-                <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
-                <div className="text-gray-500 dark:text-gray-400">
-                  SI: {strokeIndices[index]}
-                </div>
-              </div>
-              <input
-                type="number"
-                min="1"
-                max="8"
-                value={scores[index].USA}
-                onChange={(e) => {
-                  const newScores = [...scores];
-                  newScores[index].USA = e.target.value ? parseInt(e.target.value) : '';
-                  setScores(newScores);
-                }}
-                className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="USA"
-              />
-              <input
-                type="number"
-                min="1"
-                max="8"
-                value={scores[index].EUROPE}
-                onChange={(e) => {
-                  const newScores = [...scores];
-                  newScores[index].EUROPE = e.target.value ? parseInt(e.target.value) : '';
-                  setScores(newScores);
-                }}
-                className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="EUR"
-              />
-              {adjustedUsaScore !== null && adjustedEuropeScore !== null && (
-                <div className="col-span-3 text-sm text-gray-500 dark:text-gray-400">
-                  Adjusted scores: {adjustedUsaScore} - {adjustedEuropeScore}
-                  {' '}
-                  ({adjustedUsaScore < adjustedEuropeScore ? 'USA wins hole' : 
-                    adjustedEuropeScore < adjustedUsaScore ? 'EUROPE wins hole' : 
-                    'Hole halved'})
-                </div>
-              )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="font-medium text-red-500">{game.usaPlayerName}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
             </div>
-          );
-        })}
-      </div>
+            <div className="text-center">
+              <div className="font-medium text-blue-500">{game.europePlayerName}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
+            </div>
+          </div>
 
-      <div className="sticky bottom-0 bg-white dark:bg-gray-800 pt-4 border-t dark:border-gray-700 mt-4">
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleScoreSubmit}
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Saving...' : 'Save Scores'}
-          </button>
+          {game.handicapStrokes > 0 && game.higherHandicapTeam && (
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+              {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {game.holes.map((hole, index) => {
+            const usaScore = scores[index].USA;
+            const europeScore = scores[index].EUROPE;
+            const adjustedUsaScore = typeof usaScore === 'number' ? 
+              calculateAdjustedScore(usaScore, index + 1, 'USA') : null;
+            const adjustedEuropeScore = typeof europeScore === 'number' ? 
+              calculateAdjustedScore(europeScore, index + 1, 'EUROPE') : null;
+
+            return (
+              <div key={hole.holeNumber} className="grid grid-cols-3 gap-4 items-center">
+                <div className="text-sm">
+                  <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
+                  <div className="text-gray-500 dark:text-gray-400">
+                    SI: {strokeIndices[index]}
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={scores[index].USA}
+                  onChange={(e) => {
+                    const newScores = [...scores];
+                    newScores[index].USA = e.target.value ? parseInt(e.target.value) : '';
+                    setScores(newScores);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="USA"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={scores[index].EUROPE}
+                  onChange={(e) => {
+                    const newScores = [...scores];
+                    newScores[index].EUROPE = e.target.value ? parseInt(e.target.value) : '';
+                    setScores(newScores);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="EUR"
+                />
+                {adjustedUsaScore !== null && adjustedEuropeScore !== null && (
+                  <div className="col-span-3 text-sm text-gray-500 dark:text-gray-400">
+                    Adjusted scores: {adjustedUsaScore} - {adjustedEuropeScore}
+                    {' '}
+                    ({adjustedUsaScore < adjustedEuropeScore ? 'USA wins hole' : 
+                      adjustedEuropeScore < adjustedUsaScore ? 'EUROPE wins hole' : 
+                      'Hole halved'})
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 pt-4 border-t dark:border-gray-700 mt-4">
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleScoreSubmit}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Saving...' : 'Save Scores'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

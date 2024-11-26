@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAuth, setPersistence, browserLocalPersistence, connectAuthEmulator } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,7 +19,29 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence);
 
-// Initialize Firestore
+// Initialize Firestore with offline persistence
 const db = getFirestore(app);
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('The current browser does not support offline persistence.');
+  }
+});
 
-export { auth, db };
+// Initialize Storage with custom domain for emulator
+const storage = getStorage(app);
+
+// Connect to emulators in development
+if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+  try {
+    connectAuthEmulator(auth, 'http://localhost:9099');
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectStorageEmulator(storage, 'localhost', 9199);
+    console.log('Connected to Firebase emulators');
+  } catch (err) {
+    console.warn('Error connecting to emulators:', err);
+  }
+}
+
+export { auth, db, storage };

@@ -3,7 +3,10 @@ import { collection, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firesto
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import type { User } from '../types/user';
+import type { Tournament, TournamentProgress } from '../types/tournament';
 import ScoreEntry from './ScoreEntry';
+import PlayerAvatar from './PlayerAvatar';
+import GameCompletionModal from './GameCompletionModal';
 
 interface GameManagementProps {
   userId: string | undefined;
@@ -11,12 +14,128 @@ interface GameManagementProps {
 
 export default function GameManagement({ userId }: GameManagementProps) {
   const [userGames, setUserGames] = useState<Game[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
   const [linkedPlayerId, setLinkedPlayerId] = useState<string | null>(null);
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<number>(0);
+
+  const sortGames = (games: Game[]): Game[] => {
+    return [...games].sort((a, b) => {
+      if (a.isComplete !== b.isComplete) {
+        return a.isComplete ? 1 : -1;
+      }
+      if (a.isStarted !== b.isStarted) {
+        return a.isStarted ? -1 : 1;
+      }
+      return a.usaPlayerName.localeCompare(b.usaPlayerName);
+    });
+  };
+
+  const calculateTournamentScore = (games: Game[]) => {
+    const currentScore = {
+      USA: 0,
+      EUROPE: 0
+    };
+
+    games.forEach(game => {
+      if (game.isComplete) {
+        const strokePlayPoint = game.strokePlayScore.USA < game.strokePlayScore.EUROPE ? 1 : 
+                              game.strokePlayScore.USA === game.strokePlayScore.EUROPE ? 0.5 : 0;
+        
+        const matchPlayPoint = game.matchPlayScore.USA > game.matchPlayScore.EUROPE ? 1 :
+                             game.matchPlayScore.USA === game.matchPlayScore.EUROPE ? 0.5 : 0;
+        
+        currentScore.USA += strokePlayPoint + matchPlayPoint;
+        currentScore.EUROPE += (1 - strokePlayPoint) + (1 - matchPlayPoint);
+      }
+    });
+
+    return currentScore;
+  };
+
+  const updateTournamentProgress = async (
+    tournamentId: string,
+    games: Game[],
+    tournament: Tournament
+  ) => {
+    const now = Date.now();
+    if (lastUpdate && now - lastUpdate < 300000) {
+      return;
+    }
+
+    const completedGames = games.filter(g => g.isComplete).length;
+    const currentScore = calculateTournamentScore(games);
+
+    if (
+      tournament.totalScore?.USA === currentScore.USA &&
+      tournament.totalScore?.EUROPE === currentScore.EUROPE &&
+      tournament.progress?.length > 0
+    ) {
+      return;
+    }
+
+    const newProgress: TournamentProgress = {
+      timestamp: new Date(),
+      score: currentScore,
+      completedGames
+    };
+
+    const updatedProgress = [...(tournament.progress || []), newProgress];
+
+    try {
+      await updateDoc(doc(db, 'tournaments', tournamentId), {
+        totalScore: currentScore,
+        progress: updatedProgress
+      });
+      setLastUpdate(now);
+    } catch (err) {
+      console.error('Error updating tournament progress:', err);
+    }
+  };
+
+  const handleGameStatusChange = async (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => {
+    if (!isAdmin) return;
+
+    try {
+      const updates: Partial<Game> = {};
+
+      switch (newStatus) {
+        case 'not_started':
+          updates.isStarted = false;
+          updates.isComplete = false;
+          break;
+        case 'in_progress':
+          updates.isStarted = true;
+          updates.isComplete = false;
+          break;
+        case 'complete':
+          // Check if all holes have scores
+          const hasAllScores = game.holes.every(hole => 
+            hole.usaPlayerScore !== undefined && 
+            hole.europePlayerScore !== undefined
+          );
+
+          if (!hasAllScores) {
+            setError('All holes must have scores before marking the game as complete');
+            return;
+          }
+
+          setGameToComplete(game);
+          return;
+      }
+
+      await updateDoc(
+        doc(db, 'tournaments', activeTournamentId!, 'games', game.id),
+        updates
+      );
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   useEffect(() => {
     if (!userId) {
@@ -25,7 +144,6 @@ export default function GameManagement({ userId }: GameManagementProps) {
       return;
     }
 
-    // First get the user's linked player ID and admin status
     const fetchUserData = async () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', userId));
@@ -43,24 +161,27 @@ export default function GameManagement({ userId }: GameManagementProps) {
 
     fetchUserData();
 
-    // Then get the active tournament
     const unsubscribeTournament = onSnapshot(
       collection(db, 'tournaments'),
-      (snapshot) => {
+      async (snapshot) => {
         const activeTournament = snapshot.docs.find(doc => doc.data().isActive);
         if (activeTournament) {
           setActiveTournamentId(activeTournament.id);
 
-          // Then get games for this tournament
           const unsubscribeGames = onSnapshot(
             collection(db, 'tournaments', activeTournament.id, 'games'),
-            (gamesSnapshot) => {
+            async (gamesSnapshot) => {
               const gamesData = gamesSnapshot.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
+                tournamentId: activeTournament.id
               })) as Game[];
 
-              // Filter games based on user role and linked player
+              const tournamentData = { ...activeTournament.data(), id: activeTournament.id } as Tournament;
+              setTimeout(() => {
+                updateTournamentProgress(activeTournament.id, gamesData, tournamentData);
+              }, 1000);
+
               const filteredGames = isAdmin 
                 ? gamesData 
                 : gamesData.filter(game => 
@@ -91,54 +212,7 @@ export default function GameManagement({ userId }: GameManagementProps) {
     );
 
     return () => unsubscribeTournament();
-  }, [userId, linkedPlayerId, isAdmin]);
-
-  const sortGames = (games: Game[]): Game[] => {
-    return [...games].sort((a, b) => {
-      // First, prioritize games where the current user is a player
-      const aIsUserGame = a.playerIds?.includes(linkedPlayerId) || false;
-      const bIsUserGame = b.playerIds?.includes(linkedPlayerId) || false;
-      
-      if (aIsUserGame && !bIsUserGame) return -1;
-      if (!aIsUserGame && bIsUserGame) return 1;
-
-      // Then sort by game status
-      if (a.isStarted && !a.isComplete && (!b.isStarted || b.isComplete)) return -1;
-      if (b.isStarted && !b.isComplete && (!a.isStarted || a.isComplete)) return 1;
-
-      // Finally sort by completion status
-      if (!a.isComplete && b.isComplete) return -1;
-      if (a.isComplete && !b.isComplete) return 1;
-
-      return 0;
-    });
-  };
-
-  const handleStartGame = async (gameId: string) => {
-    if (!activeTournamentId) return;
-
-    try {
-      await updateDoc(doc(db, 'tournaments', activeTournamentId, 'games', gameId), {
-        isStarted: true,
-        startTime: new Date()
-      });
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleEndGame = async (gameId: string) => {
-    if (!activeTournamentId) return;
-
-    try {
-      await updateDoc(doc(db, 'tournaments', activeTournamentId, 'games', gameId), {
-        isComplete: true,
-        endTime: new Date()
-      });
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+  }, [userId, linkedPlayerId, isAdmin, lastUpdate]);
 
   if (isLoading) {
     return (
@@ -150,146 +224,180 @@ export default function GameManagement({ userId }: GameManagementProps) {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        {error}
       </div>
     );
   }
 
-  if (!linkedPlayerId && !isAdmin) {
+  if (!activeTournamentId) {
     return (
-      <div className="text-center py-12">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-          Your account is not linked to a player. Please contact an administrator.
-        </div>
-      </div>
-    );
-  }
-
-  if (userGames.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          No games found
-        </h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          {isAdmin 
-            ? 'No games have been created in the current tournament.'
-            : 'You haven\'t been assigned to any games in the current tournament.'}
-        </p>
+      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        No active tournament found
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold dark:text-white">
-        {isAdmin ? 'All Games' : 'Your Games'}
-      </h2>
-      
-      {userGames.map((game) => {
-        const isUserGame = game.playerIds?.includes(linkedPlayerId);
-        const isActiveGame = game.isStarted && !game.isComplete;
-        
-        return (
-          <div
-            key={game.id}
-            className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 relative ${
-              isUserGame ? 'border-2 border-blue-500' : ''
-            } ${isActiveGame ? 'ring-2 ring-yellow-500' : ''}`}
-          >
-            {isUserGame && (
-              <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2">
-                <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                  Your Game
-                </span>
-              </div>
-            )}
+      <h2 className="text-xl font-semibold dark:text-white">Your Games</h2>
 
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-medium dark:text-white">
-                  <span className="text-red-500">{game.usaPlayerName}</span>
-                  {" vs "}
-                  <span className="text-blue-500">{game.europePlayerName}</span>
-                </h3>
-                {game.handicapStrokes > 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
-                  </p>
-                )}
-              </div>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                game.isComplete
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                  : game.isStarted
-                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-              }`}>
-                {game.isComplete ? 'Complete' : game.isStarted ? 'In Progress' : 'Not Started'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Stroke Play</div>
-                <div className="text-lg font-semibold dark:text-white">
-                  {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Match Play</div>
-                <div className="text-lg font-semibold dark:text-white">
-                  {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex space-x-4">
-              {(!game.isStarted || isAdmin) && (
-                <button
-                  onClick={() => handleStartGame(game.id)}
-                  className="flex-1 bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition-colors"
-                >
-                  {game.isStarted ? 'Restart Game' : 'Start Game'}
-                </button>
-              )}
-
-              {(game.isStarted || (isAdmin && game.isComplete)) && (
-                <>
-                  <button
-                    onClick={() => setSelectedGameId(game.id)}
-                    className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    {isAdmin ? 'Edit Scores' : 'Enter Scores'}
-                  </button>
-                  {!game.isComplete && (
-                    <button
-                      onClick={() => handleEndGame(game.id)}
-                      className="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                      End Game
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })}
-
-      {selectedGameId && activeTournamentId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="relative max-w-2xl w-full my-8">
-            <ScoreEntry
-              gameId={selectedGameId}
-              tournamentId={activeTournamentId}
-              onClose={() => setSelectedGameId(null)}
-            />
-          </div>
+      {userGames.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          No games found
         </div>
+      ) : (
+        <div className="grid gap-6">
+          {userGames.map((game) => (
+            <div
+              key={game.id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow p-6"
+            >
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-2">
+                    <PlayerAvatar
+                      playerId={game.usaPlayerId}
+                      name={game.usaPlayerName}
+                      profilePicUrl={game.usaPlayerProfilePic}
+                    />
+                    <div className="font-medium text-red-500">
+                      {game.usaPlayerName}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">USA</div>
+                </div>
+
+                <div className="text-center flex flex-col justify-center">
+                  {game.isComplete ? (
+                    <>
+                      <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        Final Score
+                      </div>
+                      <div className="flex justify-center space-x-8 mt-2">
+                        <div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Stroke Play</div>
+                          <div className="text-lg font-bold">
+                            {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Holes Won</div>
+                          <div className="text-lg font-bold">
+                            {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
+                          </div>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleGameStatusChange(game, 'in_progress')}
+                          className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
+                        >
+                          Mark as In Progress
+                        </button>
+                      )}
+                    </>
+                  ) : game.isStarted ? (
+                    <>
+                      <div className="text-sm font-medium text-yellow-500">
+                        In Progress
+                      </div>
+                      <div className="flex justify-center space-x-8 mt-2 text-gray-400">
+                        <div>
+                          <div className="text-sm">Stroke Play</div>
+                          <div className="text-lg">
+                            {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm">Holes Won</div>
+                          <div className="text-lg">
+                            {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedGame(game)}
+                        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                      >
+                        Enter Scores
+                      </button>
+                      {isAdmin && (
+                        <div className="mt-2 space-y-2">
+                          <button
+                            onClick={() => handleGameStatusChange(game, 'not_started')}
+                            className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
+                          >
+                            Mark as Not Started
+                          </button>
+                          <button
+                            onClick={() => handleGameStatusChange(game, 'complete')}
+                            className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                          >
+                            Mark as Complete
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setSelectedGame(game)}
+                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                      >
+                        Start Game
+                      </button>
+                      {isAdmin && game.strokePlayScore.USA > 0 && (
+                        <button
+                          onClick={() => handleGameStatusChange(game, 'in_progress')}
+                          className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
+                        >
+                          Mark as In Progress
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-2">
+                    <PlayerAvatar
+                      playerId={game.europePlayerId}
+                      name={game.europePlayerName}
+                      profilePicUrl={game.europePlayerProfilePic}
+                    />
+                    <div className="font-medium text-blue-500">
+                      {game.europePlayerName}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">EUROPE</div>
+                </div>
+              </div>
+
+              {game.handicapStrokes > 0 && game.higherHandicapTeam && (
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+                  {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedGame && (
+        <ScoreEntry
+          gameId={selectedGame.id}
+          tournamentId={activeTournamentId}
+          onClose={() => setSelectedGame(null)}
+        />
+      )}
+
+      {gameToComplete && (
+        <GameCompletionModal
+          game={gameToComplete}
+          tournamentId={activeTournamentId}
+          onClose={() => setGameToComplete(null)}
+        />
       )}
     </div>
   );

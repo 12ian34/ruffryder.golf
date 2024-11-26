@@ -9,4 +9,5 @@ export interface Player {
   team: 'USA' | 'EUROPE';
   historicalScores: HistoricalScore[];
   averageScore: number;
+  profilePicUrl?: string;
 }
