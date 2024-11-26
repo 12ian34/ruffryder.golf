@@ -11,6 +11,7 @@ export default function Leaderboard() {
   const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playerAvatars, setPlayerAvatars] = useState<Map<string, { customEmoji?: string }>>(new Map());
 
   useEffect(() => {
     const loadData = async () => {
@@ -37,7 +38,25 @@ export default function Leaderboard() {
               setIsLoading(false);
             });
 
-            return () => unsubscribeGames();
+            // Fetch player avatars
+            const usersRef = collection(db, 'users');
+            const unsubscribeUsers = onSnapshot(usersRef, (usersSnapshot) => {
+              const newPlayerAvatars = new Map();
+              usersSnapshot.docs.forEach(doc => {
+                const userData = doc.data();
+                if (userData.linkedPlayerId && userData.customEmoji) {
+                  newPlayerAvatars.set(userData.linkedPlayerId, {
+                    customEmoji: userData.customEmoji
+                  });
+                }
+              });
+              setPlayerAvatars(newPlayerAvatars);
+            });
+
+            return () => {
+              unsubscribeGames();
+              unsubscribeUsers();
+            };
           } else {
             setTournament(null);
             setGames([]);
@@ -238,7 +257,7 @@ export default function Leaderboard() {
                     <PlayerAvatar
                       playerId={game.usaPlayerId}
                       name={game.usaPlayerName}
-                      profilePicUrl={game.usaPlayerProfilePic}
+                      customEmoji={playerAvatars.get(game.usaPlayerId)?.customEmoji}
                     />
                     <div className="font-medium text-red-500">
                       {game.usaPlayerName}
@@ -248,75 +267,76 @@ export default function Leaderboard() {
                 </div>
                 
                 <div className="text-center flex flex-col justify-between">
-                  {game.isStarted ? (
-                    <div className="space-y-2">
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                        Stroke Play
+                      </div>
                       <div className="flex justify-center space-x-4">
-                        <div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Stroke Play
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              game.strokePlayScore.USA < game.strokePlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {game.strokePlayScore.USA}
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              game.strokePlayScore.EUROPE < game.strokePlayScore.USA ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {game.strokePlayScore.EUROPE}
-                          </div>
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            game.strokePlayScore.USA < game.strokePlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {game.strokePlayScore.USA}
                         </div>
-
-                        <div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Match Play
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              game.matchPlayScore.USA > game.matchPlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {game.matchPlayScore.USA}
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              game.matchPlayScore.EUROPE > game.matchPlayScore.USA ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {game.matchPlayScore.EUROPE}
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {isComplete ? 'Final Points' : 'Projected Points'}
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              points.USA > points.EUROPE ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {points.USA}
-                          </div>
-                          <div className={`font-medium ${
-                            isComplete ? (
-                              points.EUROPE > points.USA ? 'text-green-500' : 'text-gray-500'
-                            ) : 'text-gray-400'
-                          }`}>
-                            {points.EUROPE}
-                          </div>
+                        <div className="text-gray-400">-</div>
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            game.strokePlayScore.EUROPE < game.strokePlayScore.USA ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {game.strokePlayScore.EUROPE}
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Not Started
+
+                    <div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                        Match Play
+                      </div>
+                      <div className="flex justify-center space-x-4">
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            game.matchPlayScore.USA > game.matchPlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {game.matchPlayScore.USA}
+                        </div>
+                        <div className="text-gray-400">-</div>
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            game.matchPlayScore.EUROPE > game.matchPlayScore.USA ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {game.matchPlayScore.EUROPE}
+                        </div>
+                      </div>
                     </div>
-                  )}
+
+                    <div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                        {isComplete ? 'Final Points' : 'Projected Points'}
+                      </div>
+                      <div className="flex justify-center space-x-4">
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            points.USA > points.EUROPE ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {points.USA}
+                        </div>
+                        <div className="text-gray-400">-</div>
+                        <div className={`font-medium ${
+                          isComplete ? (
+                            points.EUROPE > points.USA ? 'text-green-500' : 'text-gray-500'
+                          ) : 'text-gray-400'
+                        }`}>
+                          {points.EUROPE}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="mt-2 text-center">
                     <span className={`text-xs px-2 py-1 rounded-full ${
@@ -336,7 +356,7 @@ export default function Leaderboard() {
                     <PlayerAvatar
                       playerId={game.europePlayerId}
                       name={game.europePlayerName}
-                      profilePicUrl={game.europePlayerProfilePic}
+                      customEmoji={playerAvatars.get(game.europePlayerId)?.customEmoji}
                     />
                     <div className="font-medium text-blue-500">
                       {game.europePlayerName}
