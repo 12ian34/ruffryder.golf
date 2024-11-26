@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
+import { availableEmojis } from '../utils/animalAvatars';
 import type { User } from '../types/user';
 
 export default function Profile() {
@@ -11,10 +11,9 @@ export default function Profile() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<User | null>(null);
   const [name, setName] = useState('');
-  const [profilePic, setProfilePic] = useState<File | null>(null);
+  const [selectedEmoji, setSelectedEmoji] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [savingStep, setSavingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -31,6 +30,7 @@ export default function Profile() {
           const user = userDoc.data() as User;
           setUserData(user);
           setName(user.name);
+          setSelectedEmoji(user.customEmoji || '');
         }
       } catch (err: any) {
         setError(err.message);
@@ -42,56 +42,26 @@ export default function Profile() {
     fetchData();
   }, [currentUser, navigate]);
 
-  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please upload an image file');
-        return;
-      }
+  const handleEmojiSelect = async (emoji: string) => {
+    if (!currentUser || isSaving) return;
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
-
-      setProfilePic(file);
-      setError(null);
-    }
-  };
-
-  const uploadProfilePicture = async (file: File): Promise<string> => {
-    if (!currentUser) throw new Error('No authenticated user');
-
-    const storageRef = ref(storage, `profile-pics/${currentUser.uid}`);
-    
     try {
-      // Delete existing profile picture if it exists
-      if (userData?.profilePicUrl) {
-        try {
-          const existingRef = ref(storage, userData.profilePicUrl);
-          await deleteObject(existingRef);
-        } catch (err) {
-          console.log('No existing profile picture to delete');
-        }
-      }
+      setIsSaving(true);
+      setError(null);
 
-      // Create file metadata including the content type
-      const metadata = {
-        contentType: file.type,
+      const updates: Partial<User> = { 
+        customEmoji: emoji === selectedEmoji ? null : emoji
       };
 
-      // Upload the file and metadata
-      const uploadResult = await uploadBytes(storageRef, file, metadata);
+      await updateDoc(doc(db, 'users', currentUser.uid), updates);
+      setSelectedEmoji(updates.customEmoji || '');
       
-      // Get the download URL
-      const downloadURL = await getDownloadURL(uploadResult.ref);
-      return downloadURL;
+      setSuccessMessage('Avatar updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      console.error('Error uploading profile picture:', err);
-      throw new Error('Failed to upload profile picture. Please try again.');
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -102,36 +72,18 @@ export default function Profile() {
     try {
       setIsSaving(true);
       setError(null);
+      
       const updates: Partial<User> = { name };
 
-      if (profilePic) {
-        setSavingStep('Uploading profile picture...');
-        try {
-          const downloadUrl = await uploadProfilePicture(profilePic);
-          updates.profilePicUrl = downloadUrl;
-        } catch (err: any) {
-          setError(err.message);
-          return;
-        }
-      }
-
-      setSavingStep('Updating profile...');
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
-      
-      // Update local state
       setUserData(prev => prev ? { ...prev, ...updates } : null);
-      setProfilePic(null);
 
-      setSavingStep('');
       setSuccessMessage('Profile updated successfully!');
-      
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsSaving(false);
-      setSavingStep('');
     }
   };
 
@@ -190,41 +142,30 @@ export default function Profile() {
             </div>
           )}
 
-          {isSaving && savingStep && (
-            <div className="mb-6 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-              {savingStep}
-            </div>
-          )}
-
           <form onSubmit={handleProfileUpdate} className="space-y-6">
-            {/* Profile Picture */}
+            {/* Avatar Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Profile Picture
+                Avatar
               </label>
-              <div className="flex items-center space-x-4">
-                {userData.profilePicUrl && (
-                  <img
-                    src={userData.profilePicUrl}
-                    alt="Profile"
-                    className="w-16 h-16 rounded-full object-cover"
-                  />
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfilePicChange}
-                  className="block w-full text-sm text-gray-500 dark:text-gray-400
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100
-                    dark:file:bg-gray-700 dark:file:text-gray-300"
-                  disabled={isSaving}
-                />
+              <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg dark:border-gray-700">
+                {availableEmojis.map((emoji, index) => (
+                  <button
+                    key={`emoji-${index}`}
+                    type="button"
+                    onClick={() => handleEmojiSelect(emoji)}
+                    className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                      selectedEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
+                    }`}
+                    disabled={isSaving}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                Click an emoji to select it as your avatar. Click it again to use the default avatar.
+              </p>
             </div>
 
             {/* Name */}
