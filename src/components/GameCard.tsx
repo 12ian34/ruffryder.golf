@@ -1,7 +1,7 @@
 import type { Game } from '../types/game';
 import { calculateGamePoints } from '../utils/gamePoints';
 import GameScoreDisplay from './shared/GameScoreDisplay';
-import PlayerDisplay from './shared/PlayerDisplay';
+import PlayerPair from './shared/PlayerPair';
 import HandicapDisplay from './shared/HandicapDisplay';
 
 interface GameCardProps {
@@ -31,27 +31,19 @@ export default function GameCard({
   );
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${compact ? 'p-4' : 'p-6'} ${
-      isAdminPlayer ? 'border-2 border-blue-500 dark:border-blue-400' : ''
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'} ${
+      isAdminPlayer ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''
     }`}>
-      <div className="grid grid-cols-3 gap-4">
-        {/* USA Player */}
-        <PlayerDisplay
-          player={{
-            id: game.usaPlayerId,
-            name: game.usaPlayerName,
-            team: 'USA',
-            historicalScores: [],
-            averageScore: 0
-          }}
-          team="USA"
-          showAverage={false}
+      <div className="flex flex-col gap-4">
+        {/* Players */}
+        <PlayerPair
+          game={game}
+          currentUserId={currentUserId}
           compact={compact}
-          isCurrentUser={currentUserId === game.usaPlayerId}
         />
 
         {/* Game Status & Scores */}
-        <div className="text-center flex flex-col justify-center">
+        <div className="text-center">
           <GameScoreDisplay game={game} compact={compact} />
           
           {/* Points Display */}
@@ -85,7 +77,7 @@ export default function GameCard({
               </button>
 
               {isAdmin && onStatusChange && (
-                <div className="space-y-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {game.isComplete ? (
                     <button
                       onClick={() => onStatusChange(game, 'in_progress')}
@@ -121,21 +113,6 @@ export default function GameCard({
             </div>
           )}
         </div>
-
-        {/* Europe Player */}
-        <PlayerDisplay
-          player={{
-            id: game.europePlayerId,
-            name: game.europePlayerName,
-            team: 'EUROPE',
-            historicalScores: [],
-            averageScore: 0
-          }}
-          team="EUROPE"
-          showAverage={false}
-          compact={compact}
-          isCurrentUser={currentUserId === game.europePlayerId}
-        />
       </div>
 
       <HandicapDisplay game={game} compact={compact} />

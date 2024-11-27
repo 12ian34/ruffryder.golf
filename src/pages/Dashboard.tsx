@@ -100,7 +100,7 @@ export default function Dashboard() {
             </h1>
             <div className="flex items-center space-x-4">
               <ThemeSwitcher />
-              <span className="text-gray-600 dark:text-gray-300">
+              <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
                 {userData?.name || currentUser?.email}
               </span>
               <button
@@ -115,14 +115,14 @@ export default function Dashboard() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm overflow-x-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-4">
+          <div className="flex min-w-max sm:min-w-0 space-x-1 sm:space-x-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 text-sm font-medium ${
+                className={`px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab.id
                     ? 'text-blue-500 border-b-2 border-blue-500'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'

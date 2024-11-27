@@ -165,7 +165,7 @@ export default function Leaderboard() {
       )}
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-xl font-semibold dark:text-white">Individual Games</h2>
           <StatusFilter
             activeStatus={activeStatus}
@@ -173,20 +173,22 @@ export default function Leaderboard() {
           />
         </div>
         
-        {filteredGames.map((game) => (
-          <GameCard
-            key={game.id}
-            game={game}
-            showControls={false}
-            compact={true}
-          />
-        ))}
+        <div className="space-y-4">
+          {filteredGames.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              showControls={false}
+              compact={true}
+            />
+          ))}
 
-        {filteredGames.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            No games found
-          </div>
-        )}
+          {filteredGames.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              No games found
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

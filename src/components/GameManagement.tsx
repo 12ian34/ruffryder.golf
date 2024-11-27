@@ -65,20 +65,10 @@ export default function GameManagement({ userId }: GameManagementProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold dark:text-white">Your Games</h2>
-
-      {games.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No games found
-        </div>
-      ) : (
-        <GameList
-          games={games}
-          isAdmin={isAdmin}
-          onGameStatusChange={handleGameStatusChange}
-        />
-      )}
-    </div>
+    <GameList
+      games={games}
+      isAdmin={isAdmin}
+      onGameStatusChange={handleGameStatusChange}
+    />
   );
 }
