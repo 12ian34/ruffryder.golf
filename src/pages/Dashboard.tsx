@@ -7,6 +7,7 @@ import GameManagement from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
 import BlogList from '../components/blog/BlogList';
 import ThemeSwitcher from '../components/ThemeSwitcher';
+import About from './About';
 import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
@@ -20,8 +21,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('leaderboard');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [isBlogLoading, setIsBlogLoading] = useState(false);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -29,19 +29,33 @@ export default function Dashboard() {
       return;
     }
 
-    // Set active tab from location state if provided
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
-      // Clear the state to prevent persisting
       window.history.replaceState({}, document.title);
     }
 
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const [userDoc, postsSnapshot] = await Promise.all([
+          getDoc(doc(db, 'users', currentUser.uid)),
+          getDocs(query(
+            collection(db, 'blog-posts'),
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc')
+          ))
+        ]);
+
         if (userDoc.exists()) {
           setUserData(userDoc.data() as User);
         }
+
+        const postsData = postsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          publishedAt: doc.data().publishedAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        })) as BlogPost[];
+        setPosts(postsData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -49,40 +63,8 @@ export default function Dashboard() {
       }
     };
 
-    fetchUserData();
+    fetchData();
   }, [currentUser, navigate, location]);
-
-  // Fetch blog posts when blog tab is active
-  useEffect(() => {
-    if (activeTab === 'blog') {
-      const fetchBlogPosts = async () => {
-        setIsBlogLoading(true);
-        try {
-          const postsQuery = query(
-            collection(db, 'blog-posts'),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc')
-          );
-
-          const snapshot = await getDocs(postsQuery);
-          const postsData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            publishedAt: doc.data().publishedAt?.toDate() || new Date(),
-            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-          })) as BlogPost[];
-
-          setBlogPosts(postsData);
-        } catch (err: any) {
-          console.error('Error fetching blog posts:', err);
-        } finally {
-          setIsBlogLoading(false);
-        }
-      };
-
-      fetchBlogPosts();
-    }
-  }, [activeTab]);
 
   if (isLoading) {
     return (
@@ -121,12 +103,12 @@ export default function Dashboard() {
     { id: 'players', label: 'Players' },
     { id: 'games', label: 'Games' },
     { id: 'blog', label: 'Blog' },
+    { id: 'about', label: 'About' },
     ...(userData?.isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
@@ -149,10 +131,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
       <nav className="bg-white dark:bg-gray-800 shadow-sm overflow-x-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-max sm:min-w-0 space-x-1 sm:space-x-4">
+          <div className="flex space-x-1 sm:space-x-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -170,21 +151,13 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'players' && <PlayerStats />}
         {activeTab === 'games' && <GameManagement userId={currentUser?.uid} />}
-        {activeTab === 'blog' && (
-          isBlogLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <BlogList posts={blogPosts} />
-          )
-        )}
+        {activeTab === 'blog' && <BlogList posts={posts} />}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
+        {activeTab === 'about' && <About />}
       </main>
     </div>
   );

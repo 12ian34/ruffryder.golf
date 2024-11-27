@@ -5,7 +5,7 @@ interface AttachmentListProps {
 }
 
 export default function AttachmentList({ attachments }: AttachmentListProps) {
-  if (!attachments.length) return null;
+  if (!attachments?.length) return null;
 
   const downloadAttachment = (attachment: BlogAttachment) => {
     try {

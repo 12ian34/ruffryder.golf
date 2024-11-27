@@ -9,7 +9,7 @@ interface BlogListProps {
 export default function BlogList({ posts }: BlogListProps) {
   const navigate = useNavigate();
 
-  if (posts.length === 0) {
+  if (!posts || posts.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">No posts found</p>
@@ -38,7 +38,7 @@ export default function BlogList({ posts }: BlogListProps) {
                 __html: post.content.substring(0, 300) + '...' 
               }}
             />
-            {post.attachments.length > 0 && (
+            {post.attachments?.length > 0 && (
               <div className="mb-4">
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   {post.attachments.length} attachment{post.attachments.length !== 1 ? 's' : ''}

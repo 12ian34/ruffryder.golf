@@ -84,6 +84,11 @@ input {
   @apply bg-gray-100 dark:bg-gray-800;
 }
 
+/* Remove underline from specific links */
+.no-underline {
+  text-decoration: none !important;
+}
+
 /* Editor styles */
 .ProseMirror {
   @apply min-h-[400px] p-6 focus:outline-none;
