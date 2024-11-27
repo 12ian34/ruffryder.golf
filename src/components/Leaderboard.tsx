@@ -4,15 +4,15 @@ import { db } from '../config/firebase';
 import type { Tournament } from '../types/tournament';
 import type { Game } from '../types/game';
 import TournamentProgress from './TournamentProgress';
-import ScoreCard from './leaderboard/ScoreCard';
-import GameCard from './leaderboard/GameCard';
+import ScoreCard from './ScoreCard';
+import GameCard from './GameCard';
+import { calculateGamePoints } from '../utils/gamePoints';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playerAvatars, setPlayerAvatars] = useState<Map<string, { customEmoji?: string }>>(new Map());
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,24 +39,8 @@ export default function Leaderboard() {
               setIsLoading(false);
             });
 
-            // Fetch player avatars
-            const usersRef = collection(db, 'users');
-            const unsubscribeUsers = onSnapshot(usersRef, (usersSnapshot) => {
-              const newPlayerAvatars = new Map();
-              usersSnapshot.docs.forEach(doc => {
-                const userData = doc.data();
-                if (userData.linkedPlayerId && userData.customEmoji) {
-                  newPlayerAvatars.set(userData.linkedPlayerId, {
-                    customEmoji: userData.customEmoji
-                  });
-                }
-              });
-              setPlayerAvatars(newPlayerAvatars);
-            });
-
             return () => {
               unsubscribeGames();
-              unsubscribeUsers();
             };
           } else {
             setTournament(null);
@@ -75,58 +59,6 @@ export default function Leaderboard() {
 
     loadData();
   }, []);
-
-  const calculateGamePoints = (game: Game): { USA: number, EUROPE: number } => {
-    if (!game.isStarted) return { USA: 0, EUROPE: 0 };
-    
-    const points = {
-      USA: 0,
-      EUROPE: 0
-    };
-
-    if (game.isComplete) {
-      // Stroke play point
-      if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
-        points.USA += 1;
-      } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
-        points.EUROPE += 1;
-      } else {
-        points.USA += 0.5;
-        points.EUROPE += 0.5;
-      }
-
-      // Match play point
-      if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
-        points.USA += 1;
-      } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
-        points.EUROPE += 1;
-      } else {
-        points.USA += 0.5;
-        points.EUROPE += 0.5;
-      }
-    } else if (game.isStarted) {
-      // For in-progress games, show projected points
-      if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
-        points.USA += 1;
-      } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
-        points.EUROPE += 1;
-      } else if (game.strokePlayScore.USA > 0 || game.strokePlayScore.EUROPE > 0) {
-        points.USA += 0.5;
-        points.EUROPE += 0.5;
-      }
-
-      if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
-        points.USA += 1;
-      } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
-        points.EUROPE += 1;
-      } else if (game.matchPlayScore.USA > 0 || game.matchPlayScore.EUROPE > 0) {
-        points.USA += 0.5;
-        points.EUROPE += 0.5;
-      }
-    }
-
-    return points;
-  };
 
   const calculateCurrentScore = (): { USA: number, EUROPE: number } => {
     return games.reduce((total, game) => {
@@ -214,10 +146,16 @@ export default function Leaderboard() {
           <GameCard
             key={game.id}
             game={game}
-            points={calculateGamePoints(game)}
-            playerAvatars={playerAvatars}
+            showControls={false}
+            compact={true}
           />
         ))}
+
+        {games.length === 0 && (
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+            No games found
+          </div>
+        )}
       </div>
     </div>
   );

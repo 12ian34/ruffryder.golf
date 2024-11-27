@@ -4,7 +4,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { useDropzone } from 'react-dropzone';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { BlogPost, BlogAttachment } from '../../types/blog';
 
 interface BlogEditorProps {
@@ -39,27 +38,29 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
     setError(null);
 
     try {
-      const storage = getStorage();
       const newAttachments: BlogAttachment[] = [];
       
       for (const file of acceptedFiles) {
-        const timestamp = Date.now();
-        const fileRef = ref(storage, `blog/${postId || 'new'}/${timestamp}-${file.name}`);
-        
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
+        // Convert file to base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
         const attachment: BlogAttachment = {
           type: file.type.startsWith('image/') ? 'image' : 'pdf',
-          url,
+          data: base64,
           filename: file.name,
-          size: file.size
+          size: file.size,
+          contentType: file.type
         };
 
         newAttachments.push(attachment);
 
         if (file.type.startsWith('image/')) {
-          editor.chain().focus().setImage({ src: url }).run();
+          editor.chain().focus().setImage({ src: base64 }).run();
         }
       }
 
@@ -69,14 +70,15 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
     } finally {
       setIsUploading(false);
     }
-  }, [editor, postId]);
+  }, [editor]);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       'image/*': [],
       'application/pdf': []
-    }
+    },
+    maxSize: 5 * 1024 * 1024 // 5MB limit
   });
 
   const handleSave = async (status: 'draft' | 'published') => {
@@ -102,6 +104,10 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const removeAttachment = (filename: string) => {
+    setAttachments(prev => prev.filter(a => a.filename !== filename));
   };
 
   return (
@@ -139,7 +145,7 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
       <div {...getRootProps()} className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
         <input {...getInputProps()} />
         <p className="text-gray-600 dark:text-gray-400">
-          {isUploading ? 'Uploading...' : 'Drag & drop files here, or click to select files'}
+          {isUploading ? 'Uploading...' : 'Drag & drop files here, or click to select files (max 5MB)'}
         </p>
       </div>
 
@@ -148,15 +154,16 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
           <h3 className="text-lg font-medium mb-2 dark:text-white">Attachments</h3>
           <ul className="space-y-2">
             {attachments.map((attachment) => (
-              <li key={attachment.url} className="flex items-center space-x-2">
-                <a
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-600 dark:text-blue-400"
-                >
+              <li key={attachment.filename} className="flex items-center justify-between">
+                <span className="text-gray-700 dark:text-gray-300">
                   {attachment.filename}
-                </a>
+                </span>
+                <button
+                  onClick={() => removeAttachment(attachment.filename)}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>

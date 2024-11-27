@@ -13,9 +13,10 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { auth } from '../config/firebase';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 
-// Set persistence to local (persists even after browser restart)
 setPersistence(auth, browserLocalPersistence).catch((error) => {
+  showErrorToast('Error setting auth persistence');
   console.error('Error setting auth persistence:', error);
 });
 
@@ -96,40 +97,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await firebaseSignOut(auth);
       await sendPasswordResetEmail(auth, email);
+      showSuccessToast('Account created! Please check your email to set your password.');
     } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+      showErrorToast(getErrorMessage(error));
+      throw error;
     }
   }
 
   async function signInUser(email: string, password: string) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      showSuccessToast('Successfully signed in!');
     } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+      showErrorToast(getErrorMessage(error));
+      throw error;
     }
   }
 
   async function signOutUser() {
     try {
       await firebaseSignOut(auth);
+      showSuccessToast('Successfully signed out');
     } catch (error: any) {
-      throw new Error('Failed to sign out. Please try again.');
+      showErrorToast('Failed to sign out. Please try again.');
+      throw error;
     }
   }
 
   async function resetUserPassword(email: string) {
     try {
       await sendPasswordResetEmail(auth, email);
+      showSuccessToast('Password reset email sent. Please check your inbox.');
     } catch (error: any) {
-      throw new Error(getErrorMessage(error));
+      showErrorToast(getErrorMessage(error));
+      throw error;
     }
   }
 
   async function completeUserPasswordReset(oobCode: string, newPassword: string) {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
+      showSuccessToast('Password successfully reset!');
     } catch (error: any) {
-      throw new Error('Failed to reset password. The link may have expired.');
+      showErrorToast('Failed to reset password. The link may have expired.');
+      throw error;
     }
   }
 

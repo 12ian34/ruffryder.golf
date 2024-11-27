@@ -13,7 +13,8 @@ export interface BlogPost {
 
 export interface BlogAttachment {
   type: 'pdf' | 'image';
-  url: string;
+  data: string; // Base64 encoded data
   filename: string;
   size: number;
+  contentType: string;
 }

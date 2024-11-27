@@ -6,6 +6,15 @@ interface BlogPostProps {
 }
 
 export default function BlogPost({ post }: BlogPostProps) {
+  const downloadAttachment = (attachment: BlogPostType['attachments'][0]) => {
+    const link = document.createElement('a');
+    link.href = attachment.data;
+    link.download = attachment.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <article>
       <header className="mb-8">
@@ -25,15 +34,13 @@ export default function BlogPost({ post }: BlogPostProps) {
           <h3 className="text-lg font-semibold mb-2 dark:text-white">Attachments</h3>
           <ul className="space-y-2">
             {post.attachments.map((attachment) => (
-              <li key={attachment.url}>
-                <a
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              <li key={attachment.filename}>
+                <button
+                  onClick={() => downloadAttachment(attachment)}
                   className="text-blue-500 hover:text-blue-600 dark:text-blue-400"
                 >
                   {attachment.filename}
-                </a>
+                </button>
               </li>
             ))}
           </ul>

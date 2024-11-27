@@ -53,6 +53,11 @@ export default function EditBlogPost() {
     navigate(`/blog/${postId}`);
   };
 
+  const handleCancel = () => {
+    // Navigate back to the dashboard's blog tab
+    navigate('/dashboard', { state: { activeTab: 'blog' } });
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -74,7 +79,15 @@ export default function EditBlogPost() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold mb-8 dark:text-white">Edit Blog Post</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold dark:text-white">Edit Blog Post</h1>
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Cancel
+          </button>
+        </div>
         <BlogEditor
           initialContent={post.content}
           initialTitle={post.title}

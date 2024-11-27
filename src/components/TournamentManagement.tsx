@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, addDoc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
+import TournamentSelector from './tournament/TournamentSelector';
+import NewTournamentForm from './tournament/NewTournamentForm';
+import MatchupCreator from './tournament/MatchupCreator';
+import MatchupList from './tournament/MatchupList';
 import type { Player } from '../types/player';
 import type { Game } from '../types/game';
 import type { Tournament } from '../types/tournament';
@@ -14,10 +19,6 @@ export default function TournamentManagement() {
   const [currentMatchups, setCurrentMatchups] = useState<Game[]>([]);
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [newTournamentYear, setNewTournamentYear] = useState(new Date().getFullYear());
-  const [newTournamentName, setNewTournamentName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,7 +61,7 @@ export default function TournamentManagement() {
           setCurrentMatchups(matchupsData);
         }
       } catch (err: any) {
-        setError(err.message);
+        showErrorToast('Failed to load tournament data');
       } finally {
         setIsLoading(false);
       }
@@ -69,15 +70,14 @@ export default function TournamentManagement() {
     fetchData();
   }, []);
 
-  const handleCreateTournament = async () => {
-    if (!newTournamentName.trim()) {
-      setError('Please enter a tournament name');
+  const handleCreateTournament = async (name: string, year: number) => {
+    if (!name.trim()) {
+      showErrorToast('Please enter a tournament name');
       return;
     }
 
     try {
       setIsLoading(true);
-      setError(null);
 
       // Deactivate current active tournament if exists
       const activeTournament = tournaments.find(t => t.isActive);
@@ -89,8 +89,8 @@ export default function TournamentManagement() {
 
       // Create new tournament
       const tournamentRef = await addDoc(collection(db, 'tournaments'), {
-        name: newTournamentName.trim(),
-        year: newTournamentYear,
+        name: name.trim(),
+        year,
         isActive: true,
         totalScore: { USA: 0, EUROPE: 0 },
         projectedScore: { USA: 0, EUROPE: 0 }
@@ -98,8 +98,8 @@ export default function TournamentManagement() {
 
       const newTournament = {
         id: tournamentRef.id,
-        name: newTournamentName.trim(),
-        year: newTournamentYear,
+        name: name.trim(),
+        year,
         isActive: true,
         totalScore: { USA: 0, EUROPE: 0 },
         projectedScore: { USA: 0, EUROPE: 0 }
@@ -108,11 +108,9 @@ export default function TournamentManagement() {
       setTournaments([...tournaments, newTournament]);
       setSelectedTournament(newTournament);
       setCurrentMatchups([]);
-      setNewTournamentName('');
-      setSuccessMessage('Tournament created successfully!');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      showSuccessToast('Tournament created successfully!');
     } catch (err: any) {
-      setError(err.message);
+      showErrorToast('Failed to create tournament');
     } finally {
       setIsLoading(false);
     }
@@ -120,13 +118,12 @@ export default function TournamentManagement() {
 
   const handleCreateMatchup = async () => {
     if (!selectedTournament || !selectedUsaPlayer || !selectedEuropePlayer) {
-      setError('Please select both players');
+      showErrorToast('Please select both players');
       return;
     }
 
     try {
       setIsLoading(true);
-      setError(null);
 
       const usaPlayer = players.find(p => p.id === selectedUsaPlayer)!;
       const europePlayer = players.find(p => p.id === selectedEuropePlayer)!;
@@ -179,10 +176,9 @@ export default function TournamentManagement() {
       setCurrentMatchups([...currentMatchups, newGame]);
       setSelectedUsaPlayer('');
       setSelectedEuropePlayer('');
-      setSuccessMessage('Matchup created successfully!');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      showSuccessToast('Matchup created successfully!');
     } catch (err: any) {
-      setError(err.message);
+      showErrorToast('Failed to create matchup');
     } finally {
       setIsLoading(false);
     }
@@ -196,199 +192,52 @@ export default function TournamentManagement() {
     );
   }
 
-  const usaPlayers = players.filter(p => p.team === 'USA');
-  const europePlayers = players.filter(p => p.team === 'EUROPE');
-
   // Filter out players already in matchups
-  const availableUsaPlayers = usaPlayers.filter(
-    p => !currentMatchups.some(m => m.usaPlayerId === p.id)
-  );
-  const availableEuropePlayers = europePlayers.filter(
-    p => !currentMatchups.some(m => m.europePlayerId === p.id)
-  );
+  const availableUsaPlayers = players
+    .filter(p => p.team === 'USA')
+    .filter(p => !currentMatchups.some(m => m.usaPlayerId === p.id));
+
+  const availableEuropePlayers = players
+    .filter(p => p.team === 'EUROPE')
+    .filter(p => !currentMatchups.some(m => m.europePlayerId === p.id));
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {successMessage}
-        </div>
-      )}
-
       {/* Tournament Selection/Creation */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium mb-4 dark:text-white">Tournament Setup</h3>
         
         <div className="space-y-4">
-          {/* Existing Tournament Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Select Existing Tournament
-            </label>
-            <select
-              value={selectedTournament?.id || ''}
-              onChange={(e) => {
-                const tournament = tournaments.find(t => t.id === e.target.value);
-                setSelectedTournament(tournament || null);
-              }}
-              className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="">Select Tournament</option>
-              {tournaments.map(tournament => (
-                <option key={tournament.id} value={tournament.id}>
-                  {tournament.name} ({tournament.year}) {tournament.isActive ? '(Active)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TournamentSelector
+            tournaments={tournaments}
+            selectedTournament={selectedTournament}
+            onSelect={setSelectedTournament}
+          />
 
-          {/* New Tournament Creation */}
-          <div className="border-t dark:border-gray-700 pt-4">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              Create New Tournament
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tournament Name
-                </label>
-                <input
-                  type="text"
-                  value={newTournamentName}
-                  onChange={(e) => setNewTournamentName(e.target.value)}
-                  placeholder="e.g., Spring Tournament"
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Year
-                </label>
-                <input
-                  type="number"
-                  value={newTournamentYear}
-                  onChange={(e) => setNewTournamentYear(parseInt(e.target.value))}
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleCreateTournament}
-              className="mt-4 w-full bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading || !newTournamentName.trim()}
-            >
-              Create New Tournament
-            </button>
-          </div>
+          <NewTournamentForm
+            onSubmit={handleCreateTournament}
+            isLoading={isLoading}
+          />
         </div>
       </div>
 
       {selectedTournament && (
         <>
-          {/* Create Matchup */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium mb-4 dark:text-white">Create Matchup</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  USA Player
-                </label>
-                <select
-                  value={selectedUsaPlayer}
-                  onChange={(e) => setSelectedUsaPlayer(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">Select USA Player</option>
-                  {availableUsaPlayers.map(player => (
-                    <option key={player.id} value={player.id}>
-                      {player.name} (Avg: {player.averageScore})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Europe Player
-                </label>
-                <select
-                  value={selectedEuropePlayer}
-                  onChange={(e) => setSelectedEuropePlayer(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">Select Europe Player</option>
-                  {availableEuropePlayers.map(player => (
-                    <option key={player.id} value={player.id}>
-                      {player.name} (Avg: {player.averageScore})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <button
-              onClick={handleCreateMatchup}
-              disabled={!selectedUsaPlayer || !selectedEuropePlayer}
-              className="mt-4 w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Create Matchup
-            </button>
-          </div>
+          <MatchupCreator
+            availableUsaPlayers={availableUsaPlayers}
+            availableEuropePlayers={availableEuropePlayers}
+            selectedUsaPlayer={selectedUsaPlayer}
+            selectedEuropePlayer={selectedEuropePlayer}
+            onUsaPlayerSelect={setSelectedUsaPlayer}
+            onEuropePlayerSelect={setSelectedEuropePlayer}
+            onCreateMatchup={handleCreateMatchup}
+            isLoading={isLoading}
+          />
 
-          {/* Current Matchups */}
-          <div>
-            <h3 className="text-lg font-medium mb-4 dark:text-white">Current Matchups</h3>
-            <div className="space-y-4">
-              {currentMatchups.map((game) => {
-                const usaPlayer = players.find(p => p.id === game.usaPlayerId);
-                const europePlayer = players.find(p => p.id === game.europePlayerId);
-                return (
-                  <div
-                    key={game.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-4"
-                  >
-                    <div className="grid grid-cols-3 items-center">
-                      <div className="text-center">
-                        <div className="font-medium text-red-500">
-                          {game.usaPlayerName}
-                          <div className="text-sm text-gray-500">
-                            Avg: {usaPlayer?.averageScore}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        {game.handicapStrokes > 0 && game.higherHandicapTeam && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
-                          {game.isComplete ? 'Complete' : game.isStarted ? 'In Progress' : 'Not Started'}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-medium text-blue-500">
-                          {game.europePlayerName}
-                          <div className="text-sm text-gray-500">
-                            Avg: {europePlayer?.averageScore}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {currentMatchups.length === 0 && (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                  No matchups created yet
-                </div>
-              )}
-            </div>
-          </div>
+          <MatchupList
+            matchups={currentMatchups}
+            players={players}
+          />
         </>
       )}
     </div>

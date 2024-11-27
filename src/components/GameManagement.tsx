@@ -3,7 +3,7 @@ import { collection, doc, getDoc, getDocs, onSnapshot } from 'firebase/firestore
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import type { User } from '../types/user';
-import GameList from './game/GameList';
+import GameList from './GameList';
 import { useGameData } from '../hooks/useGameData';
 
 interface GameManagementProps {

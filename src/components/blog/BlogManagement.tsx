@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { format } from 'date-fns';
+import { showSuccessToast } from '../../utils/toast';
 import type { BlogPost } from '../../types/blog';
 
 export default function BlogManagement() {
@@ -37,6 +38,20 @@ export default function BlogManagement() {
 
     fetchPosts();
   }, []);
+
+  const handleDelete = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this blog post? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'blog-posts', postId));
+      setPosts(posts.filter(post => post.id !== postId));
+      showSuccessToast('Blog post deleted successfully!');
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -119,6 +134,12 @@ export default function BlogManagement() {
                     className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
                   >
                     Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(post.id)}
+                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                  >
+                    Delete
                   </button>
                 </td>
               </tr>

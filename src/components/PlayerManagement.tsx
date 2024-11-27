@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { useState } from 'react';
 import type { Player } from '../types/player';
 import PlayerTable from './player/PlayerTable';
 import PlayerEditModal from './player/PlayerEditModal';
 import { usePlayerData } from '../hooks/usePlayerData';
+import { showSuccessToast } from '../utils/toast';
 
 export default function PlayerManagement() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -13,13 +12,22 @@ export default function PlayerManagement() {
     players,
     isLoading,
     error,
-    successMessage,
     handleSavePlayer,
     handleDeletePlayer,
     sortField,
     sortDirection,
     toggleSort
   } = usePlayerData();
+
+  const onSavePlayer = async (playerId: string | null, updates: Partial<Player>) => {
+    await handleSavePlayer(playerId, updates);
+    showSuccessToast(`Player ${playerId ? 'updated' : 'created'} successfully!`);
+  };
+
+  const onDeletePlayer = async (playerId: string) => {
+    await handleDeletePlayer(playerId);
+    showSuccessToast('Player deleted successfully!');
+  };
 
   if (isLoading) {
     return (
@@ -50,12 +58,6 @@ export default function PlayerManagement() {
         </div>
       )}
 
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {successMessage}
-        </div>
-      )}
-
       <PlayerTable
         players={players}
         sortField={sortField}
@@ -65,14 +67,14 @@ export default function PlayerManagement() {
           setSelectedPlayer(player);
           setShowEditModal(true);
         }}
-        onDelete={handleDeletePlayer}
+        onDelete={onDeletePlayer}
       />
 
       {showEditModal && (
         <PlayerEditModal
           player={selectedPlayer}
           onClose={() => setShowEditModal(false)}
-          onSave={handleSavePlayer}
+          onSave={onSavePlayer}
         />
       )}
     </div>

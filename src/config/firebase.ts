@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAuth, setPersistence, browserLocalPersistence, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,7 +16,9 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Auth with persistence
 const auth = getAuth(app);
-setPersistence(auth, browserLocalPersistence);
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error('Error setting auth persistence:', err);
+});
 
 // Initialize Firestore with offline persistence
 const db = getFirestore(app);
@@ -29,19 +30,14 @@ enableIndexedDbPersistence(db).catch((err) => {
   }
 });
 
-// Initialize Storage with custom domain for emulator
-const storage = getStorage(app);
-
 // Connect to emulators in development
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   try {
     connectAuthEmulator(auth, 'http://localhost:9099');
     connectFirestoreEmulator(db, 'localhost', 8080);
-    connectStorageEmulator(storage, 'localhost', 9199);
-    console.log('Connected to Firebase emulators');
   } catch (err) {
     console.warn('Error connecting to emulators:', err);
   }
 }
 
-export { auth, db, storage };
+export { app, auth, db };

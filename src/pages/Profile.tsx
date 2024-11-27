@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { availableEmojis } from '../utils/animalAvatars';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 import type { User } from '../types/user';
 
 export default function Profile() {
@@ -12,10 +13,9 @@ export default function Profile() {
   const [userData, setUserData] = useState<User | null>(null);
   const [name, setName] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState<string>('');
+  const [pendingEmoji, setPendingEmoji] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentUser) {
@@ -31,9 +31,10 @@ export default function Profile() {
           setUserData(user);
           setName(user.name);
           setSelectedEmoji(user.customEmoji || '');
+          setPendingEmoji(user.customEmoji || '');
         }
       } catch (err: any) {
-        setError(err.message);
+        showErrorToast('Failed to load profile data');
       } finally {
         setIsLoading(false);
       }
@@ -42,46 +43,30 @@ export default function Profile() {
     fetchData();
   }, [currentUser, navigate]);
 
-  const handleEmojiSelect = async (emoji: string) => {
-    if (!currentUser || isSaving) return;
-
-    try {
-      setIsSaving(true);
-      setError(null);
-
-      const updates: Partial<User> = { 
-        customEmoji: emoji === selectedEmoji ? null : emoji
-      };
-
-      await updateDoc(doc(db, 'users', currentUser.uid), updates);
-      setSelectedEmoji(updates.customEmoji || '');
-      
-      setSuccessMessage('Avatar updated successfully!');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const hasChanges = useMemo(() => {
+    if (!userData) return false;
+    return name !== userData.name || pendingEmoji !== (userData.customEmoji || '');
+  }, [userData, name, pendingEmoji]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || isSaving) return;
+    if (!currentUser || isSaving || !hasChanges) return;
 
     try {
       setIsSaving(true);
-      setError(null);
       
-      const updates: Partial<User> = { name };
+      const updates: Partial<User> = { 
+        name,
+        customEmoji: pendingEmoji === selectedEmoji ? selectedEmoji : pendingEmoji
+      };
 
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
       setUserData(prev => prev ? { ...prev, ...updates } : null);
+      setSelectedEmoji(updates.customEmoji || '');
 
-      setSuccessMessage('Profile updated successfully!');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      showSuccessToast('Profile updated successfully!');
     } catch (err: any) {
-      setError(err.message);
+      showErrorToast('Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -92,7 +77,7 @@ export default function Profile() {
       await signOut();
       navigate('/');
     } catch (err: any) {
-      setError(err.message);
+      showErrorToast('Failed to sign out');
     }
   };
 
@@ -130,18 +115,6 @@ export default function Profile() {
             </button>
           </div>
 
-          {error && (
-            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {successMessage}
-            </div>
-          )}
-
           <form onSubmit={handleProfileUpdate} className="space-y-6">
             {/* Avatar Selection */}
             <div>
@@ -153,9 +126,9 @@ export default function Profile() {
                   <button
                     key={`emoji-${index}`}
                     type="button"
-                    onClick={() => handleEmojiSelect(emoji)}
+                    onClick={() => setPendingEmoji(emoji === pendingEmoji ? '' : emoji)}
                     className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                      selectedEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
+                      pendingEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
                     }`}
                     disabled={isSaving}
                   >
@@ -220,7 +193,7 @@ export default function Profile() {
               
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || !hasChanges}
                 className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {isSaving && (

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { Game } from '../../types/game';
-import GameCard from '../GameCard';
-import ScoreEntry from '../ScoreEntry';
-import GameCompletionModal from '../GameCompletionModal';
+import type { Game } from '../types/game';
+import GameCard from './GameCard';
+import ScoreEntry from './ScoreEntry';
+import GameCompletionModal from './GameCompletionModal';
 
 interface GameListProps {
   games: Game[];

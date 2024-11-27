@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { showSuccessToast } from '../utils/toast';
 import type { User } from '../types/user';
 import type { Player } from '../types/player';
 
@@ -9,7 +10,6 @@ export default function UserManagement() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,8 +54,7 @@ export default function UserManagement() {
           : user
       ));
 
-      setSuccessMessage('User updated successfully!');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      showSuccessToast('User updated successfully!');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -95,12 +94,6 @@ export default function UserManagement() {
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-          {successMessage}
         </div>
       )}
 
