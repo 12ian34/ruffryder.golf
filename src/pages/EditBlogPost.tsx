@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BlogEditor from '../components/blog/BlogEditor';
 import type { BlogPost } from '../types/blog';
 
@@ -44,18 +45,23 @@ export default function EditBlogPost() {
   const handleSave = async (updates: Partial<BlogPost>) => {
     if (!currentUser || !postId) return;
 
-    const postRef = doc(db, 'blog-posts', postId);
-    await updateDoc(postRef, {
-      ...updates,
-      updatedAt: new Date(),
-    });
+    try {
+      const postRef = doc(db, 'blog-posts', postId);
+      await updateDoc(postRef, {
+        ...updates,
+        updatedAt: new Date(),
+      });
 
-    navigate(`/blog/${postId}`);
+      showSuccessToast('Blog post updated successfully!');
+      navigate(`/blog/${postId}`);
+    } catch (err: any) {
+      showErrorToast('Failed to update blog post');
+      throw err;
+    }
   };
 
   const handleCancel = () => {
-    // Navigate back to the dashboard's blog tab
-    navigate('/dashboard', { state: { activeTab: 'blog' } });
+    navigate(`/blog/${postId}`);
   };
 
   if (isLoading) {
@@ -91,6 +97,7 @@ export default function EditBlogPost() {
         <BlogEditor
           initialContent={post.content}
           initialTitle={post.title}
+          initialAttachments={post.attachments}
           postId={post.id}
           onSave={handleSave}
         />
