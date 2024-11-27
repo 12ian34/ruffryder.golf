@@ -7,9 +7,10 @@ import GameManagement from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
 import BlogList from '../components/blog/BlogList';
 import ThemeSwitcher from '../components/ThemeSwitcher';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
+import type { BlogPost } from '../types/blog';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -19,6 +20,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('leaderboard');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [isBlogLoading, setIsBlogLoading] = useState(false);
 
   useEffect(() => {
     if (!currentUser) {
@@ -48,6 +51,38 @@ export default function Dashboard() {
 
     fetchUserData();
   }, [currentUser, navigate, location]);
+
+  // Fetch blog posts when blog tab is active
+  useEffect(() => {
+    if (activeTab === 'blog') {
+      const fetchBlogPosts = async () => {
+        setIsBlogLoading(true);
+        try {
+          const postsQuery = query(
+            collection(db, 'blog-posts'),
+            where('status', '==', 'published'),
+            orderBy('publishedAt', 'desc')
+          );
+
+          const snapshot = await getDocs(postsQuery);
+          const postsData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            publishedAt: doc.data().publishedAt?.toDate() || new Date(),
+            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+          })) as BlogPost[];
+
+          setBlogPosts(postsData);
+        } catch (err: any) {
+          console.error('Error fetching blog posts:', err);
+        } finally {
+          setIsBlogLoading(false);
+        }
+      };
+
+      fetchBlogPosts();
+    }
+  }, [activeTab]);
 
   if (isLoading) {
     return (
@@ -140,7 +175,15 @@ export default function Dashboard() {
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'players' && <PlayerStats />}
         {activeTab === 'games' && <GameManagement userId={currentUser?.uid} />}
-        {activeTab === 'blog' && <BlogList />}
+        {activeTab === 'blog' && (
+          isBlogLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <BlogList posts={blogPosts} />
+          )
+        )}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
       </main>
     </div>
