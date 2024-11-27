@@ -83,3 +83,53 @@ input {
 .blog-content th {
   @apply bg-gray-100 dark:bg-gray-800;
 }
+
+/* Editor styles */
+.ProseMirror {
+  @apply min-h-[400px] p-6 focus:outline-none;
+}
+
+.ProseMirror > * + * {
+  @apply mt-4;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  @apply pl-4;
+}
+
+.ProseMirror h1 {
+  @apply text-3xl font-bold;
+}
+
+.ProseMirror h2 {
+  @apply text-2xl font-bold;
+}
+
+.ProseMirror blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-700 pl-4 italic my-4;
+}
+
+.ProseMirror pre {
+  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg font-mono text-sm my-4;
+}
+
+.ProseMirror code {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono text-sm;
+}
+
+.ProseMirror hr {
+  @apply border-t border-gray-300 dark:border-gray-700 my-6;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-gray-400 dark:text-gray-500;
+  content: "Start writing your post...";
+  float: left;
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror img {
+  @apply max-w-full rounded-lg shadow-md my-4;
+}

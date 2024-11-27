@@ -23,8 +23,17 @@ export default function GameCard({
 }: GameCardProps) {
   const points = calculateGamePoints(game);
 
+  // Get current user ID from auth context
+  const currentUserId = isAdmin ? localStorage.getItem('userId') : null;
+  const isAdminPlayer = currentUserId && (
+    game.usaPlayerId === currentUserId || 
+    game.europePlayerId === currentUserId
+  );
+
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${compact ? 'p-4' : 'p-6'}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${compact ? 'p-4' : 'p-6'} ${
+      isAdminPlayer ? 'border-2 border-blue-500 dark:border-blue-400' : ''
+    }`}>
       <div className="grid grid-cols-3 gap-4">
         {/* USA Player */}
         <PlayerDisplay
@@ -38,6 +47,7 @@ export default function GameCard({
           team="USA"
           showAverage={false}
           compact={compact}
+          isCurrentUser={currentUserId === game.usaPlayerId}
         />
 
         {/* Game Status & Scores */}
@@ -124,6 +134,7 @@ export default function GameCard({
           team="EUROPE"
           showAverage={false}
           compact={compact}
+          isCurrentUser={currentUserId === game.europePlayerId}
         />
       </div>
 

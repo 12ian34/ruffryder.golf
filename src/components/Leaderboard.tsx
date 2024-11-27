@@ -2,17 +2,20 @@ import { useEffect, useState } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Tournament } from '../types/tournament';
-import type { Game } from '../types/game';
+import type { Game, GameStatus } from '../types/game';
 import TournamentProgress from './TournamentProgress';
-import ScoreCard from './ScoreCard';
+import ScoreCard from './scorecard/ScoreCard';
 import GameCard from './GameCard';
+import StatusFilter from './filters/StatusFilter';
 import { calculateGamePoints } from '../utils/gamePoints';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [games, setGames] = useState<Game[]>([]);
+  const [filteredGames, setFilteredGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
 
   useEffect(() => {
     const loadData = async () => {
@@ -35,7 +38,18 @@ export default function Leaderboard() {
                 id: doc.id,
                 ...doc.data()
               })) as Game[];
-              setGames(gamesData);
+              
+              // Sort games by completion status and number of holes completed
+              const sortedGames = [...gamesData].sort((a, b) => {
+                if (a.isComplete !== b.isComplete) {
+                  return a.isComplete ? -1 : 1;
+                }
+                const aHolesCompleted = a.holes.filter(h => h.usaPlayerScore && h.europePlayerScore).length;
+                const bHolesCompleted = b.holes.filter(h => h.usaPlayerScore && h.europePlayerScore).length;
+                return bHolesCompleted - aHolesCompleted;
+              });
+
+              setGames(sortedGames);
               setIsLoading(false);
             });
 
@@ -59,6 +73,17 @@ export default function Leaderboard() {
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    // Filter games based on active status
+    const filtered = games.filter(game => {
+      if (activeStatus === 'all') return true;
+      if (activeStatus === 'complete') return game.isComplete;
+      if (activeStatus === 'in_progress') return !game.isComplete && game.isStarted;
+      return !game.isComplete && !game.isStarted;
+    });
+    setFilteredGames(filtered);
+  }, [games, activeStatus]);
 
   const calculateCurrentScore = (): { USA: number, EUROPE: number } => {
     return games.reduce((total, game) => {
@@ -140,9 +165,15 @@ export default function Leaderboard() {
       )}
 
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold dark:text-white">Individual Games</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold dark:text-white">Individual Games</h2>
+          <StatusFilter
+            activeStatus={activeStatus}
+            onStatusChange={setActiveStatus}
+          />
+        </div>
         
-        {games.map((game) => (
+        {filteredGames.map((game) => (
           <GameCard
             key={game.id}
             game={game}
@@ -151,8 +182,8 @@ export default function Leaderboard() {
           />
         ))}
 
-        {games.length === 0 && (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+        {filteredGames.length === 0 && (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No games found
           </div>
         )}

@@ -5,6 +5,22 @@ import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { useDropzone } from 'react-dropzone';
 import type { BlogPost, BlogAttachment } from '../../types/blog';
+import {
+  BoldIcon,
+  ItalicIcon,
+  UnderlineIcon,
+  StrikethroughIcon,
+  Heading1Icon,
+  Heading2Icon,
+  ListBulletIcon,
+  ListNumberedIcon,
+  QuoteIcon,
+  CodeIcon,
+  LinkIcon,
+  DividerIcon,
+  UndoIcon,
+  RedoIcon,
+} from './EditorIcons';
 
 interface BlogEditorProps {
   initialContent?: string;
@@ -19,6 +35,8 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
 
   const editor = useEditor({
     extensions: [
@@ -26,6 +44,9 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
       Image,
       Link.configure({
         openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300',
+        },
       }),
     ],
     content: initialContent,
@@ -41,7 +62,6 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
       const newAttachments: BlogAttachment[] = [];
       
       for (const file of acceptedFiles) {
-        // Convert file to base64
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -110,6 +130,35 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
     setAttachments(prev => prev.filter(a => a.filename !== filename));
   };
 
+  const handleSetLink = () => {
+    if (!editor) return;
+
+    if (showLinkInput) {
+      if (linkUrl) {
+        editor
+          .chain()
+          .focus()
+          .setLink({ href: linkUrl })
+          .run();
+      }
+      setLinkUrl('');
+    }
+    setShowLinkInput(!showLinkInput);
+  };
+
+  const ToolbarButton = ({ onClick, active, disabled, children, title }: any) => (
+    <button
+      onClick={onClick}
+      className={`p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+        active ? 'bg-gray-200 dark:bg-gray-700' : ''
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      disabled={disabled}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+
   return (
     <div className="space-y-6">
       {error && (
@@ -127,17 +176,139 @@ export default function BlogEditor({ initialContent = '', initialTitle = '', pos
       />
 
       <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
-        <div className="bg-gray-50 dark:bg-gray-900 p-2 border-b dark:border-gray-700">
-          <button
+        <div className="bg-gray-50 dark:bg-gray-900 p-2 border-b dark:border-gray-700 flex flex-wrap gap-1">
+          <ToolbarButton
             onClick={() => editor?.chain().focus().toggleBold().run()}
-            className={`p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
-              editor?.isActive('bold') ? 'bg-gray-200 dark:bg-gray-700' : ''
-            }`}
+            active={editor?.isActive('bold')}
+            disabled={!editor?.can().chain().focus().toggleBold().run()}
+            title="Bold (⌘+B)"
           >
-            Bold
-          </button>
-          {/* Add more formatting buttons as needed */}
+            <BoldIcon />
+          </ToolbarButton>
+          
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            active={editor?.isActive('italic')}
+            disabled={!editor?.can().chain().focus().toggleItalic().run()}
+            title="Italic (⌘+I)"
+          >
+            <ItalicIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleStrike().run()}
+            active={editor?.isActive('strike')}
+            disabled={!editor?.can().chain().focus().toggleStrike().run()}
+            title="Strikethrough"
+          >
+            <StrikethroughIcon />
+          </ToolbarButton>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor?.isActive('heading', { level: 1 })}
+            title="Heading 1"
+          >
+            <Heading1Icon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor?.isActive('heading', { level: 2 })}
+            title="Heading 2"
+          >
+            <Heading2Icon />
+          </ToolbarButton>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            active={editor?.isActive('bulletList')}
+            title="Bullet List"
+          >
+            <ListBulletIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            active={editor?.isActive('orderedList')}
+            title="Numbered List"
+          >
+            <ListNumberedIcon />
+          </ToolbarButton>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+            active={editor?.isActive('blockquote')}
+            title="Quote"
+          >
+            <QuoteIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+            active={editor?.isActive('codeBlock')}
+            title="Code Block"
+          >
+            <CodeIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={handleSetLink}
+            active={editor?.isActive('link')}
+            title="Add Link"
+          >
+            <LinkIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+            title="Horizontal Rule"
+          >
+            <DividerIcon />
+          </ToolbarButton>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().undo().run()}
+            disabled={!editor?.can().chain().focus().undo().run()}
+            title="Undo"
+          >
+            <UndoIcon />
+          </ToolbarButton>
+
+          <ToolbarButton
+            onClick={() => editor?.chain().focus().redo().run()}
+            disabled={!editor?.can().chain().focus().redo().run()}
+            title="Redo"
+          >
+            <RedoIcon />
+          </ToolbarButton>
         </div>
+
+        {showLinkInput && (
+          <div className="bg-gray-50 dark:bg-gray-900 p-2 border-b dark:border-gray-700 flex items-center space-x-2">
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="flex-1 px-2 py-1 text-sm rounded border dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            />
+            <button
+              onClick={handleSetLink}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Add Link
+            </button>
+          </div>
+        )}
 
         <EditorContent editor={editor} className="prose dark:prose-invert max-w-none p-4" />
       </div>

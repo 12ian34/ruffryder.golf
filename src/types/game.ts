@@ -1,3 +1,5 @@
+export type GameStatus = 'all' | 'complete' | 'in_progress' | 'not_started';
+
 export interface HoleScore {
   holeNumber: number;
   strokeIndex: number;
