@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
 import PlayerStats from '../components/PlayerStats';
 import GameManagement from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
+import BlogList from '../components/blog/BlogList';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -13,6 +14,7 @@ import type { User } from '../types/user';
 export default function Dashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userData, setUserData] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('leaderboard');
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +24,13 @@ export default function Dashboard() {
     if (!currentUser) {
       navigate('/');
       return;
+    }
+
+    // Set active tab from location state if provided
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state to prevent persisting
+      window.history.replaceState({}, document.title);
     }
 
     const fetchUserData = async () => {
@@ -38,7 +47,7 @@ export default function Dashboard() {
     };
 
     fetchUserData();
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, location]);
 
   if (isLoading) {
     return (
@@ -76,6 +85,7 @@ export default function Dashboard() {
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'players', label: 'Players' },
     { id: 'games', label: 'Games' },
+    { id: 'blog', label: 'Blog' },
     ...(userData?.isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
 
@@ -130,6 +140,7 @@ export default function Dashboard() {
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'players' && <PlayerStats />}
         {activeTab === 'games' && <GameManagement userId={currentUser?.uid} />}
+        {activeTab === 'blog' && <BlogList />}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
       </main>
     </div>

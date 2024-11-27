@@ -3,8 +3,9 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Tournament } from '../types/tournament';
 import type { Game } from '../types/game';
-import PlayerAvatar from './PlayerAvatar';
 import TournamentProgress from './TournamentProgress';
+import ScoreCard from './leaderboard/ScoreCard';
+import GameCard from './leaderboard/GameCard';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -192,188 +193,31 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4 dark:text-white">Current Score</h2>
-        <div className="grid grid-cols-2 gap-4 text-center">
-          <div>
-            <div className={`text-3xl font-bold ${currentScore.USA > currentScore.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
-              {currentScore.USA}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
-          </div>
-          <div>
-            <div className={`text-3xl font-bold ${currentScore.EUROPE > currentScore.USA ? 'text-green-500' : 'text-gray-500'}`}>
-              {currentScore.EUROPE}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
-          </div>
-        </div>
-        
-        <div className="mt-4 pt-4 border-t dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-            Projected Final Score
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <div className={`text-2xl font-semibold ${projectedScore.USA > projectedScore.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
-                {projectedScore.USA}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
-            </div>
-            <div>
-              <div className={`text-2xl font-semibold ${projectedScore.EUROPE > projectedScore.USA ? 'text-green-500' : 'text-gray-500'}`}>
-                {projectedScore.EUROPE}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>
-            </div>
-          </div>
-        </div>
+      <ScoreCard
+        currentScore={currentScore}
+        projectedScore={projectedScore}
+      />
 
-        {tournament.progress && tournament.progress.length > 0 && (
-          <div className="mt-6">
-            <TournamentProgress 
-              progress={tournament.progress}
-              totalGames={games.length}
-            />
-          </div>
-        )}
-      </div>
+      {tournament.progress && tournament.progress.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <TournamentProgress 
+            progress={tournament.progress}
+            totalGames={games.length}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         <h2 className="text-xl font-semibold dark:text-white">Individual Games</h2>
         
-        {games.map((game) => {
-          const points = calculateGamePoints(game);
-          const isComplete = game.isComplete;
-
-          return (
-            <div
-              key={game.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow p-4"
-            >
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center space-x-2">
-                    <PlayerAvatar
-                      playerId={game.usaPlayerId}
-                      name={game.usaPlayerName}
-                      customEmoji={playerAvatars.get(game.usaPlayerId)?.customEmoji}
-                    />
-                    <div className="font-medium text-red-500">
-                      {game.usaPlayerName}
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">USA</div>
-                </div>
-                
-                <div className="text-center flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        Stroke Play
-                      </div>
-                      <div className="flex justify-center space-x-4">
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            game.strokePlayScore.USA < game.strokePlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {game.strokePlayScore.USA}
-                        </div>
-                        <div className="text-gray-400">-</div>
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            game.strokePlayScore.EUROPE < game.strokePlayScore.USA ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {game.strokePlayScore.EUROPE}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        Match Play
-                      </div>
-                      <div className="flex justify-center space-x-4">
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            game.matchPlayScore.USA > game.matchPlayScore.EUROPE ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {game.matchPlayScore.USA}
-                        </div>
-                        <div className="text-gray-400">-</div>
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            game.matchPlayScore.EUROPE > game.matchPlayScore.USA ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {game.matchPlayScore.EUROPE}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                        {isComplete ? 'Final Points' : 'Projected Points'}
-                      </div>
-                      <div className="flex justify-center space-x-4">
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            points.USA > points.EUROPE ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {points.USA}
-                        </div>
-                        <div className="text-gray-400">-</div>
-                        <div className={`font-medium ${
-                          isComplete ? (
-                            points.EUROPE > points.USA ? 'text-green-500' : 'text-gray-500'
-                          ) : 'text-gray-400'
-                        }`}>
-                          {points.EUROPE}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 text-center">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      game.isComplete
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : game.isStarted
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
-                      {game.isComplete ? 'Complete' : game.isStarted ? 'In Progress' : 'Not Started'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="flex items-center justify-center space-x-2">
-                    <PlayerAvatar
-                      playerId={game.europePlayerId}
-                      name={game.europePlayerName}
-                      customEmoji={playerAvatars.get(game.europePlayerId)?.customEmoji}
-                    />
-                    <div className="font-medium text-blue-500">
-                      {game.europePlayerName}
-                    </div>
-                  </div>
-                  <div className="text-sm text-gray-500">EUROPE</div>
-                </div>
-              </div>
-
-              {game.handicapStrokes > 0 && game.higherHandicapTeam && (
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {games.map((game) => (
+          <GameCard
+            key={game.id}
+            game={game}
+            points={calculateGamePoints(game)}
+            playerAvatars={playerAvatars}
+          />
+        ))}
       </div>
     </div>
   );

@@ -3,9 +3,10 @@ import TournamentManagement from './TournamentManagement';
 import StrokeIndexManagement from './StrokeIndexManagement';
 import UserManagement from './UserManagement';
 import PlayerManagement from './PlayerManagement';
+import BlogManagement from './blog/BlogManagement';
 
 export default function AdminPanel() {
-  const [activeSection, setActiveSection] = useState<'tournament' | 'strokeIndex' | 'users' | 'players'>('tournament');
+  const [activeSection, setActiveSection] = useState<'tournament' | 'strokeIndex' | 'users' | 'players' | 'blog'>('tournament');
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -53,6 +54,16 @@ export default function AdminPanel() {
           >
             Users
           </button>
+          <button
+            onClick={() => setActiveSection('blog')}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              activeSection === 'blog'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Blog
+          </button>
         </div>
       </div>
 
@@ -81,6 +92,10 @@ export default function AdminPanel() {
 
         {activeSection === 'users' && (
           <UserManagement />
+        )}
+
+        {activeSection === 'blog' && (
+          <BlogManagement />
         )}
       </div>
     </div>

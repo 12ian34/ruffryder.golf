@@ -1,83 +1,19 @@
-import { useState, useEffect } from 'react';
-import { collection, doc, getDocs, getDoc } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import type { Player } from '../types/player';
-import type { User } from '../types/user';
+import { usePlayerStats } from '../hooks/usePlayerStats';
 import PlayerAvatar from './PlayerAvatar';
-
-type SortField = 'name' | 'team' | 'averageScore' | number;
-type SortDirection = 'asc' | 'desc';
+import TeamFilter from './player/TeamFilter';
 
 export default function PlayerStats() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [linkedPlayerId, setLinkedPlayerId] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch user data to get linked player ID
-        if (currentUser) {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data() as User;
-            setLinkedPlayerId(userData.linkedPlayerId);
-          }
-        }
-
-        // Fetch players
-        const playersSnapshot = await getDocs(collection(db, 'players'));
-        const playersData = playersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Player[];
-        setPlayers(playersData);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [currentUser]);
-
-  const toggleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedPlayers = [...players].sort((a, b) => {
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    
-    switch (sortField) {
-      case 'name':
-        return direction * a.name.localeCompare(b.name);
-      case 'team':
-        return direction * a.team.localeCompare(b.team);
-      case 'averageScore':
-        return direction * (a.averageScore - b.averageScore);
-      default:
-        const aScore = a.historicalScores.find(s => s.year === sortField)?.score ?? 999;
-        const bScore = b.historicalScores.find(s => s.year === sortField)?.score ?? 999;
-        return direction * (aScore - bScore);
-    }
-  });
-
-  const years = Array.from(
-    new Set(
-      players.flatMap(p => p.historicalScores.map(s => s.year))
-    )
-  ).sort((a, b) => b - a);
+  const {
+    players,
+    isLoading,
+    error,
+    sortField,
+    sortDirection,
+    toggleSort,
+    years,
+    linkedPlayerId,
+    setTeamFilter
+  } = usePlayerStats();
 
   if (isLoading) {
     return (
@@ -98,6 +34,8 @@ export default function PlayerStats() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold dark:text-white">Player Statistics</h2>
+
+      <TeamFilter onFilterChange={setTeamFilter} />
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -133,7 +71,7 @@ export default function PlayerStats() {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedPlayers.map((player) => {
+            {players.map((player) => {
               const isCurrentPlayer = player.id === linkedPlayerId;
               return (
                 <tr key={player.id} className={isCurrentPlayer ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
