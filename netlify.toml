@@ -1,10 +1,10 @@
 [build]
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18.17.0"
-  NPM_FLAGS = "--version"  # Skip installing optional dependencies
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [dev]
   command = "npm run dev"
