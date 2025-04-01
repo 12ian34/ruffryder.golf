@@ -39,6 +39,9 @@ export default defineConfig({
         drop_console: true,
         drop_debugger: true,
       },
+      format: {
+        comments: false,
+      },
     },
     rollupOptions: {
       output: {

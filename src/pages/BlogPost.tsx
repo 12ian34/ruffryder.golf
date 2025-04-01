@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BlogPostComponent from '../components/blog/BlogPost';
 import type { BlogPost as BlogPostType } from '../types/blog';
+import type { User } from '../types/user';
 
 export default function BlogPostPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -84,7 +85,7 @@ export default function BlogPostPage() {
     );
   }
 
-  const isAdmin = currentUser?.isAdmin;
+  const isAdmin = (currentUser as User | null)?.isAdmin;
   const isAuthor = currentUser?.uid === post.authorId;
   const canEdit = isAdmin || isAuthor;
 

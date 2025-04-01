@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import type { Game } from '../types/game';
 
 interface GameScoreModalProps {
