@@ -1,6 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  environment = { NODE_VERSION = "18.17.0" }
+
+[build.environment]
+  NPM_FLAGS = "--version"  # Skip installing optional dependencies
 
 [dev]
   command = "npm run dev"
@@ -11,4 +15,7 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200 
+  status = 200
+
+[functions]
+  node_bundler = "esbuild" 
