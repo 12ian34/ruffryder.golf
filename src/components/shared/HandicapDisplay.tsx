@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import type { Game } from '../../types/game';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 interface HandicapDisplayProps {
   game: Game;
@@ -6,7 +9,29 @@ interface HandicapDisplayProps {
 }
 
 export default function HandicapDisplay({ game, compact = false }: HandicapDisplayProps) {
-  if (!game.handicapStrokes || !game.higherHandicapTeam) {
+  const [useHandicaps, setUseHandicaps] = useState(false);
+
+  useEffect(() => {
+    const fetchTournamentSettings = async () => {
+      if (!game?.tournamentId) {
+        return;
+      }
+
+      try {
+        const tournamentRef = doc(db, 'tournaments', game.tournamentId);
+        const tournamentDoc = await getDoc(tournamentRef);
+        if (tournamentDoc.exists()) {
+          setUseHandicaps(tournamentDoc.data().useHandicaps);
+        }
+      } catch (error) {
+        console.error('Error fetching tournament settings:', error);
+      }
+    };
+
+    fetchTournamentSettings();
+  }, [game?.tournamentId, game?.id]);
+
+  if (!game?.tournamentId || !useHandicaps || !game.handicapStrokes || !game.higherHandicapTeam) {
     return null;
   }
 

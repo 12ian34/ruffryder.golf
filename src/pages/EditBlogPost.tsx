@@ -98,7 +98,6 @@ export default function EditBlogPost() {
           initialContent={post.content}
           initialTitle={post.title}
           initialAttachments={post.attachments}
-          postId={post.id}
           onSave={handleSave}
         />
       </div>

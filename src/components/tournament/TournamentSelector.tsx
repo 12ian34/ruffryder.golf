@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Tournament } from '../../types/tournament';
 
 interface TournamentSelectorProps {

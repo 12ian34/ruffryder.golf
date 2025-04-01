@@ -16,6 +16,21 @@ export default function Leaderboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Handle online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -36,7 +51,8 @@ export default function Leaderboard() {
             const unsubscribeGames = onSnapshot(gamesRef, (gamesSnapshot) => {
               const gamesData = gamesSnapshot.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
+                tournamentId: tournamentDoc.id
               })) as Game[];
               
               // Sort games by completion status and number of holes completed
@@ -150,10 +166,17 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-8">
-      <ScoreCard
-        currentScore={currentScore}
-        projectedScore={projectedScore}
-      />
+      <div className="flex items-center justify-between">
+        <ScoreCard
+          currentScore={currentScore}
+          projectedScore={projectedScore}
+        />
+        {!isOnline && (
+          <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-medium">
+            Offline Mode - Scores may not be up to date
+          </div>
+        )}
+      </div>
 
       {tournament.progress && tournament.progress.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -180,6 +203,7 @@ export default function Leaderboard() {
               game={game}
               showControls={false}
               compact={true}
+              isOnline={isOnline}
             />
           ))}
 

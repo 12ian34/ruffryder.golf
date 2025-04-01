@@ -13,17 +13,19 @@ export function usePlayerStats() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [linkedPlayerId, setLinkedPlayerId] = useState<string | null>(null);
   const [teamFilter, setTeamFilter] = useState<'ALL' | 'USA' | 'EUROPE'>('ALL');
+  const [currentUserEmoji, setCurrentUserEmoji] = useState<string | undefined>();
   const { currentUser } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch user data to get linked player ID
+        // Fetch user data to get linked player ID and custom emoji
         if (currentUser) {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
             setLinkedPlayerId(userData.linkedPlayerId);
+            setCurrentUserEmoji(userData.customEmoji);
           }
         }
 
@@ -33,7 +35,29 @@ export function usePlayerStats() {
           id: doc.id,
           ...doc.data()
         })) as Player[];
-        setPlayers(playersData);
+
+        // Fetch users linked to these players
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const usersData = usersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as User[];
+
+        // Create a map of player IDs to their linked user's custom emoji
+        const playerEmojiMap = new Map<string, string>();
+        usersData.forEach(user => {
+          if (user.linkedPlayerId && user.customEmoji) {
+            playerEmojiMap.set(user.linkedPlayerId, user.customEmoji);
+          }
+        });
+
+        // Add custom emojis to players
+        const playersWithEmojis = playersData.map(player => ({
+          ...player,
+          customEmoji: playerEmojiMap.get(player.id) || undefined
+        }));
+
+        setPlayers(playersWithEmojis);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -88,6 +112,7 @@ export function usePlayerStats() {
     years,
     linkedPlayerId,
     teamFilter,
-    setTeamFilter
+    setTeamFilter,
+    currentUserEmoji
   };
 }

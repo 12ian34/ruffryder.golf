@@ -71,7 +71,7 @@ export default function Login() {
 
     try {
       await resetPassword(loginEmail);
-      alert('Password reset email sent. Please check your inbox.');
+      alert('Password reset email sent. Please check your inbox and click the link to reset your password.');
     } catch (err: any) {
       setError(err.message);
     } finally {

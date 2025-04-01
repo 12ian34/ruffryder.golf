@@ -67,13 +67,13 @@ export default function GameDetails({ gameId, onClose }: GameDetailsProps) {
       {/* Players */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div>
-          <h3 className="text-sm font-medium text-blue-500 mb-1">USA</h3>
+          <h3 className="text-sm font-medium text-usa-500 mb-1">USA</h3>
           <p className="text-lg font-semibold dark:text-white">
             {game.usaPlayerName}
           </p>
         </div>
         <div>
-          <h3 className="text-sm font-medium text-red-500 mb-1">Europe</h3>
+          <h3 className="text-sm font-medium text-europe-500 mb-1">Europe</h3>
           <p className="text-lg font-semibold dark:text-white">
             {game.europePlayerName}
           </p>
@@ -87,16 +87,35 @@ export default function GameDetails({ gameId, onClose }: GameDetailsProps) {
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Stroke Play
             </h3>
-            <p className="text-lg font-semibold dark:text-white">
-              {game.strokePlayScore.usa} - {game.strokePlayScore.europe}
-            </p>
+            <div>
+              <p className="text-lg font-semibold dark:text-white">
+                {game.higherHandicapTeam !== 'USA' ? (
+                  <>
+                    {game.strokePlayScore.USA + game.handicapStrokes}
+                    <span className="text-sm text-gray-500 ml-1">({game.strokePlayScore.USA})</span>
+                  </>
+                ) : (
+                  game.strokePlayScore.USA
+                )}
+                {' - '}
+                {game.higherHandicapTeam !== 'EUROPE' ? (
+                  <>
+                    {game.strokePlayScore.EUROPE + game.handicapStrokes}
+                    <span className="text-sm text-gray-500 ml-1">({game.strokePlayScore.EUROPE})</span>
+                  </>
+                ) : (
+                  game.strokePlayScore.EUROPE
+                )}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Adjusted (Raw)</p>
+            </div>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Match Play
             </h3>
             <p className="text-lg font-semibold dark:text-white">
-              {game.matchPlayScore.usa} - {game.matchPlayScore.europe}
+              {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
             </p>
           </div>
         </div>

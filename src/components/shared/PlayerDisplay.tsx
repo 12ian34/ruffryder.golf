@@ -1,5 +1,5 @@
-import PlayerAvatar from '../PlayerAvatar';
-import type { Player } from '../../types/player';
+import PlayerEmoji from '../PlayerEmoji';
+import { Player } from '../../types/player';
 
 interface PlayerDisplayProps {
   player: Player;
@@ -16,21 +16,22 @@ export default function PlayerDisplay({
   compact = false,
   isCurrentUser = false
 }: PlayerDisplayProps) {
-  const textColor = team === 'USA' ? 'text-red-500' : 'text-blue-500';
+  const textColor = team === 'USA' ? 'text-usa-500' : 'text-europe-500';
   
   return (
     <div className="text-center">
       <div className="flex items-center justify-center space-x-2">
-        <PlayerAvatar
+        <PlayerEmoji
           playerId={player.id}
           name={player.name}
+          customEmoji={player.customEmoji}
           size={compact ? 'sm' : 'md'}
         />
         <div>
           <div className={`font-medium ${textColor} flex items-center space-x-1`}>
             <span>{player.name}</span>
             {isCurrentUser && (
-              <span className="ml-1 text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">
+              <span className="ml-1 text-xs bg-europe-100 dark:bg-europe-800 text-europe-800 dark:text-europe-200 px-2 py-0.5 rounded-full">
                 You
               </span>
             )}

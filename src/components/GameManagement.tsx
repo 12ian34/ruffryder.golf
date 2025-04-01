@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, getDoc, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { Game } from '../types/game';
 import type { User } from '../types/user';
 import GameList from './GameList';
 import { useGameData } from '../hooks/useGameData';
@@ -18,7 +17,8 @@ export default function GameManagement({ userId }: GameManagementProps) {
     isLoading,
     error,
     handleGameStatusChange,
-    activeTournamentId
+    activeTournamentId,
+    isOnline
   } = useGameData(userId, linkedPlayerId, isAdmin);
 
   useEffect(() => {
@@ -69,6 +69,7 @@ export default function GameManagement({ userId }: GameManagementProps) {
       games={games}
       isAdmin={isAdmin}
       onGameStatusChange={handleGameStatusChange}
+      isOnline={isOnline}
     />
   );
 }

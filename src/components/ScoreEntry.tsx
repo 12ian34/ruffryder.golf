@@ -7,6 +7,7 @@ interface ScoreEntryProps {
   gameId: string;
   tournamentId: string;
   onClose: () => void;
+  isOnline: boolean;
 }
 
 export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntryProps) {
@@ -15,13 +16,16 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [adjustedScores, setAdjustedScores] = useState<Array<{ USA: number | null, EUROPE: number | null }>>([]);
+  const [useHandicaps, setUseHandicaps] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gameDoc, strokeIndicesDoc] = await Promise.all([
+        const [gameDoc, strokeIndicesDoc, tournamentDoc] = await Promise.all([
           getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId)),
-          getDoc(doc(db, 'config', 'strokeIndices'))
+          getDoc(doc(db, 'config', 'strokeIndices')),
+          getDoc(doc(db, 'tournaments', tournamentId))
         ]);
 
         if (gameDoc.exists()) {
@@ -31,12 +35,17 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
             USA: hole.usaPlayerScore || '',
             EUROPE: hole.europePlayerScore || ''
           })));
+          setAdjustedScores(gameData.holes.map(() => ({ USA: null, EUROPE: null })));
         } else {
           setError('Game not found');
         }
 
         if (strokeIndicesDoc.exists()) {
           setStrokeIndices(strokeIndicesDoc.data().indices);
+        }
+
+        if (tournamentDoc.exists()) {
+          setUseHandicaps(tournamentDoc.data().useHandicaps);
         }
       } catch (err: any) {
         setError(err.message);
@@ -48,8 +57,15 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
     fetchData();
   }, [gameId, tournamentId]);
 
-  const calculateAdjustedScore = (rawScore: number, hole: number, playerTeam: 'USA' | 'EUROPE'): number => {
+  const calculateAdjustedScore = async (rawScore: number, hole: number, playerTeam: 'USA' | 'EUROPE'): Promise<number> => {
     if (!game || !game.higherHandicapTeam || game.handicapStrokes === 0) {
+      return rawScore;
+    }
+
+    // Get tournament data to check handicap setting
+    const tournamentRef = doc(db, 'tournaments', tournamentId);
+    const tournamentDoc = await getDoc(tournamentRef);
+    if (!tournamentDoc.exists() || !tournamentDoc.data().useHandicaps) {
       return rawScore;
     }
 
@@ -65,11 +81,50 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
     return rawScore + strokesForHole;
   };
 
+  const handleScoreChange = async (holeIndex: number, team: 'USA' | 'EUROPE', value: string) => {
+    // Validate input
+    if (value !== '') {
+      const numValue = parseInt(value);
+      if (isNaN(numValue) || numValue < 1 || numValue > 20) {
+        setError('Score must be between 1 and 20');
+        return;
+      }
+    }
+
+    const newScores = [...scores];
+    newScores[holeIndex][team] = value ? parseInt(value) : '';
+    setScores(newScores);
+
+    // Optimistically update adjusted scores
+    if (typeof newScores[holeIndex].USA === 'number' && typeof newScores[holeIndex].EUROPE === 'number') {
+      const newAdjustedScores = [...adjustedScores];
+      newAdjustedScores[holeIndex] = {
+        USA: await calculateAdjustedScore(newScores[holeIndex].USA as number, holeIndex + 1, 'USA'),
+        EUROPE: await calculateAdjustedScore(newScores[holeIndex].EUROPE as number, holeIndex + 1, 'EUROPE')
+      };
+      setAdjustedScores(newAdjustedScores);
+    }
+  };
+
   const handleScoreSubmit = async () => {
     if (!game) return;
 
     try {
       setIsLoading(true);
+      setError(null);
+      
+      // Validate all scores before submission
+      for (let i = 0; i < scores.length; i++) {
+        const usaScore = scores[i].USA;
+        const europeScore = scores[i].EUROPE;
+        
+        if (typeof usaScore === 'number' && (usaScore < 1 || usaScore > 20)) {
+          throw new Error(`Invalid USA score on hole ${i + 1}`);
+        }
+        if (typeof europeScore === 'number' && (europeScore < 1 || europeScore > 20)) {
+          throw new Error(`Invalid Europe score on hole ${i + 1}`);
+        }
+      }
       
       // Update hole scores
       const updatedHoles = game.holes.map((hole, index) => ({
@@ -173,7 +228,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
             </div>
           </div>
 
-          {game.handicapStrokes > 0 && game.higherHandicapTeam && (
+          {useHandicaps && game.handicapStrokes > 0 && game.higherHandicapTeam && (
             <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
               {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
             </div>
@@ -182,12 +237,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
 
         <div className="mt-4 space-y-4">
           {game.holes.map((hole, index) => {
-            const usaScore = scores[index].USA;
-            const europeScore = scores[index].EUROPE;
-            const adjustedUsaScore = typeof usaScore === 'number' ? 
-              calculateAdjustedScore(usaScore, index + 1, 'USA') : null;
-            const adjustedEuropeScore = typeof europeScore === 'number' ? 
-              calculateAdjustedScore(europeScore, index + 1, 'EUROPE') : null;
+            const adjustedUsaScore = adjustedScores[index].USA;
+            const adjustedEuropeScore = adjustedScores[index].EUROPE;
 
             return (
               <div key={hole.holeNumber} className="grid grid-cols-3 gap-4 items-center">
@@ -202,11 +253,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
                   min="1"
                   max="8"
                   value={scores[index].USA}
-                  onChange={(e) => {
-                    const newScores = [...scores];
-                    newScores[index].USA = e.target.value ? parseInt(e.target.value) : '';
-                    setScores(newScores);
-                  }}
+                  onChange={(e) => handleScoreChange(index, 'USA', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="USA"
                 />
@@ -215,11 +262,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
                   min="1"
                   max="8"
                   value={scores[index].EUROPE}
-                  onChange={(e) => {
-                    const newScores = [...scores];
-                    newScores[index].EUROPE = e.target.value ? parseInt(e.target.value) : '';
-                    setScores(newScores);
-                  }}
+                  onChange={(e) => handleScoreChange(index, 'EUROPE', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="EUR"
                 />

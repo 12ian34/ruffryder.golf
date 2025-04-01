@@ -2,21 +2,29 @@ import type { Game } from '../../types/game';
 
 interface GameScoreDisplayProps {
   game: Game;
-  showProjected?: boolean;
   compact?: boolean;
 }
 
-export default function GameScoreDisplay({ game, showProjected = true, compact = false }: GameScoreDisplayProps) {
+export default function GameScoreDisplay({ game, compact = false }: GameScoreDisplayProps) {
   const isComplete = game.isComplete;
   const isInProgress = !isComplete && game.isStarted;
+
+  const getAdjustedScore = (team: 'USA' | 'EUROPE') => {
+    if (team === game.higherHandicapTeam) {
+      return game.strokePlayScore[team];
+    }
+    return game.strokePlayScore[team] + game.handicapStrokes;
+  };
 
   const getStrokePlayColor = (isUSA: boolean) => {
     if (!game.isStarted) return 'text-gray-500';
     
-    const usaWinning = game.strokePlayScore.USA < game.strokePlayScore.EUROPE;
-    const europeWinning = game.strokePlayScore.EUROPE < game.strokePlayScore.USA;
-    const isTied = game.strokePlayScore.USA === game.strokePlayScore.EUROPE && 
-                  (game.strokePlayScore.USA > 0 || game.strokePlayScore.EUROPE > 0);
+    const usaScore = getAdjustedScore('USA');
+    const europeScore = getAdjustedScore('EUROPE');
+    const usaWinning = usaScore < europeScore;
+    const europeWinning = europeScore < usaScore;
+    const isTied = usaScore === europeScore && 
+                  (usaScore > 0 || europeScore > 0);
 
     if (isUSA) {
       return usaWinning || isTied ? 'text-green-500' : 'text-gray-500';
@@ -66,6 +74,8 @@ export default function GameScoreDisplay({ game, showProjected = true, compact =
   };
 
   const status = getStatusDetails();
+  const usaAdjustedScore = getAdjustedScore('USA');
+  const europeAdjustedScore = getAdjustedScore('EUROPE');
 
   return (
     <div className={`space-y-${compact ? '2' : '3'}`}>
@@ -83,13 +93,23 @@ export default function GameScoreDisplay({ game, showProjected = true, compact =
           Stroke Play
         </div>
         <div className="flex justify-center items-center space-x-2">
-          <span className={`font-medium ${getStrokePlayColor(true)}`}>
-            {game.strokePlayScore.USA}
-          </span>
+          <div className="flex flex-col items-center">
+            <span className={`font-medium text-lg ${getStrokePlayColor(true)}`}>
+              {usaAdjustedScore}
+            </span>
+            {game.higherHandicapTeam !== 'USA' && (
+              <span className="text-xs text-gray-400">({game.strokePlayScore.USA})</span>
+            )}
+          </div>
           <span className="text-gray-400">-</span>
-          <span className={`font-medium ${getStrokePlayColor(false)}`}>
-            {game.strokePlayScore.EUROPE}
-          </span>
+          <div className="flex flex-col items-center">
+            <span className={`font-medium text-lg ${getStrokePlayColor(false)}`}>
+              {europeAdjustedScore}
+            </span>
+            {game.higherHandicapTeam !== 'EUROPE' && (
+              <span className="text-xs text-gray-400">({game.strokePlayScore.EUROPE})</span>
+            )}
+          </div>
         </div>
       </div>
 

@@ -7,9 +7,10 @@ interface GameCompletionModalProps {
   game: Game;
   tournamentId: string;
   onClose: () => void;
+  isOnline: boolean;
 }
 
-export default function GameCompletionModal({ game, tournamentId, onClose }: GameCompletionModalProps) {
+export default function GameCompletionModal({ game, tournamentId, onClose, isOnline }: GameCompletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +24,11 @@ export default function GameCompletionModal({ game, tournamentId, onClose }: Gam
       setError(`Please enter scores for all holes before completing the game. Missing scores for holes: ${
         missingScores.map(hole => hole.holeNumber).join(', ')
       }`);
+      return;
+    }
+
+    if (!isOnline) {
+      setError('Cannot complete game while offline. Please check your internet connection and try again.');
       return;
     }
 
@@ -51,6 +57,15 @@ export default function GameCompletionModal({ game, tournamentId, onClose }: Gam
         </h3>
 
         <div className="space-y-4">
+          {!isOnline && (
+            <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded">
+              <p className="font-medium">Offline Mode</p>
+              <p className="text-sm mt-1">
+                You are currently offline. Please check your internet connection before completing the game.
+              </p>
+            </div>
+          )}
+
           {missingScores.length > 0 ? (
             <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded">
               <p className="font-medium">Cannot Complete Game</p>
@@ -100,7 +115,7 @@ export default function GameCompletionModal({ game, tournamentId, onClose }: Gam
             </button>
             <button
               onClick={handleConfirm}
-              disabled={isLoading || missingScores.length > 0}
+              disabled={isLoading || missingScores.length > 0 || !isOnline}
               className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Completing...' : 'Complete Game'}

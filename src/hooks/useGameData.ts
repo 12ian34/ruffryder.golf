@@ -3,11 +3,41 @@ import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 
+const LOCAL_STORAGE_KEY = 'ruffryder_games';
+
 export function useGameData(userId: string | undefined, linkedPlayerId: string | null, isAdmin: boolean) {
   const [games, setGames] = useState<Game[]>([]);
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Handle online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load from local storage on mount
+  useEffect(() => {
+    try {
+      const savedGames = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedGames !== null) {
+        const parsedGames = JSON.parse(savedGames as string);
+        setGames(parsedGames);
+      }
+    } catch (err) {
+      console.error('Error loading games from local storage:', err);
+    }
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -35,10 +65,19 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
               const filteredGames = isAdmin 
                 ? gamesData 
                 : gamesData.filter(game => 
-                    game.playerIds?.includes(linkedPlayerId)
+                    linkedPlayerId !== null && game.playerIds?.includes(linkedPlayerId)
                   );
 
-              setGames(sortGames(filteredGames));
+              const sortedGames = sortGames(filteredGames);
+              setGames(sortedGames);
+
+              // Save to local storage
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sortedGames));
+              } catch (err) {
+                console.error('Error saving games to local storage:', err);
+              }
+
               setIsLoading(false);
             },
             (err) => {
@@ -77,7 +116,9 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
   };
 
   const handleGameStatusChange = async (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => {
-    if (!isAdmin || !activeTournamentId) return;
+    if (!isAdmin || !activeTournamentId) {
+      throw new Error('You do not have permission to change game status');
+    }
 
     try {
       const updates: Partial<Game> = {};
@@ -102,6 +143,16 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
             throw new Error('All holes must have scores before marking the game as complete');
           }
 
+          // Validate scores are reasonable
+          const hasInvalidScores = game.holes.some(hole => 
+            (hole.usaPlayerScore !== undefined && hole.usaPlayerScore !== null && (hole.usaPlayerScore < 1 || hole.usaPlayerScore > 20)) ||
+            (hole.europePlayerScore !== undefined && hole.europePlayerScore !== null && (hole.europePlayerScore < 1 || hole.europePlayerScore > 20))
+          );
+
+          if (hasInvalidScores) {
+            throw new Error('All scores must be between 1 and 20');
+          }
+
           updates.isComplete = true;
           updates.isStarted = true;
           break;
@@ -109,7 +160,7 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
 
       await updateDoc(doc(db, 'tournaments', activeTournamentId, 'games', game.id), updates);
     } catch (err: any) {
-      throw new Error(err.message);
+      throw new Error(err.message || 'Failed to update game status');
     }
   };
 
@@ -118,6 +169,7 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
     isLoading,
     error,
     handleGameStatusChange,
-    activeTournamentId
+    activeTournamentId,
+    isOnline
   };
 }

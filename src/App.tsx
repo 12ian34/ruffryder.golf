@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import PasswordResetComplete from './pages/PasswordResetComplete';
+import ResetPassword from './pages/ResetPassword';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import NewBlogPost from './pages/NewBlogPost';
@@ -21,7 +21,7 @@ export default function App() {
             <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/password-reset-complete" element={<PasswordResetComplete />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/new" element={<NewBlogPost />} />
             <Route path="/blog/edit/:postId" element={<EditBlogPost />} />

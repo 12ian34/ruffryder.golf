@@ -12,7 +12,6 @@ interface BlogEditorProps {
   initialContent?: string;
   initialTitle?: string;
   initialAttachments?: BlogAttachment[];
-  postId?: string;
   onSave: (post: Partial<BlogPost>) => Promise<void>;
 }
 
@@ -20,7 +19,6 @@ export default function BlogEditor({
   initialContent = '', 
   initialTitle = '', 
   initialAttachments = [],
-  postId, 
   onSave 
 }: BlogEditorProps) {
   const [title, setTitle] = useState(initialTitle);
@@ -60,7 +58,7 @@ export default function BlogEditor({
         content: editor.getHTML(),
         status,
         attachments,
-        publishedAt: status === 'published' ? new Date() : null,
+        publishedAt: status === 'published' ? new Date() : undefined,
         updatedAt: new Date(),
       });
     } catch (err: any) {

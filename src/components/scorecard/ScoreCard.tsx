@@ -1,5 +1,3 @@
-import type { Game } from '../../types/game';
-
 interface ScoreCardProps {
   currentScore: { USA: number, EUROPE: number };
   projectedScore: { USA: number, EUROPE: number };

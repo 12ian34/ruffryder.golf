@@ -57,7 +57,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         padding: 12,
         titleFont: {
           size: 14,
-          weight: 'bold'
+          weight: 'bold' as const
         },
         bodyFont: {
           size: 13
@@ -81,12 +81,12 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
     },
     scales: {
       x: {
-        type: 'category',
+        type: 'category' as const,
         grid: {
           display: false
         },
         ticks: {
-          callback: (value: any, index: number) => {
+          callback: (_value: any, index: number) => {
             if (index === 0 || index === progress.length - 1) {
               return format(progress[index].timestamp.toDate(), 'MMM d');
             }
@@ -120,7 +120,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
   };
 
   const data = {
-    labels: progress.map((p, i) => i),
+    labels: progress.map((_, i) => i),
     datasets: [
       {
         label: 'USA',

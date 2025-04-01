@@ -14,9 +14,11 @@ export interface Game {
   usaPlayerId: string;
   usaPlayerName: string;
   usaPlayerProfilePic?: string;
+  usaPlayerHandicap?: number;
   europePlayerId: string;
   europePlayerName: string;
   europePlayerProfilePic?: string;
+  europePlayerHandicap?: number;
   handicapStrokes: number;
   higherHandicapTeam: 'USA' | 'EUROPE';
   holes: HoleScore[];

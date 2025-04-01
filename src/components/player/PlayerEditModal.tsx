@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types/player';
 
 interface PlayerEditModalProps {
@@ -29,16 +29,17 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
       const updates: Partial<Player> = {
         name: name.trim(),
         team,
-        historicalScores: player?.historicalScores || []
+        historicalScores: player?.historicalScores ?? []
       };
 
       if (score) {
-        const existingScore = updates.historicalScores?.find(s => s.year === year);
+        const currentScores = updates.historicalScores ?? [];
+        const existingScore = currentScores.find(s => s.year === year);
         const newScores = existingScore
-          ? updates.historicalScores.map(s => 
+          ? currentScores.map(s => 
               s.year === year ? { ...s, score: Number(score) } : s
             )
-          : [...updates.historicalScores, { year, score: Number(score) }];
+          : [...currentScores, { year, score: Number(score) }];
 
         // Calculate new average from last 3 years
         const sortedScores = [...newScores].sort((a, b) => b.year - a.year);

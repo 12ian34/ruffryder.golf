@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface StrokeIndices {
   indices: number[];
@@ -20,6 +21,7 @@ export default function StrokeIndexManagement() {
         
         if (docSnap.exists()) {
           const data = docSnap.data() as StrokeIndices;
+          console.log('Loaded stroke indices:', data.indices);
           setIndices(data.indices);
         }
       } catch (err: any) {
@@ -31,6 +33,37 @@ export default function StrokeIndexManagement() {
 
     fetchStrokeIndices();
   }, []);
+
+  const updateExistingGames = async (newIndices: number[]) => {
+    try {
+      // Get all tournaments
+      const tournamentsSnapshot = await getDocs(collection(db, 'tournaments'));
+      
+      // For each tournament, update all games
+      for (const tournamentDoc of tournamentsSnapshot.docs) {
+        const gamesSnapshot = await getDocs(collection(db, 'tournaments', tournamentDoc.id, 'games'));
+        
+        for (const gameDoc of gamesSnapshot.docs) {
+          const game = gameDoc.data();
+          
+          // Update holes with new stroke indices
+          const updatedHoles = game.holes.map((hole: any, index: number) => ({
+            ...hole,
+            strokeIndex: newIndices[index]
+          }));
+          
+          await updateDoc(doc(db, 'tournaments', tournamentDoc.id, 'games', gameDoc.id), {
+            holes: updatedHoles
+          });
+        }
+      }
+      
+      console.log('Updated all existing games with new stroke indices');
+    } catch (err: any) {
+      console.error('Error updating existing games:', err);
+      throw err;
+    }
+  };
 
   const handleIndexChange = (holeNumber: number, value: string) => {
     const newValue = parseInt(value) || 0;
@@ -57,14 +90,20 @@ export default function StrokeIndexManagement() {
       setIsLoading(true);
       setError(null);
       
+      // Save stroke indices to config
       await setDoc(doc(db, 'config', 'strokeIndices'), {
         indices
       });
 
+      // Update all existing games with new stroke indices
+      await updateExistingGames(indices);
+
       setSuccessMessage('Stroke indices updated successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
+      showSuccessToast('Stroke indices updated for all games');
     } catch (err: any) {
       setError(err.message);
+      showErrorToast('Failed to update stroke indices');
     } finally {
       setIsLoading(false);
     }

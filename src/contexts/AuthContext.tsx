@@ -126,7 +126,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function resetUserPassword(email: string) {
     try {
-      await sendPasswordResetEmail(auth, email);
+      const actionCodeSettings = {
+        url: `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`,
+        handleCodeInApp: true
+      };
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
       showSuccessToast('Password reset email sent. Please check your inbox.');
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));

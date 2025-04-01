@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 export default function About() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">

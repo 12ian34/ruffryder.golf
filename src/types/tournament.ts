@@ -12,6 +12,7 @@ export interface Tournament {
   name: string;
   year: number;
   isActive: boolean;
+  useHandicaps: boolean;
   totalScore: {
     USA: number;
     EUROPE: number;

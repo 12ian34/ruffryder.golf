@@ -1,13 +1,12 @@
 import type { Game } from '../../types/game';
-import type { Player } from '../../types/player';
 import GameCard from '../GameCard';
 
 interface MatchupListProps {
   matchups: Game[];
-  players: Player[];
+  isOnline: boolean;
 }
 
-export default function MatchupList({ matchups, players }: MatchupListProps) {
+export default function MatchupList({ matchups, isOnline }: MatchupListProps) {
   return (
     <div>
       <h3 className="text-lg font-medium mb-4 dark:text-white">Current Matchups</h3>
@@ -18,6 +17,7 @@ export default function MatchupList({ matchups, players }: MatchupListProps) {
             game={game}
             compact={true}
             showControls={false}
+            isOnline={isOnline}
           />
         ))}
         {matchups.length === 0 && (
@@ -26,6 +26,6 @@ export default function MatchupList({ matchups, players }: MatchupListProps) {
           </div>
         )}
       </div>
-    </div>
+    </div>  
   );
 }

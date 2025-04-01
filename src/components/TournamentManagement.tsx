@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { collection, doc, addDoc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
-import TournamentSelector from './tournament/TournamentSelector';
 import NewTournamentForm from './tournament/NewTournamentForm';
 import MatchupCreator from './tournament/MatchupCreator';
 import MatchupList from './tournament/MatchupList';
@@ -43,7 +42,11 @@ export default function TournamentManagement() {
         setPlayers(playersData);
 
         if (strokeIndicesDoc.exists()) {
-          setStrokeIndices(strokeIndicesDoc.data().indices);
+          const indices = strokeIndicesDoc.data().indices;
+          console.log('Fetched stroke indices:', indices);
+          setStrokeIndices(indices);
+        } else {
+          console.log('No stroke indices found in database');
         }
 
         // Set active tournament if exists
@@ -58,6 +61,7 @@ export default function TournamentManagement() {
             id: doc.id,
             ...doc.data()
           })) as Game[];
+          console.log('Fetched matchups:', matchupsData);
           setCurrentMatchups(matchupsData);
         }
       } catch (err: any) {
@@ -92,8 +96,10 @@ export default function TournamentManagement() {
         name: name.trim(),
         year,
         isActive: true,
+        useHandicaps: true,
         totalScore: { USA: 0, EUROPE: 0 },
-        projectedScore: { USA: 0, EUROPE: 0 }
+        projectedScore: { USA: 0, EUROPE: 0 },
+        progress: []
       });
 
       const newTournament = {
@@ -101,8 +107,10 @@ export default function TournamentManagement() {
         name: name.trim(),
         year,
         isActive: true,
+        useHandicaps: true,
         totalScore: { USA: 0, EUROPE: 0 },
-        projectedScore: { USA: 0, EUROPE: 0 }
+        projectedScore: { USA: 0, EUROPE: 0 },
+        progress: []
       };
 
       setTournaments([...tournaments, newTournament]);
@@ -130,9 +138,23 @@ export default function TournamentManagement() {
       
       // Calculate handicap difference
       const handicapDiff = Math.abs(usaPlayer.averageScore - europePlayer.averageScore);
-      const higherHandicapTeam = usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 
-                              usaPlayer.averageScore < europePlayer.averageScore ? 'EUROPE' : 
-                              null;
+
+      console.log('Creating game with stroke indices:', strokeIndices);
+      console.log('Stroke indices length:', strokeIndices.length);
+      console.log('Stroke indices validation:', strokeIndices.every(index => index > 0 && index <= 18));
+
+      if (strokeIndices.length !== 18) {
+        throw new Error('Stroke indices must be set for all 18 holes');
+      }
+
+      const holes = strokeIndices.map((strokeIndex, i) => ({
+        holeNumber: i + 1,
+        strokeIndex,
+        parScore: 3
+      }));
+
+      console.log('Created holes array:', holes);
+      console.log('Holes validation:', holes.every(hole => hole.strokeIndex > 0 && hole.strokeIndex <= 18));
 
       const gameRef = await addDoc(collection(db, 'tournaments', selectedTournament.id, 'games'), {
         usaPlayerId: selectedUsaPlayer,
@@ -140,12 +162,8 @@ export default function TournamentManagement() {
         europePlayerId: selectedEuropePlayer,
         europePlayerName: europePlayer.name,
         handicapStrokes: Math.round(handicapDiff),
-        higherHandicapTeam,
-        holes: strokeIndices.map((strokeIndex, i) => ({
-          holeNumber: i + 1,
-          strokeIndex,
-          parScore: 3
-        })),
+        higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
+        holes,
         strokePlayScore: { USA: 0, EUROPE: 0 },
         matchPlayScore: { USA: 0, EUROPE: 0 },
         isComplete: false,
@@ -155,17 +173,14 @@ export default function TournamentManagement() {
 
       const newGame = {
         id: gameRef.id,
+        tournamentId: selectedTournament.id,
         usaPlayerId: selectedUsaPlayer,
         usaPlayerName: usaPlayer.name,
         europePlayerId: selectedEuropePlayer,
         europePlayerName: europePlayer.name,
         handicapStrokes: Math.round(handicapDiff),
-        higherHandicapTeam,
-        holes: strokeIndices.map((strokeIndex, i) => ({
-          holeNumber: i + 1,
-          strokeIndex,
-          parScore: 3
-        })),
+        higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
+        holes,
         strokePlayScore: { USA: 0, EUROPE: 0 },
         matchPlayScore: { USA: 0, EUROPE: 0 },
         isComplete: false,
@@ -173,12 +188,96 @@ export default function TournamentManagement() {
         playerIds: [selectedUsaPlayer, selectedEuropePlayer]
       };
 
+      console.log('Created new game:', newGame);
+
       setCurrentMatchups([...currentMatchups, newGame]);
       setSelectedUsaPlayer('');
       setSelectedEuropePlayer('');
       showSuccessToast('Matchup created successfully!');
     } catch (err: any) {
       showErrorToast('Failed to create matchup');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTournamentSelect = async (tournament: Tournament) => {
+    try {
+      setIsLoading(true);
+      setSelectedTournament(tournament);
+      
+      // Fetch matchups for selected tournament
+      const matchupsSnapshot = await getDocs(
+        collection(db, 'tournaments', tournament.id, 'games')
+      );
+      const matchupsData = matchupsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Game[];
+      setCurrentMatchups(matchupsData);
+    } catch (err: any) {
+      showErrorToast('Failed to load tournament matchups');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (tournament: Tournament) => {
+    try {
+      setIsLoading(true);
+      
+      // Deactivate current active tournament if exists
+      const activeTournament = tournaments.find(t => t.isActive);
+      if (activeTournament && activeTournament.id !== tournament.id) {
+        await updateDoc(doc(db, 'tournaments', activeTournament.id), {
+          isActive: false
+        });
+      }
+
+      // Toggle active state of selected tournament
+      await updateDoc(doc(db, 'tournaments', tournament.id), {
+        isActive: !tournament.isActive
+      });
+
+      // Update local state
+      setTournaments(tournaments.map(t => ({
+        ...t,
+        isActive: t.id === tournament.id ? !t.isActive : false
+      })));
+
+      showSuccessToast(`Tournament ${tournament.isActive ? 'deactivated' : 'activated'} successfully`);
+    } catch (err: any) {
+      showErrorToast('Failed to update tournament status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleHandicaps = async (tournament: Tournament) => {
+    try {
+      setIsLoading(true);
+      
+      // Update tournament handicap setting
+      await updateDoc(doc(db, 'tournaments', tournament.id), {
+        useHandicaps: !tournament.useHandicaps
+      });
+
+      // Update local state
+      setTournaments(tournaments.map(t => ({
+        ...t,
+        useHandicaps: t.id === tournament.id ? !t.useHandicaps : t.useHandicaps
+      })));
+
+      if (selectedTournament?.id === tournament.id) {
+        setSelectedTournament({
+          ...selectedTournament,
+          useHandicaps: !selectedTournament.useHandicaps
+        });
+      }
+
+      showSuccessToast('Tournament settings updated');
+    } catch (err: any) {
+      showErrorToast('Failed to update tournament settings');
     } finally {
       setIsLoading(false);
     }
@@ -208,11 +307,71 @@ export default function TournamentManagement() {
         <h3 className="text-lg font-medium mb-4 dark:text-white">Tournament Setup</h3>
         
         <div className="space-y-4">
-          <TournamentSelector
-            tournaments={tournaments}
-            selectedTournament={selectedTournament}
-            onSelect={setSelectedTournament}
-          />
+          <div className="grid gap-4">
+            {tournaments.map((tournament) => (
+              <div
+                key={tournament.id}
+                className={`p-4 rounded-lg border ${
+                  tournament.isActive
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <div className="font-medium dark:text-white">{tournament.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Year: {tournament.year}
+                      </div>
+                    </div>
+                    {tournament.isActive && (
+                      <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full dark:bg-blue-900/30 dark:text-blue-300">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Use Handicaps</span>
+                      <button
+                        onClick={() => handleToggleHandicaps(tournament)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          tournament.useHandicaps ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            tournament.useHandicaps ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <button
+                      onClick={() => handleToggleActive(tournament)}
+                      className={`px-3 py-1 text-sm rounded-lg ${
+                        tournament.isActive
+                          ? 'bg-red-500 hover:bg-red-600 text-white'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {tournament.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => handleTournamentSelect(tournament)}
+                      className={`px-3 py-1 text-sm rounded-lg ${
+                        selectedTournament?.id === tournament.id
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                          : 'bg-gray-500 hover:bg-gray-600 text-white'
+                      }`}
+                    >
+                      {selectedTournament?.id === tournament.id ? 'Selected' : 'Select'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <NewTournamentForm
             onSubmit={handleCreateTournament}
@@ -236,7 +395,7 @@ export default function TournamentManagement() {
 
           <MatchupList
             matchups={currentMatchups}
-            players={players}
+            isOnline={navigator.onLine}
           />
         </>
       )}

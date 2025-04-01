@@ -8,12 +8,23 @@ export function calculateGamePoints(game: Game): { USA: number, EUROPE: number }
     EUROPE: 0
   };
 
+  // Calculate adjusted scores for stroke play
+  const getAdjustedScore = (team: 'USA' | 'EUROPE') => {
+    if (team === game.higherHandicapTeam) {
+      return game.strokePlayScore[team];
+    }
+    return game.strokePlayScore[team] + game.handicapStrokes;
+  };
+
+  const usaAdjustedScore = getAdjustedScore('USA');
+  const europeAdjustedScore = getAdjustedScore('EUROPE');
+
   // For completed games, use final scores
   if (game.isComplete) {
-    // Stroke play point
-    if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
+    // Stroke play point - using adjusted scores
+    if (usaAdjustedScore < europeAdjustedScore) {
       points.USA += 1;
-    } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
+    } else if (usaAdjustedScore > europeAdjustedScore) {
       points.EUROPE += 1;
     } else {
       points.USA += 0.5;
@@ -32,12 +43,12 @@ export function calculateGamePoints(game: Game): { USA: number, EUROPE: number }
   } 
   // For in-progress games, calculate current points
   else if (game.isStarted) {
-    // Stroke play point (based on current scores)
-    if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
+    // Stroke play point (based on current adjusted scores)
+    if (usaAdjustedScore < europeAdjustedScore) {
       points.USA += 1;
-    } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
+    } else if (usaAdjustedScore > europeAdjustedScore) {
       points.EUROPE += 1;
-    } else if (game.strokePlayScore.USA > 0 || game.strokePlayScore.EUROPE > 0) {
+    } else if (usaAdjustedScore > 0 || europeAdjustedScore > 0) {
       points.USA += 0.5;
       points.EUROPE += 0.5;
     }

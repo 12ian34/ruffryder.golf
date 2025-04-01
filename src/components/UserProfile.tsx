@@ -1,43 +1,25 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, updateDoc, getDoc, collection, getDocs } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
-import type { Player } from '../types/player';
 
 export default function UserProfile() {
   const { currentUser } = useAuth();
-  const [userData, setUserData] = useState<User | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState('');
-  const [selectedPlayerId, setSelectedPlayerId] = useState('');
-  const [profilePic, setProfilePic] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!currentUser) return;
+
     const fetchData = async () => {
-      if (!currentUser) return;
-
       try {
-        const [userDoc, playersSnapshot] = await Promise.all([
-          getDoc(doc(db, 'users', currentUser.uid)),
-          getDocs(collection(db, 'players'))
-        ]);
-
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           const user = userDoc.data() as User;
-          setUserData(user);
           setName(user.name);
-          setSelectedPlayerId(user.linkedPlayerId || '');
         }
-
-        const playersData = playersSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Player[];
-        setPlayers(playersData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -56,19 +38,7 @@ export default function UserProfile() {
       setIsLoading(true);
       const updates: Partial<User> = { name };
 
-      if (selectedPlayerId) {
-        updates.linkedPlayerId = selectedPlayerId;
-      }
-
-      if (profilePic) {
-        const storage = getStorage();
-        const fileRef = ref(storage, `profile-pics/${currentUser.uid}`);
-        await uploadBytes(fileRef, profilePic);
-        updates.profilePicUrl = await getDownloadURL(fileRef);
-      }
-
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
-      setUserData(prev => prev ? { ...prev, ...updates } : null);
       alert('Profile updated successfully!');
     } catch (err: any) {
       setError(err.message);
@@ -96,35 +66,6 @@ export default function UserProfile() {
       )}
 
       <form onSubmit={handleProfileUpdate} className="space-y-6">
-        {/* Profile Picture */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Profile Picture
-          </label>
-          <div className="flex items-center space-x-4">
-            {userData?.profilePicUrl && (
-              <img
-                src={userData.profilePicUrl}
-                alt="Profile"
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setProfilePic(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 dark:text-gray-400
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100
-                dark:file:bg-gray-700 dark:file:text-gray-300"
-            />
-          </div>
-        </div>
-
-        {/* Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Name
@@ -136,25 +77,6 @@ export default function UserProfile() {
             className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             required
           />
-        </div>
-
-        {/* Player Link */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Link to Player
-          </label>
-          <select
-            value={selectedPlayerId}
-            onChange={(e) => setSelectedPlayerId(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value="">Select a player</option>
-            {players.map(player => (
-              <option key={player.id} value={player.id}>
-                {player.name} ({player.team})
-              </option>
-            ))}
-          </select>
         </div>
 
         <button

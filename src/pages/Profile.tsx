@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -12,7 +12,6 @@ export default function Profile() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<User | null>(null);
   const [name, setName] = useState('');
-  const [selectedEmoji, setSelectedEmoji] = useState<string>('');
   const [pendingEmoji, setPendingEmoji] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,7 +29,6 @@ export default function Profile() {
           const user = userDoc.data() as User;
           setUserData(user);
           setName(user.name);
-          setSelectedEmoji(user.customEmoji || '');
           setPendingEmoji(user.customEmoji || '');
         }
       } catch (err: any) {
@@ -57,12 +55,11 @@ export default function Profile() {
       
       const updates: Partial<User> = { 
         name,
-        customEmoji: pendingEmoji === selectedEmoji ? selectedEmoji : pendingEmoji
+        customEmoji: pendingEmoji || undefined
       };
 
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
       setUserData(prev => prev ? { ...prev, ...updates } : null);
-      setSelectedEmoji(updates.customEmoji || '');
 
       showSuccessToast('Profile updated successfully!');
     } catch (err: any) {
@@ -167,6 +164,26 @@ export default function Profile() {
                 className="w-full px-4 py-2 rounded-lg border bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300"
                 disabled
               />
+            </div>
+
+            {/* Linked Player (Read-only) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Linked Player
+              </label>
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 rounded-lg">
+                {userData.linkedPlayerId ? (
+                  <div className="flex items-center space-x-2">
+                    <span>{userData.customEmoji || '👤'}</span>
+                    <span>{userData.name}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      ({userData.team || 'No Team'})
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-gray-500 dark:text-gray-400">No player linked</span>
+                )}
+              </div>
             </div>
 
             {/* Admin Status (Read-only) */}

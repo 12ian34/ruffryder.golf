@@ -12,6 +12,7 @@ import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebas
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
 import type { BlogPost } from '../types/blog';
+import PlayerEmoji from '../components/PlayerEmoji';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -117,9 +118,19 @@ export default function Dashboard() {
             </h1>
             <div className="flex items-center space-x-4">
               <ThemeSwitcher />
-              <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
-                {userData?.name || currentUser?.email}
-              </span>
+              <div className="hidden sm:flex items-center space-x-2">
+                {userData.linkedPlayerId && (
+                  <PlayerEmoji
+                    playerId={userData.linkedPlayerId}
+                    name={userData.name}
+                    customEmoji={userData.customEmoji}
+                    size="sm"
+                  />
+                )}
+                <span className="text-gray-600 dark:text-gray-300">
+                  {userData.name || currentUser.email}
+                </span>
+              </div>
               <button
                 onClick={() => navigate('/profile')}
                 className="text-blue-500 hover:text-blue-600 dark:text-blue-400"

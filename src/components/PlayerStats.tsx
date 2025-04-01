@@ -1,5 +1,5 @@
 import { usePlayerStats } from '../hooks/usePlayerStats';
-import PlayerAvatar from './PlayerAvatar';
+import PlayerEmoji from './PlayerEmoji';
 import TeamFilter from './player/TeamFilter';
 
 export default function PlayerStats() {
@@ -77,17 +77,18 @@ export default function PlayerStats() {
                 <tr key={player.id} className={isCurrentPlayer ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <PlayerAvatar
+                      <PlayerEmoji
                         playerId={player.id}
                         name={player.name}
-                        profilePicUrl={player.profilePicUrl}
+                        customEmoji={player.customEmoji}
+                        size="sm"
                       />
                       <span className={`font-medium ${
-                        player.team === 'USA' ? 'text-red-500' : 'text-blue-500'
+                        player.team === 'USA' ? 'text-usa-500' : 'text-europe-500'
                       }`}>
                         {player.name}
                         {isCurrentPlayer && (
-                          <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                          <span className="ml-2 text-xs bg-europe-100 dark:bg-europe-800 text-europe-800 dark:text-europe-200 px-2 py-1 rounded-full">
                             You
                           </span>
                         )}
@@ -97,8 +98,8 @@ export default function PlayerStats() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       player.team === 'USA'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                        ? 'bg-usa-100 text-usa-800 dark:bg-usa-900 dark:text-usa-200'
+                        : 'bg-europe-100 text-europe-800 dark:bg-europe-900 dark:text-europe-200'
                     }`}>
                       {player.team}
                     </span>

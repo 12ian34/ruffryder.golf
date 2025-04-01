@@ -1,17 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import BlogList from '../components/blog/BlogList';
 import type { BlogPost } from '../types/blog';
+import type { User } from '../types/user';
 
 export default function Blog() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [userData, setUserData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!currentUser) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data() as User);
+        }
+      } catch (err: any) {
+        console.error('Error fetching user data:', err);
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -62,7 +80,7 @@ export default function Blog() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold dark:text-white">Blog</h1>
-          {currentUser?.isAdmin && (
+          {userData?.isAdmin && (
             <button
               onClick={() => navigate('/blog/new')}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
