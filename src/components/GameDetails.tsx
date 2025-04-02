@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { showErrorToast } from '../utils/toast';
+import GameScoreTable from './shared/GameScoreTable';
 import type { Game } from '../types/game';
 
 interface GameDetailsProps {
   gameId: string;
-  onClose?: () => void;
+  tournamentId: string;
+  onClose: () => void;
 }
 
-export default function GameDetails({ gameId, onClose }: GameDetailsProps) {
+export default function GameDetails({ gameId, tournamentId, onClose }: GameDetailsProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onClose) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
@@ -27,150 +29,64 @@ export default function GameDetails({ gameId, onClose }: GameDetailsProps) {
   useEffect(() => {
     const fetchGame = async () => {
       try {
-        const gameDoc = await getDoc(doc(db, 'games', gameId));
+        const gameDoc = await getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId));
         if (gameDoc.exists()) {
-          setGame(gameDoc.data() as Game);
+          setGame({ id: gameDoc.id, ...gameDoc.data() } as Game);
         } else {
-          setError('Game not found');
+          showErrorToast('Game not found');
         }
-      } catch (err: any) {
-        setError(err.message);
+      } catch (error) {
+        showErrorToast('Error fetching game details');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchGame();
-  }, [gameId]);
+  }, [gameId, tournamentId]);
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     );
   }
 
-  if (error || !game) {
+  if (!game) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-500">{error || 'Game not found'}</p>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+          <p className="text-red-500">Game not found</p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+          >
+            Close
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold dark:text-white">
-          Game Details
-        </h2>
-        {onClose && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold dark:text-white">Game Details</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            ×
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-        )}
-      </div>
-
-      {/* Players */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <h3 className="text-sm font-medium text-usa-500 mb-1">USA</h3>
-          <p className="text-lg font-semibold dark:text-white">
-            {game.usaPlayerName}
-          </p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-europe-500 mb-1">Europe</h3>
-          <p className="text-lg font-semibold dark:text-white">
-            {game.europePlayerName}
-          </p>
-        </div>
-      </div>
-
-      {/* Scores */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Stroke Play
-            </h3>
-            <div>
-              <p className="text-lg font-semibold dark:text-white">
-                {game.higherHandicapTeam !== 'USA' ? (
-                  <>
-                    {game.strokePlayScore.USA + game.handicapStrokes}
-                    <span className="text-sm text-gray-500 ml-1">({game.strokePlayScore.USA})</span>
-                  </>
-                ) : (
-                  game.strokePlayScore.USA
-                )}
-                {' - '}
-                {game.higherHandicapTeam !== 'EUROPE' ? (
-                  <>
-                    {game.strokePlayScore.EUROPE + game.handicapStrokes}
-                    <span className="text-sm text-gray-500 ml-1">({game.strokePlayScore.EUROPE})</span>
-                  </>
-                ) : (
-                  game.strokePlayScore.EUROPE
-                )}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Adjusted (Raw)</p>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Match Play
-            </h3>
-            <p className="text-lg font-semibold dark:text-white">
-              {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
-            </p>
-          </div>
         </div>
 
-        {/* Hole-by-hole scores */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-            Hole-by-Hole Scores
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Front Nine</h4>
-              {game.holes.slice(0, 9).map((hole) => (
-                <div
-                  key={hole.holeNumber}
-                  className="flex justify-between text-sm"
-                >
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Hole {hole.holeNumber}
-                  </span>
-                  <span className="font-medium dark:text-white">
-                    {hole.usaPlayerScore || '-'} - {hole.europePlayerScore || '-'}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Back Nine</h4>
-              {game.holes.slice(9).map((hole) => (
-                <div
-                  key={hole.holeNumber}
-                  className="flex justify-between text-sm"
-                >
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Hole {hole.holeNumber}
-                  </span>
-                  <span className="font-medium dark:text-white">
-                    {hole.usaPlayerScore || '-'} - {hole.europePlayerScore || '-'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <GameScoreTable game={game} />
       </div>
     </div>
   );

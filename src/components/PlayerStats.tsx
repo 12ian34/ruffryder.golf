@@ -57,7 +57,7 @@ export default function PlayerStats() {
                 onClick={() => toggleSort('averageScore')}
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
               >
-                Average Score {sortField === 'averageScore' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Handicap {sortField === 'averageScore' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               {years.map(year => (
                 <th 

@@ -10,7 +10,7 @@ interface ScoreEntryProps {
   isOnline: boolean;
 }
 
-export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntryProps) {
+export default function ScoreEntry({ gameId, tournamentId, onClose, isOnline }: ScoreEntryProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [scores, setScores] = useState<Array<{ USA: number | '', EUROPE: number | '' }>>([]);
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
@@ -31,6 +31,37 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
   }, [onClose]);
 
   useEffect(() => {
+    const fetchGame = async () => {
+      try {
+        const gameDoc = await getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId));
+        if (gameDoc.exists()) {
+          const gameData = gameDoc.data() as Game;
+          
+          // Fetch player handicaps
+          const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
+            getDoc(doc(db, 'players', gameData.usaPlayerId)),
+            getDoc(doc(db, 'players', gameData.europePlayerId))
+          ]);
+
+          setGame({
+            ...gameData,
+            usaPlayerHandicap: usaPlayerDoc.exists() ? usaPlayerDoc.data().averageScore : 0,
+            europePlayerHandicap: europePlayerDoc.exists() ? europePlayerDoc.data().averageScore : 0
+          });
+        } else {
+          setError('Game not found');
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGame();
+  }, [gameId, tournamentId]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const [gameDoc, strokeIndicesDoc, tournamentDoc] = await Promise.all([
@@ -41,7 +72,6 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
 
         if (gameDoc.exists()) {
           const gameData = gameDoc.data() as Game;
-          setGame(gameData);
           setScores(gameData.holes.map(hole => ({
             USA: hole.usaPlayerScore || '',
             EUROPE: hole.europePlayerScore || ''
@@ -230,16 +260,26 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
 
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
-              <div className="font-medium text-red-500">{game.usaPlayerName}</div>
+              <div className="font-medium text-red-500">
+                {game.usaPlayerName}
+                <span className="text-sm text-gray-500 ml-2">
+                  (Handicap: {game.usaPlayerHandicap})
+                </span>
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
             </div>
             <div className="text-center">
-              <div className="font-medium text-blue-500">{game.europePlayerName}</div>
+              <div className="font-medium text-blue-500">
+                {game.europePlayerName}
+                <span className="text-sm text-gray-500 ml-2">
+                  (Handicap: {game.europePlayerHandicap})
+                </span>
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
             </div>
           </div>
 
-          {useHandicaps && game.handicapStrokes > 0 && game.higherHandicapTeam && (
+          {useHandicaps && game.handicapStrokes > 0 && (
             <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
               {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
             </div>

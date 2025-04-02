@@ -41,13 +41,8 @@ export default function TournamentManagement() {
         setTournaments(tournamentsData);
         setPlayers(playersData);
 
-        if (strokeIndicesDoc.exists()) {
-          const indices = strokeIndicesDoc.data().indices;
-          console.log('Fetched stroke indices:', indices);
-          setStrokeIndices(indices);
-        } else {
-          console.log('No stroke indices found in database');
-        }
+        const indices = strokeIndicesDoc.data()?.indices || [];
+        setStrokeIndices(indices);
 
         // Set active tournament if exists
         const activeTournament = tournamentsData.find(t => t.isActive);
@@ -61,7 +56,6 @@ export default function TournamentManagement() {
             id: doc.id,
             ...doc.data()
           })) as Game[];
-          console.log('Fetched matchups:', matchupsData);
           setCurrentMatchups(matchupsData);
         }
       } catch (err: any) {
@@ -139,28 +133,21 @@ export default function TournamentManagement() {
       // Calculate handicap difference
       const handicapDiff = Math.abs(usaPlayer.averageScore - europePlayer.averageScore);
 
-      console.log('Creating game with stroke indices:', strokeIndices);
-      console.log('Stroke indices length:', strokeIndices.length);
-      console.log('Stroke indices validation:', strokeIndices.every(index => index > 0 && index <= 18));
-
-      if (strokeIndices.length !== 18) {
-        throw new Error('Stroke indices must be set for all 18 holes');
-      }
-
-      const holes = strokeIndices.map((strokeIndex, i) => ({
+      const holes = Array.from({ length: 18 }, (_, i) => ({
         holeNumber: i + 1,
-        strokeIndex,
-        parScore: 3
+        strokeIndex: strokeIndices[i],
+        parScore: 3,
+        usaPlayerScore: undefined,
+        europePlayerScore: undefined
       }));
-
-      console.log('Created holes array:', holes);
-      console.log('Holes validation:', holes.every(hole => hole.strokeIndex > 0 && hole.strokeIndex <= 18));
 
       const gameRef = await addDoc(collection(db, 'tournaments', selectedTournament.id, 'games'), {
         usaPlayerId: selectedUsaPlayer,
         usaPlayerName: usaPlayer.name,
+        usaPlayerHandicap: usaPlayer.averageScore,
         europePlayerId: selectedEuropePlayer,
         europePlayerName: europePlayer.name,
+        europePlayerHandicap: europePlayer.averageScore,
         handicapStrokes: Math.round(handicapDiff),
         higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
         holes,
@@ -176,8 +163,10 @@ export default function TournamentManagement() {
         tournamentId: selectedTournament.id,
         usaPlayerId: selectedUsaPlayer,
         usaPlayerName: usaPlayer.name,
+        usaPlayerHandicap: usaPlayer.averageScore,
         europePlayerId: selectedEuropePlayer,
         europePlayerName: europePlayer.name,
+        europePlayerHandicap: europePlayer.averageScore,
         handicapStrokes: Math.round(handicapDiff),
         higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
         holes,
@@ -187,8 +176,6 @@ export default function TournamentManagement() {
         isStarted: false,
         playerIds: [selectedUsaPlayer, selectedEuropePlayer]
       };
-
-      console.log('Created new game:', newGame);
 
       setCurrentMatchups([...currentMatchups, newGame]);
       setSelectedUsaPlayer('');

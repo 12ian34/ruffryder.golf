@@ -21,7 +21,6 @@ export default function StrokeIndexManagement() {
         
         if (docSnap.exists()) {
           const data = docSnap.data() as StrokeIndices;
-          console.log('Loaded stroke indices:', data.indices);
           setIndices(data.indices);
         }
       } catch (err: any) {

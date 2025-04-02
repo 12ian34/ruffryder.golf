@@ -37,13 +37,13 @@ export default function PlayerDisplay({
             )}
           </div>
           {showAverage && (
-            <div className="text-sm text-gray-500">
-              Avg: {player.averageScore}
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Handicap: {player.averageScore}
             </div>
           )}
         </div>
       </div>
-      <div className="text-sm text-gray-500">{team}</div>
+      <div className="text-sm text-gray-500 dark:text-gray-400">{team}</div>
     </div>
   );
 }
