@@ -14,6 +14,17 @@ export default function GameDetails({ gameId, onClose }: GameDetailsProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  useEffect(() => {
     const fetchGame = async () => {
       try {
         const gameDoc = await getDoc(doc(db, 'games', gameId));

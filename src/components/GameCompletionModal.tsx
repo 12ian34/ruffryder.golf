@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
@@ -13,6 +13,17 @@ interface GameCompletionModalProps {
 export default function GameCompletionModal({ game, tournamentId, onClose, isOnline }: GameCompletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const missingScores = game.holes.filter(hole => 
     typeof hole.usaPlayerScore !== 'number' || 

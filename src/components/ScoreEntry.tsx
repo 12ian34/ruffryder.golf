@@ -20,6 +20,17 @@ export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntry
   const [useHandicaps, setUseHandicaps] = useState(false);
 
   useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const [gameDoc, strokeIndicesDoc, tournamentDoc] = await Promise.all([
