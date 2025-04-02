@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Game } from '../types/game';
+import { Game, GameStatus } from '../types/game';
 import GameCard from './GameCard';
 import ScoreEntry from './ScoreEntry';
 import GameCompletionModal from './GameCompletionModal';
@@ -8,29 +8,31 @@ import StatusFilter from './filters/StatusFilter';
 interface GameListProps {
   games: Game[];
   isAdmin: boolean;
-  onGameStatusChange: (game: Game, status: 'not_started' | 'in_progress' | 'complete') => Promise<void>;
+  onGameStatusChange: (game: Game, newStatus: GameStatus) => Promise<void>;
   isOnline: boolean;
+  useHandicaps: boolean;
 }
 
-export default function GameList({ games, isAdmin, onGameStatusChange, isOnline }: GameListProps) {
+export default function GameList({ games, isAdmin, onGameStatusChange, isOnline, useHandicaps }: GameListProps) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
-  const [activeStatus, setActiveStatus] = useState<'all' | 'complete' | 'in_progress' | 'not_started'>('all');
+  const [modalKey, setModalKey] = useState(0);
+  const [activeStatus, setActiveStatus] = useState<GameStatus>('in_progress');
 
-  const handleGameStatusChange = async (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => {
+  const filteredGames = games.filter(game => {
+    if (activeStatus === 'all') return true;
+    if (activeStatus === 'not_started') return !game.isStarted;
+    if (activeStatus === 'in_progress') return game.isStarted && !game.isComplete;
+    return game.isComplete;
+  });
+
+  const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
     if (newStatus === 'complete') {
       setGameToComplete(game);
     } else {
       await onGameStatusChange(game, newStatus);
     }
   };
-
-  const filteredGames = games.filter(game => {
-    if (activeStatus === 'all') return true;
-    if (activeStatus === 'complete') return game.isComplete;
-    if (activeStatus === 'in_progress') return !game.isComplete && game.isStarted;
-    return !game.isComplete && !game.isStarted;
-  });
 
   return (
     <div className="space-y-6">
@@ -52,12 +54,13 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
       <div className="grid gap-4 sm:gap-6">
         {filteredGames.map((game) => (
           <GameCard
-            key={game.id}
+            key={`${game.id}-${modalKey}`}
             game={game}
             isAdmin={isAdmin}
             onStatusChange={handleGameStatusChange}
             onEnterScores={() => setSelectedGame(game)}
             showControls={true}
+            useHandicaps={useHandicaps}
           />
         ))}
 
@@ -72,7 +75,14 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
         <ScoreEntry
           gameId={selectedGame.id}
           tournamentId={selectedGame.tournamentId}
-          onClose={() => setSelectedGame(null)}
+          onClose={() => {
+            setSelectedGame(null);
+            setModalKey(prev => prev + 1);
+          }}
+          onSave={() => {
+            setSelectedGame(null);
+            setModalKey(prev => prev + 1);
+          }}
         />
       )}
 

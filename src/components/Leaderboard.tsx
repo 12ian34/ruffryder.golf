@@ -7,7 +7,6 @@ import TournamentProgress from './TournamentProgress';
 import ScoreCard from './scorecard/ScoreCard';
 import GameCard from './GameCard';
 import StatusFilter from './filters/StatusFilter';
-import { calculateGamePoints } from '../utils/gamePoints';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -32,100 +31,68 @@ export default function Leaderboard() {
     };
   }, []);
 
+  // Fetch active tournament and games
   useEffect(() => {
-    const loadData = async () => {
+    const fetchData = async () => {
       try {
+        // Get active tournament
         const tournamentsRef = collection(db, 'tournaments');
-        const tournamentQuery = query(tournamentsRef, where('isActive', '==', true));
-        
-        const unsubscribeTournament = onSnapshot(tournamentQuery, async (snapshot) => {
+        const q = query(tournamentsRef, where('isActive', '==', true));
+        const tournamentSnapshot = await onSnapshot(q, (snapshot) => {
           if (!snapshot.empty) {
-            const tournamentDoc = snapshot.docs[0];
-            const tournamentData = {
-              id: tournamentDoc.id,
-              ...tournamentDoc.data()
-            } as Tournament;
-            setTournament(tournamentData);
-
-            const gamesRef = collection(db, 'tournaments', tournamentDoc.id, 'games');
-            const unsubscribeGames = onSnapshot(gamesRef, (gamesSnapshot) => {
-              const gamesData = gamesSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tournamentId: tournamentDoc.id
-              })) as Game[];
-              
-              // Sort games by completion status and number of holes completed
-              const sortedGames = [...gamesData].sort((a, b) => {
-                if (a.isComplete !== b.isComplete) {
-                  return a.isComplete ? -1 : 1;
-                }
-                const aHolesCompleted = a.holes.filter(h => h.usaPlayerScore && h.europePlayerScore).length;
-                const bHolesCompleted = b.holes.filter(h => h.usaPlayerScore && h.europePlayerScore).length;
-                return bHolesCompleted - aHolesCompleted;
-              });
-
-              setGames(sortedGames);
-              setIsLoading(false);
+            const doc = snapshot.docs[0];
+            const tournamentData = doc.data() as Tournament;
+            setTournament({
+              ...tournamentData,
+              id: doc.id
             });
-
-            return () => {
-              unsubscribeGames();
-            };
           } else {
             setTournament(null);
-            setGames([]);
-            setIsLoading(false);
           }
         });
 
-        return unsubscribeTournament;
+        return () => tournamentSnapshot();
       } catch (err: any) {
-        console.error('Error loading tournament data:', err);
         setError(err.message);
+      } finally {
         setIsLoading(false);
       }
     };
 
-    loadData();
+    fetchData();
   }, []);
 
+  // Fetch games for active tournament
   useEffect(() => {
-    // Filter games based on active status
-    const filtered = games.filter(game => {
-      if (activeStatus === 'all') return true;
-      if (activeStatus === 'complete') return game.isComplete;
-      if (activeStatus === 'in_progress') return !game.isComplete && game.isStarted;
-      return !game.isComplete && !game.isStarted;
+    if (!tournament) return;
+
+    const gamesRef = collection(db, 'tournaments', tournament.id, 'games');
+    const unsubscribe = onSnapshot(gamesRef, (snapshot) => {
+      const gamesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Game[];
+      setGames(gamesData);
     });
+
+    return () => unsubscribe();
+  }, [tournament]);
+
+  // Filter games based on status
+  useEffect(() => {
+    if (!games) return;
+
+    let filtered = [...games];
+    if (activeStatus !== 'all') {
+      filtered = games.filter(game => {
+        if (activeStatus === 'not_started') return !game.isStarted;
+        if (activeStatus === 'in_progress') return game.isStarted && !game.isComplete;
+        if (activeStatus === 'complete') return game.isComplete;
+        return true;
+      });
+    }
     setFilteredGames(filtered);
   }, [games, activeStatus]);
-
-  const calculateCurrentScore = (): { USA: number, EUROPE: number } => {
-    return games.reduce((total, game) => {
-      if (game.isComplete) {
-        const points = calculateGamePoints(game);
-        return {
-          USA: total.USA + points.USA,
-          EUROPE: total.EUROPE + points.EUROPE
-        };
-      }
-      return total;
-    }, { USA: 0, EUROPE: 0 });
-  };
-
-  const calculateProjectedScore = (): { USA: number, EUROPE: number } => {
-    return games.reduce((total, game) => {
-      if (game.isStarted) {
-        const points = calculateGamePoints(game);
-        return {
-          USA: total.USA + points.USA,
-          EUROPE: total.EUROPE + points.EUROPE
-        };
-      }
-      return total;
-    }, { USA: 0, EUROPE: 0 });
-  };
 
   if (isLoading) {
     return (
@@ -161,15 +128,34 @@ export default function Leaderboard() {
     );
   }
 
-  const currentScore = calculateCurrentScore();
-  const projectedScore = calculateProjectedScore();
+  // Calculate totals from stored scores
+  const totalStrokes = games.reduce((total, game) => ({
+    USA: total.USA + (tournament.useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA),
+    EUROPE: total.EUROPE + (tournament.useHandicaps ? game.strokePlayScore.adjustedEUROPE : game.strokePlayScore.EUROPE)
+  }), { USA: 0, EUROPE: 0 });
+
+  const rawStrokes = games.reduce((total, game) => ({
+    USA: total.USA + game.strokePlayScore.USA,
+    EUROPE: total.EUROPE + game.strokePlayScore.EUROPE
+  }), { USA: 0, EUROPE: 0 });
+
+  const totalHoles = games.reduce((total, game) => ({
+    USA: total.USA + game.holes.reduce((sum, hole) => 
+      sum + (tournament.useHandicaps ? (hole.usaPlayerMatchPlayAdjustedScore ?? 0) : (hole.usaPlayerMatchPlayScore ?? 0)), 0),
+    EUROPE: total.EUROPE + game.holes.reduce((sum, hole) => 
+      sum + (tournament.useHandicaps ? (hole.europePlayerMatchPlayAdjustedScore ?? 0) : (hole.europePlayerMatchPlayScore ?? 0)), 0)
+  }), { USA: 0, EUROPE: 0 });
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <ScoreCard
-          currentScore={currentScore}
-          projectedScore={projectedScore}
+          currentScore={tournament.useHandicaps ? tournament.totalScore.adjusted : tournament.totalScore.raw}
+          projectedScore={tournament.useHandicaps ? tournament.projectedScore.adjusted : tournament.projectedScore.raw}
+          totalStrokes={totalStrokes}
+          rawStrokes={rawStrokes}
+          totalHoles={totalHoles}
+          useHandicaps={tournament.useHandicaps}
         />
         {!isOnline && (
           <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-medium">
@@ -181,7 +167,10 @@ export default function Leaderboard() {
       {tournament.progress && tournament.progress.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <TournamentProgress 
-            progress={tournament.progress}
+            progress={tournament.progress.map(p => ({
+              ...p,
+              score: tournament.useHandicaps ? p.score.adjusted : p.score.raw
+            }))}
             totalGames={games.length}
           />
         </div>
@@ -201,16 +190,11 @@ export default function Leaderboard() {
             <GameCard
               key={game.id}
               game={game}
+              isAdmin={false}
               showControls={false}
-              compact={true}
+              useHandicaps={tournament.useHandicaps}
             />
           ))}
-
-          {filteredGames.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              No games found
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -10,7 +10,6 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
-import type { TournamentProgress as TournamentProgressType } from '../types/tournament';
 
 ChartJS.register(
   CategoryScale,
@@ -23,7 +22,11 @@ ChartJS.register(
 );
 
 interface TournamentProgressProps {
-  progress: TournamentProgressType[];
+  progress: {
+    timestamp: any;
+    score: { USA: number; EUROPE: number };
+    completedGames: number;
+  }[];
   totalGames: number;
 }
 

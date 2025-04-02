@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, addDoc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, getDocs, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { updateTournamentScores } from '../utils/tournamentScores';
 import NewTournamentForm from './tournament/NewTournamentForm';
 import MatchupCreator from './tournament/MatchupCreator';
 import MatchupList from './tournament/MatchupList';
 import type { Player } from '../types/player';
 import type { Game } from '../types/game';
 import type { Tournament } from '../types/tournament';
+import { auth } from '../config/firebase';
 
 export default function TournamentManagement() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -18,6 +20,7 @@ export default function TournamentManagement() {
   const [currentMatchups, setCurrentMatchups] = useState<Game[]>([]);
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,6 +71,16 @@ export default function TournamentManagement() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        setIsAdmin(userDoc.exists() && userDoc.data().isAdmin);
+      }
+    };
+    checkAdminStatus();
+  }, []);
+
   const handleCreateTournament = async (name: string, year: number) => {
     if (!name.trim()) {
       showErrorToast('Please enter a tournament name');
@@ -91,8 +104,14 @@ export default function TournamentManagement() {
         year,
         isActive: true,
         useHandicaps: true,
-        totalScore: { USA: 0, EUROPE: 0 },
-        projectedScore: { USA: 0, EUROPE: 0 },
+        totalScore: {
+          raw: { USA: 0, EUROPE: 0 },
+          adjusted: { USA: 0, EUROPE: 0 }
+        },
+        projectedScore: {
+          raw: { USA: 0, EUROPE: 0 },
+          adjusted: { USA: 0, EUROPE: 0 }
+        },
         progress: []
       });
 
@@ -102,8 +121,14 @@ export default function TournamentManagement() {
         year,
         isActive: true,
         useHandicaps: true,
-        totalScore: { USA: 0, EUROPE: 0 },
-        projectedScore: { USA: 0, EUROPE: 0 },
+        totalScore: {
+          raw: { USA: 0, EUROPE: 0 },
+          adjusted: { USA: 0, EUROPE: 0 }
+        },
+        projectedScore: {
+          raw: { USA: 0, EUROPE: 0 },
+          adjusted: { USA: 0, EUROPE: 0 }
+        },
         progress: []
       };
 
@@ -127,6 +152,12 @@ export default function TournamentManagement() {
     try {
       setIsLoading(true);
 
+      // Check if user is admin
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser?.uid || ''));
+      if (!userDoc.exists() || !userDoc.data().isAdmin) {
+        throw new Error('You must be an admin to create matchups');
+      }
+
       const usaPlayer = players.find(p => p.id === selectedUsaPlayer)!;
       const europePlayer = players.find(p => p.id === selectedEuropePlayer)!;
       
@@ -136,9 +167,7 @@ export default function TournamentManagement() {
       const holes = Array.from({ length: 18 }, (_, i) => ({
         holeNumber: i + 1,
         strokeIndex: strokeIndices[i],
-        parScore: 3,
-        usaPlayerScore: undefined,
-        europePlayerScore: undefined
+        parScore: 3
       }));
 
       const gameRef = await addDoc(collection(db, 'tournaments', selectedTournament.id, 'games'), {
@@ -151,8 +180,18 @@ export default function TournamentManagement() {
         handicapStrokes: Math.round(handicapDiff),
         higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
         holes,
-        strokePlayScore: { USA: 0, EUROPE: 0 },
-        matchPlayScore: { USA: 0, EUROPE: 0 },
+        strokePlayScore: { 
+          USA: 0, 
+          EUROPE: 0,
+          adjustedUSA: 0,
+          adjustedEUROPE: 0
+        },
+        matchPlayScore: { 
+          USA: 0, 
+          EUROPE: 0,
+          adjustedUSA: 0,
+          adjustedEUROPE: 0
+        },
         isComplete: false,
         isStarted: false,
         playerIds: [selectedUsaPlayer, selectedEuropePlayer]
@@ -170,11 +209,22 @@ export default function TournamentManagement() {
         handicapStrokes: Math.round(handicapDiff),
         higherHandicapTeam: (usaPlayer.averageScore > europePlayer.averageScore ? 'USA' : 'EUROPE') as 'USA' | 'EUROPE',
         holes,
-        strokePlayScore: { USA: 0, EUROPE: 0 },
-        matchPlayScore: { USA: 0, EUROPE: 0 },
+        strokePlayScore: { 
+          USA: 0, 
+          EUROPE: 0,
+          adjustedUSA: 0,
+          adjustedEUROPE: 0
+        },
+        matchPlayScore: { 
+          USA: 0, 
+          EUROPE: 0,
+          adjustedUSA: 0,
+          adjustedEUROPE: 0
+        },
         isComplete: false,
         isStarted: false,
-        playerIds: [selectedUsaPlayer, selectedEuropePlayer]
+        playerIds: [selectedUsaPlayer, selectedEuropePlayer],
+        useHandicaps: selectedTournament.useHandicaps
       };
 
       setCurrentMatchups([...currentMatchups, newGame]);
@@ -182,7 +232,8 @@ export default function TournamentManagement() {
       setSelectedEuropePlayer('');
       showSuccessToast('Matchup created successfully!');
     } catch (err: any) {
-      showErrorToast('Failed to create matchup');
+      console.error('Failed to create matchup:', err);
+      showErrorToast(`Failed to create matchup: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -249,6 +300,9 @@ export default function TournamentManagement() {
         useHandicaps: !tournament.useHandicaps
       });
 
+      // Update tournament scores to reflect new handicap setting
+      await updateTournamentScores(tournament.id);
+
       // Update local state
       setTournaments(tournaments.map(t => ({
         ...t,
@@ -265,6 +319,35 @@ export default function TournamentManagement() {
       showSuccessToast('Tournament settings updated');
     } catch (err: any) {
       showErrorToast('Failed to update tournament settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteMatchup = async (gameId: string) => {
+    if (!selectedTournament) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Check if user is admin
+      if (!isAdmin) {
+        throw new Error('You must be an admin to delete matchups');
+      }
+
+      // Delete the game document
+      await deleteDoc(doc(db, 'tournaments', selectedTournament.id, 'games', gameId));
+
+      // Update local state
+      setCurrentMatchups(currentMatchups.filter(game => game.id !== gameId));
+
+      // Update tournament scores
+      await updateTournamentScores(selectedTournament.id);
+
+      showSuccessToast('Matchup deleted successfully!');
+    } catch (err: any) {
+      console.error('Failed to delete matchup:', err);
+      showErrorToast(`Failed to delete matchup: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -379,7 +462,12 @@ export default function TournamentManagement() {
             onCreateMatchup={handleCreateMatchup}
             isLoading={isLoading}
           />
-          <MatchupList matchups={currentMatchups} />
+          <MatchupList 
+            matchups={currentMatchups} 
+            isAdmin={isAdmin}
+            onDelete={handleDeleteMatchup}
+            useHandicaps={selectedTournament.useHandicaps}
+          />
         </div>
       )}
     </div>

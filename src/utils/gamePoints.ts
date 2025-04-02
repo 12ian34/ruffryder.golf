@@ -1,67 +1,55 @@
 import type { Game } from '../types/game';
 
-export function calculateGamePoints(game: Game): { USA: number, EUROPE: number } {
-  if (!game.isStarted) return { USA: 0, EUROPE: 0 };
+export function calculateGamePoints(game: Game): { 
+  raw: { USA: number, EUROPE: number },
+  adjusted: { USA: number, EUROPE: number }
+} {
+  if (!game.isStarted) return { 
+    raw: { USA: 0, EUROPE: 0 },
+    adjusted: { USA: 0, EUROPE: 0 }
+  };
   
   const points = {
-    USA: 0,
-    EUROPE: 0
+    raw: { USA: 0, EUROPE: 0 },
+    adjusted: { USA: 0, EUROPE: 0 }
   };
 
-  // Calculate adjusted scores for stroke play
-  const getAdjustedScore = (team: 'USA' | 'EUROPE') => {
-    if (team === game.higherHandicapTeam) {
-      return game.strokePlayScore[team];
-    }
-    return game.strokePlayScore[team] + game.handicapStrokes;
-  };
+  // Calculate stroke play points
+  if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
+    points.raw.USA += 1;
+  } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
+    points.raw.EUROPE += 1;
+  } else if (game.strokePlayScore.USA === game.strokePlayScore.EUROPE) {
+    points.raw.USA += 0.5;
+    points.raw.EUROPE += 0.5;
+  }
 
-  const usaAdjustedScore = getAdjustedScore('USA');
-  const europeAdjustedScore = getAdjustedScore('EUROPE');
+  if (game.strokePlayScore.adjustedUSA < game.strokePlayScore.adjustedEUROPE) {
+    points.adjusted.USA += 1;
+  } else if (game.strokePlayScore.adjustedUSA > game.strokePlayScore.adjustedEUROPE) {
+    points.adjusted.EUROPE += 1;
+  } else if (game.strokePlayScore.adjustedUSA === game.strokePlayScore.adjustedEUROPE) {
+    points.adjusted.USA += 0.5;
+    points.adjusted.EUROPE += 0.5;
+  }
 
-  // For completed games, use final scores
-  if (game.isComplete) {
-    // Stroke play point - using adjusted scores
-    if (usaAdjustedScore < europeAdjustedScore) {
-      points.USA += 1;
-    } else if (usaAdjustedScore > europeAdjustedScore) {
-      points.EUROPE += 1;
-    } else {
-      points.USA += 0.5;
-      points.EUROPE += 0.5;
-    }
+  // Calculate match play points
+  if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
+    points.raw.USA += 1;
+  } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
+    points.raw.EUROPE += 1;
+  } else if (game.matchPlayScore.USA === game.matchPlayScore.EUROPE) {
+    points.raw.USA += 0.5;
+    points.raw.EUROPE += 0.5;
+  }
 
-    // Match play point
-    if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
-      points.USA += 1;
-    } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
-      points.EUROPE += 1;
-    } else {
-      points.USA += 0.5;
-      points.EUROPE += 0.5;
-    }
-  } 
-  // For in-progress games, calculate current points
-  else if (game.isStarted) {
-    // Stroke play point (based on current adjusted scores)
-    if (usaAdjustedScore < europeAdjustedScore) {
-      points.USA += 1;
-    } else if (usaAdjustedScore > europeAdjustedScore) {
-      points.EUROPE += 1;
-    } else if (usaAdjustedScore > 0 || europeAdjustedScore > 0) {
-      points.USA += 0.5;
-      points.EUROPE += 0.5;
-    }
-
-    // Match play point (based on current holes won)
-    if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
-      points.USA += 1;
-    } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
-      points.EUROPE += 1;
-    } else if (game.matchPlayScore.USA > 0 || game.matchPlayScore.EUROPE > 0) {
-      points.USA += 0.5;
-      points.EUROPE += 0.5;
-    }
+  if (game.matchPlayScore.adjustedUSA > game.matchPlayScore.adjustedEUROPE) {
+    points.adjusted.USA += 1;
+  } else if (game.matchPlayScore.adjustedUSA < game.matchPlayScore.adjustedEUROPE) {
+    points.adjusted.EUROPE += 1;
+  } else if (game.matchPlayScore.adjustedUSA === game.matchPlayScore.adjustedEUROPE) {
+    points.adjusted.USA += 0.5;
+    points.adjusted.EUROPE += 0.5;
   }
 
   return points;

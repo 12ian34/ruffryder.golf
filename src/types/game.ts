@@ -6,6 +6,12 @@ export interface HoleScore {
   parScore: number;
   usaPlayerScore?: number;
   europePlayerScore?: number;
+  usaPlayerAdjustedScore?: number;
+  europePlayerAdjustedScore?: number;
+  usaPlayerMatchPlayScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (raw)
+  europePlayerMatchPlayScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (raw)
+  usaPlayerMatchPlayAdjustedScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (adjusted)
+  europePlayerMatchPlayAdjustedScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (adjusted)
 }
 
 export interface Game {
@@ -25,14 +31,19 @@ export interface Game {
   strokePlayScore: {
     USA: number;
     EUROPE: number;
+    adjustedUSA: number;
+    adjustedEUROPE: number;
   };
   matchPlayScore: {
     USA: number;
     EUROPE: number;
+    adjustedUSA: number;
+    adjustedEUROPE: number;
   };
   isComplete: boolean;
   isStarted: boolean;
   startTime?: Date;
   endTime?: Date;
   playerIds: string[];
+  useHandicaps: boolean;
 }

@@ -165,7 +165,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'players' && <PlayerStats />}
-        {activeTab === 'games' && <GameManagement userId={currentUser?.uid} />}
+        {activeTab === 'games' && <GameManagement />}
         {activeTab === 'blog' && <BlogList posts={posts} />}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
         {activeTab === 'about' && <About />}

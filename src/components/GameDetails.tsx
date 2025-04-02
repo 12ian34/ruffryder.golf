@@ -14,6 +14,7 @@ interface GameDetailsProps {
 export default function GameDetails({ gameId, tournamentId, onClose }: GameDetailsProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [useHandicaps, setUseHandicaps] = useState(false);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -27,13 +28,21 @@ export default function GameDetails({ gameId, tournamentId, onClose }: GameDetai
   }, [onClose]);
 
   useEffect(() => {
-    const fetchGame = async () => {
+    const fetchGameAndSettings = async () => {
       try {
-        const gameDoc = await getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId));
+        const [gameDoc, tournamentDoc] = await Promise.all([
+          getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId)),
+          getDoc(doc(db, 'tournaments', tournamentId))
+        ]);
+
         if (gameDoc.exists()) {
           setGame({ id: gameDoc.id, ...gameDoc.data() } as Game);
         } else {
           showErrorToast('Game not found');
+        }
+
+        if (tournamentDoc.exists()) {
+          setUseHandicaps(tournamentDoc.data().useHandicaps);
         }
       } catch (error) {
         showErrorToast('Error fetching game details');
@@ -42,7 +51,7 @@ export default function GameDetails({ gameId, tournamentId, onClose }: GameDetai
       }
     };
 
-    fetchGame();
+    fetchGameAndSettings();
   }, [gameId, tournamentId]);
 
   if (isLoading) {
@@ -86,7 +95,7 @@ export default function GameDetails({ gameId, tournamentId, onClose }: GameDetai
           </button>
         </div>
 
-        <GameScoreTable game={game} />
+        <GameScoreTable game={game} useHandicaps={useHandicaps} />
       </div>
     </div>
   );

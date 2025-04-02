@@ -8,6 +8,7 @@ const LOCAL_STORAGE_KEY = 'ruffryder_games';
 export function useGameData(userId: string | undefined, linkedPlayerId: string | null, isAdmin: boolean) {
   const [games, setGames] = useState<Game[]>([]);
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
+  const [tournamentSettings, setTournamentSettings] = useState<{ useHandicaps: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -28,16 +29,27 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
 
   // Load from local storage on mount
   useEffect(() => {
+    // Don't load from local storage until we have an active tournament
+    if (!activeTournamentId || !tournamentSettings) {
+      return;
+    }
+
     try {
       const savedGames = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedGames !== null) {
         const parsedGames = JSON.parse(savedGames as string);
-        setGames(parsedGames);
+        // Add tournamentId and useHandicaps to each game if missing
+        const gamesWithSettings = parsedGames.map((game: Game) => ({
+          ...game,
+          tournamentId: activeTournamentId, // Always use the current activeTournamentId
+          useHandicaps: tournamentSettings.useHandicaps // Always use current tournament settings
+        }));
+        setGames(gamesWithSettings);
       }
     } catch (err) {
       console.error('Error loading games from local storage:', err);
     }
-  }, []);
+  }, [activeTournamentId, tournamentSettings]);
 
   useEffect(() => {
     if (!userId) {
@@ -46,61 +58,94 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
       return;
     }
 
+    let unsubscribeGames: (() => void) | undefined;
+    let isMounted = true;
+
     const unsubscribeTournament = onSnapshot(
       collection(db, 'tournaments'),
       async (snapshot) => {
         const activeTournament = snapshot.docs.find(doc => doc.data().isActive);
         if (activeTournament) {
-          setActiveTournamentId(activeTournament.id);
+          const tournamentId = activeTournament.id;
+          const tournamentData = activeTournament.data();
+          setActiveTournamentId(tournamentId);
+          setTournamentSettings({
+            useHandicaps: tournamentData.useHandicaps ?? false
+          });
 
-          const unsubscribeGames = onSnapshot(
-            collection(db, 'tournaments', activeTournament.id, 'games'),
+          if (unsubscribeGames) {
+            unsubscribeGames();
+          }
+
+          unsubscribeGames = onSnapshot(
+            collection(db, 'tournaments', tournamentId, 'games'),
             async (gamesSnapshot) => {
-              const gamesData = gamesSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tournamentId: activeTournament.id
-              })) as Game[];
+              if (!isMounted) return;
 
-              const filteredGames = isAdmin 
-                ? gamesData 
-                : gamesData.filter(game => 
-                    linkedPlayerId !== null && game.playerIds?.includes(linkedPlayerId)
-                  );
-
-              const sortedGames = sortGames(filteredGames);
-              setGames(sortedGames);
-
-              // Save to local storage
               try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sortedGames));
-              } catch (err) {
-                console.error('Error saving games to local storage:', err);
-              }
+                const gamesData = gamesSnapshot.docs.map(doc => ({
+                  id: doc.id,
+                  ...doc.data(),
+                  tournamentId, // Always include tournamentId
+                  useHandicaps: tournamentData.useHandicaps ?? false // Include useHandicaps in each game
+                })) as Game[];
 
-              setIsLoading(false);
+                const filteredGames = isAdmin 
+                  ? gamesData 
+                  : gamesData.filter(game => 
+                      linkedPlayerId !== null && game.playerIds?.includes(linkedPlayerId)
+                    );
+
+                const sortedGames = sortGames(filteredGames);
+                setGames(sortedGames);
+                setIsLoading(false);
+                setError(null);
+
+                try {
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sortedGames));
+                } catch (err) {
+                  console.error('Error saving games to local storage:', err);
+                }
+              } catch (err) {
+                if (isMounted) {
+                  console.error('Failed to process games data:', err);
+                  setError('Failed to process games data');
+                  setIsLoading(false);
+                }
+              }
             },
             (err) => {
-              console.error('Error fetching games:', err);
-              setError('Failed to load games');
-              setIsLoading(false);
+              if (isMounted) {
+                console.error('Failed to load games:', err);
+                setError('Failed to load games');
+                setIsLoading(false);
+              }
             }
           );
-
-          return () => unsubscribeGames();
         } else {
-          setGames([]);
-          setIsLoading(false);
+          if (isMounted) {
+            setGames([]);
+            setTournamentSettings(null);
+            setIsLoading(false);
+          }
         }
       },
       (err) => {
-        console.error('Error fetching tournament:', err);
-        setError('Failed to load tournament');
-        setIsLoading(false);
+        if (isMounted) {
+          console.error('Failed to load tournament:', err);
+          setError('Failed to load tournament');
+          setIsLoading(false);
+        }
       }
     );
 
-    return () => unsubscribeTournament();
+    return () => {
+      isMounted = false;
+      unsubscribeTournament();
+      if (unsubscribeGames) {
+        unsubscribeGames();
+      }
+    };
   }, [userId, linkedPlayerId, isAdmin]);
 
   const sortGames = (games: Game[]): Game[] => {
@@ -170,6 +215,7 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
     error,
     handleGameStatusChange,
     activeTournamentId,
-    isOnline
+    isOnline,
+    tournamentSettings
   };
 }

@@ -14,6 +14,7 @@ interface GameCardProps {
   onEnterScores?: () => void;
   showControls?: boolean;
   compact?: boolean;
+  useHandicaps?: boolean;
 }
 
 export default function GameCard({ 
@@ -22,7 +23,8 @@ export default function GameCard({
   onStatusChange, 
   onEnterScores,
   showControls = false,
-  compact = false
+  compact = false,
+  useHandicaps = false
 }: GameCardProps) {
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [game, setGame] = useState(initialGame);
@@ -66,7 +68,7 @@ export default function GameCard({
         <div className="space-y-4">
           <PlayerPair game={game} currentUserId={currentUserId} compact={compact} />
           
-          <GameScoreDisplay game={game} compact={compact} />
+          <GameScoreDisplay game={game} compact={compact} useHandicaps={useHandicaps} />
 
           {showControls && (
             <div className="space-y-2">
@@ -138,6 +140,7 @@ export default function GameCard({
         game={game}
         isOpen={showScoreModal}
         onClose={() => setShowScoreModal(false)}
+        useHandicaps={useHandicaps}
       />
     </>
   );

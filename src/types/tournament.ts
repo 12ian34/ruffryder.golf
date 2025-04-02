@@ -1,8 +1,14 @@
 export interface TournamentProgress {
   timestamp: any; // Firestore Timestamp
   score: {
-    USA: number;
-    EUROPE: number;
+    raw: {
+      USA: number;
+      EUROPE: number;
+    };
+    adjusted: {
+      USA: number;
+      EUROPE: number;
+    };
   };
   completedGames: number;
 }
@@ -14,12 +20,24 @@ export interface Tournament {
   isActive: boolean;
   useHandicaps: boolean;
   totalScore: {
-    USA: number;
-    EUROPE: number;
+    raw: {
+      USA: number;
+      EUROPE: number;
+    };
+    adjusted: {
+      USA: number;
+      EUROPE: number;
+    };
   };
   projectedScore: {
-    USA: number;
-    EUROPE: number;
+    raw: {
+      USA: number;
+      EUROPE: number;
+    };
+    adjusted: {
+      USA: number;
+      EUROPE: number;
+    };
   };
   progress: TournamentProgress[];
 }

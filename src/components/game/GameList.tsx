@@ -7,13 +7,21 @@ import GameCompletionModal from '../GameCompletionModal';
 interface GameListProps {
   games: Game[];
   isAdmin: boolean;
-  onGameStatusChange: (game: Game, status: 'not_started' | 'in_progress' | 'complete') => Promise<void>;
+  onGameStatusChange: (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => Promise<void>;
   isOnline: boolean;
+  useHandicaps: boolean;
 }
 
-export default function GameList({ games, isAdmin, onGameStatusChange, isOnline }: GameListProps) {
+export default function GameList({ 
+  games,
+  isAdmin, 
+  onGameStatusChange, 
+  isOnline,
+  useHandicaps
+}: GameListProps) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
+  const [modalKey, setModalKey] = useState(0);
 
   const handleGameStatusChange = async (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => {
     if (newStatus === 'complete') {
@@ -28,12 +36,13 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
       <div className="space-y-4">
         {games.map((game) => (
           <GameCard
-            key={game.id}
+            key={`${game.id}-${modalKey}`}
             game={game}
             isAdmin={isAdmin}
             onStatusChange={handleGameStatusChange}
             onEnterScores={() => setSelectedGame(game)}
             showControls={true}
+            useHandicaps={useHandicaps}
           />
         ))}
 
@@ -46,9 +55,17 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
 
       {selectedGame && (
         <ScoreEntry
+          key={selectedGame.id}
           gameId={selectedGame.id}
           tournamentId={selectedGame.tournamentId}
-          onClose={() => setSelectedGame(null)}
+          onClose={() => {
+            setSelectedGame(null);
+            setModalKey(prev => prev + 1);
+          }}
+          onSave={() => {
+            setSelectedGame(null);
+            setModalKey(prev => prev + 1);
+          }}
         />
       )}
 

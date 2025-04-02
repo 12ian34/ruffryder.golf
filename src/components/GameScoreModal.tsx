@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import GameScoreTable from './shared/GameScoreTable';
 
@@ -6,9 +8,12 @@ interface GameScoreModalProps {
   game: Game;
   isOpen: boolean;
   onClose: () => void;
+  useHandicaps: boolean;
 }
 
-export default function GameScoreModal({ game, isOpen, onClose }: GameScoreModalProps) {
+export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: GameScoreModalProps) {
+  const [tournamentUseHandicaps, setTournamentUseHandicaps] = useState(false);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -19,6 +24,27 @@ export default function GameScoreModal({ game, isOpen, onClose }: GameScoreModal
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onClose]);
+
+  useEffect(() => {
+    const fetchTournamentSettings = async () => {
+      if (!game?.tournamentId) {
+        return;
+      }
+
+      try {
+        const tournamentRef = doc(db, 'tournaments', game.tournamentId);
+        const tournamentDoc = await getDoc(tournamentRef);
+        if (tournamentDoc.exists()) {
+          setTournamentUseHandicaps(tournamentDoc.data().useHandicaps);
+          console.log("tournament handicaps:", tournamentUseHandicaps);
+        }
+      } catch (error) {
+        console.error('Error fetching tournament settings:', error);
+      }
+    };
+
+    fetchTournamentSettings();
+  }, [game?.tournamentId]);
 
   if (!isOpen) return null;
 
@@ -37,7 +63,7 @@ export default function GameScoreModal({ game, isOpen, onClose }: GameScoreModal
           </button>
         </div>
 
-        <GameScoreTable game={game} />
+        <GameScoreTable game={game} useHandicaps={useHandicaps} />
       </div>
     </div>
   );
