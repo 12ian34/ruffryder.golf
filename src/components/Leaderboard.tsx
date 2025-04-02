@@ -203,7 +203,6 @@ export default function Leaderboard() {
               game={game}
               showControls={false}
               compact={true}
-              isOnline={isOnline}
             />
           ))}
 

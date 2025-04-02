@@ -3,10 +3,9 @@ import GameCard from '../GameCard';
 
 interface MatchupListProps {
   matchups: Game[];
-  isOnline: boolean;
 }
 
-export default function MatchupList({ matchups, isOnline }: MatchupListProps) {
+export default function MatchupList({ matchups }: MatchupListProps) {
   return (
     <div>
       <h3 className="text-lg font-medium mb-4 dark:text-white">Current Matchups</h3>
@@ -17,7 +16,6 @@ export default function MatchupList({ matchups, isOnline }: MatchupListProps) {
             game={game}
             compact={true}
             showControls={false}
-            isOnline={isOnline}
           />
         ))}
         {matchups.length === 0 && (

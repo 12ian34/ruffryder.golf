@@ -34,7 +34,6 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
             onStatusChange={handleGameStatusChange}
             onEnterScores={() => setSelectedGame(game)}
             showControls={true}
-            isOnline={isOnline}
           />
         ))}
 
@@ -50,7 +49,6 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline 
           gameId={selectedGame.id}
           tournamentId={selectedGame.tournamentId}
           onClose={() => setSelectedGame(null)}
-          isOnline={isOnline}
         />
       )}
 

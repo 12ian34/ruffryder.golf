@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "start": "vite",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "prebuild": "npm run type-check"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

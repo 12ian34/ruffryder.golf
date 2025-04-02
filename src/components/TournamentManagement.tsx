@@ -368,7 +368,7 @@ export default function TournamentManagement() {
       </div>
 
       {selectedTournament && (
-        <>
+        <div className="space-y-6">
           <MatchupCreator
             availableUsaPlayers={availableUsaPlayers}
             availableEuropePlayers={availableEuropePlayers}
@@ -379,12 +379,8 @@ export default function TournamentManagement() {
             onCreateMatchup={handleCreateMatchup}
             isLoading={isLoading}
           />
-
-          <MatchupList
-            matchups={currentMatchups}
-            isOnline={navigator.onLine}
-          />
-        </>
+          <MatchupList matchups={currentMatchups} />
+        </div>
       )}
     </div>
   );

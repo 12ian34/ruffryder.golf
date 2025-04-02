@@ -7,10 +7,9 @@ interface ScoreEntryProps {
   gameId: string;
   tournamentId: string;
   onClose: () => void;
-  isOnline: boolean;
 }
 
-export default function ScoreEntry({ gameId, tournamentId, onClose, isOnline }: ScoreEntryProps) {
+export default function ScoreEntry({ gameId, tournamentId, onClose }: ScoreEntryProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [scores, setScores] = useState<Array<{ USA: number | '', EUROPE: number | '' }>>([]);
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
