@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -11,8 +12,14 @@ import BlogPost from './pages/BlogPost';
 import NewBlogPost from './pages/NewBlogPost';
 import EditBlogPost from './pages/EditBlogPost';
 import About from './pages/About';
+import { clearLocalStorage } from './utils/storage';
 
 export default function App() {
+  useEffect(() => {
+    // Clear localStorage on app initialization to prevent conflicts
+    clearLocalStorage();
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>
