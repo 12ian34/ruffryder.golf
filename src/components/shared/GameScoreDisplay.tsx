@@ -52,10 +52,10 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
   };
 
   return (
-    <div className={`space-y-${compact ? '2' : '3'}`}>
+    <div className={`space-y-${compact ? '2' : '3'}`} data-testid="game-score-display">
       {/* Game Status - Moved to top for more prominence */}
       <div className="text-center">
-        <div className={`inline-flex items-center px-3 py-1.5 rounded-full ${status.bgColor} ${status.textColor} font-medium text-sm`}>
+        <div className={`inline-flex items-center px-3 py-1.5 rounded-full ${status.bgColor} ${status.textColor} font-medium text-sm`} data-testid="game-status">
           <span className="mr-1">{status.icon}</span>
           {status.label}
         </div>
@@ -66,25 +66,25 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
         <>
           {/* Stroke Play Score */}
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1" data-testid="stroke-play-label">
               Stroke Play
             </div>
             <div className="flex justify-center items-center space-x-2">
               <div className="flex flex-col items-center">
-                <span className={`font-medium text-lg ${getStrokePlayColor(true)}`}>
+                <span className={`font-medium text-lg ${getStrokePlayColor(true)}`} data-testid="stroke-play-usa">
                   {useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA}
                 </span>
                 {useHandicaps && game.higherHandicapTeam === 'USA' && (
-                  <span className="text-xs text-gray-400">({game.strokePlayScore.USA})</span>
+                  <span className="text-xs text-gray-400" data-testid="stroke-play-usa-original">({game.strokePlayScore.USA})</span>
                 )}
               </div>
               <span className="text-gray-400">-</span>
               <div className="flex flex-col items-center">
-                <span className={`font-medium text-lg ${getStrokePlayColor(false)}`}>
+                <span className={`font-medium text-lg ${getStrokePlayColor(false)}`} data-testid="stroke-play-europe">
                   {useHandicaps ? game.strokePlayScore.adjustedEUROPE : game.strokePlayScore.EUROPE}
                 </span>
                 {useHandicaps && game.higherHandicapTeam === 'EUROPE' && (
-                  <span className="text-xs text-gray-400">({game.strokePlayScore.EUROPE})</span>
+                  <span className="text-xs text-gray-400" data-testid="stroke-play-europe-original">({game.strokePlayScore.EUROPE})</span>
                 )}
               </div>
             </div>
@@ -92,25 +92,25 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
 
           {/* Match Play Score */}
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1" data-testid="match-play-label">
               Match Play
             </div>
             <div className="flex justify-center items-center space-x-2">
               <div className="flex flex-col items-center">
-                <span className={`font-medium text-lg ${getMatchPlayColor(true)}`}>
+                <span className={`font-medium text-lg ${getMatchPlayColor(true)}`} data-testid="match-play-usa">
                   {useHandicaps ? game.matchPlayScore.adjustedUSA : game.matchPlayScore.USA}
                 </span>
                 {useHandicaps && game.higherHandicapTeam !== 'USA' && (
-                  <span className="text-xs text-gray-400">({game.matchPlayScore.USA})</span>
+                  <span className="text-xs text-gray-400" data-testid="match-play-usa-original">({game.matchPlayScore.USA})</span>
                 )}
               </div>
               <span className="text-gray-400">-</span>
               <div className="flex flex-col items-center">
-                <span className={`font-medium text-lg ${getMatchPlayColor(false)}`}>
+                <span className={`font-medium text-lg ${getMatchPlayColor(false)}`} data-testid="match-play-europe">
                   {useHandicaps ? game.matchPlayScore.adjustedEUROPE : game.matchPlayScore.EUROPE}
                 </span>
                 {useHandicaps && game.higherHandicapTeam !== 'EUROPE' && (
-                  <span className="text-xs text-gray-400">({game.matchPlayScore.EUROPE})</span>
+                  <span className="text-xs text-gray-400" data-testid="match-play-europe-original">({game.matchPlayScore.EUROPE})</span>
                 )}
               </div>
             </div>
