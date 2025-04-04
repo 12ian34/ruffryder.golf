@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
 import PlayerStats from '../components/PlayerStats';
-import GameManagement from '../components/GameManagement';
+import { GameManagement } from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
 import BlogList from '../components/blog/BlogList';
 import ThemeSwitcher from '../components/ThemeSwitcher';
@@ -165,7 +165,13 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'leaderboard' && <Leaderboard />}
         {activeTab === 'players' && <PlayerStats />}
-        {activeTab === 'games' && <GameManagement />}
+        {activeTab === 'games' && (
+          <GameManagement
+            currentUser={currentUser}
+            isAdmin={userData.isAdmin}
+            linkedPlayerId={userData.linkedPlayerId}
+          />
+        )}
         {activeTab === 'blog' && <BlogList posts={posts} />}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
         {activeTab === 'about' && <About />}

@@ -22,11 +22,12 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 
 interface AuthContextType {
   currentUser: User | null;
+  loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  completePasswordReset: (oobCode: string, newPassword: string) => Promise<void>;
+  completePasswordReset: (code: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -150,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     currentUser,
+    loading,
     signUp: signUpUser,
     signIn: signInUser,
     signOut: signOutUser,

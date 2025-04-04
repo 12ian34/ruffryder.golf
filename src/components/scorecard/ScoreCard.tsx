@@ -8,6 +8,14 @@ interface ScoreCardProps {
 }
 
 export default function ScoreCard({ currentScore, projectedScore, totalStrokes, rawStrokes, totalHoles, useHandicaps }: ScoreCardProps) {
+  // Log useHandicaps value and scores
+  console.log('ScoreCard - useHandicaps:', { 
+    useHandicaps,
+    currentScore,
+    totalStrokes,
+    rawStrokes
+  });
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold mb-4 dark:text-white">Current Score</h2>

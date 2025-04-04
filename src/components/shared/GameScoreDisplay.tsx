@@ -7,6 +7,9 @@ interface GameScoreDisplayProps {
 }
 
 export default function GameScoreDisplay({ game, compact = false, useHandicaps }: GameScoreDisplayProps) {
+  // Log useHandicaps value
+  console.log('GameScoreDisplay - useHandicaps:', { gameId: game.id, useHandicaps });
+
   const isComplete = game.isComplete;
   const isInProgress = !isComplete && game.isStarted;
 
@@ -73,7 +76,7 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
                 <span className={`font-medium text-lg ${getStrokePlayColor(true)}`}>
                   {useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA}
                 </span>
-                {useHandicaps && game.higherHandicapTeam !== 'USA' && (
+                {useHandicaps && game.higherHandicapTeam === 'USA' && (
                   <span className="text-xs text-gray-400">({game.strokePlayScore.USA})</span>
                 )}
               </div>
@@ -82,7 +85,7 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
                 <span className={`font-medium text-lg ${getStrokePlayColor(false)}`}>
                   {useHandicaps ? game.strokePlayScore.adjustedEUROPE : game.strokePlayScore.EUROPE}
                 </span>
-                {useHandicaps && game.higherHandicapTeam !== 'EUROPE' && (
+                {useHandicaps && game.higherHandicapTeam === 'EUROPE' && (
                   <span className="text-xs text-gray-400">({game.strokePlayScore.EUROPE})</span>
                 )}
               </div>

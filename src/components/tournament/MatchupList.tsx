@@ -1,43 +1,111 @@
+import type { Matchup } from '../../types/tournament';
 import type { Game } from '../../types/game';
-import GameCard from '../GameCard';
 
 interface MatchupListProps {
-  matchups: Game[];
-  isAdmin: boolean;
-  onDelete: (gameId: string) => void;
-  useHandicaps: boolean;
+  matchups?: Matchup[];
+  currentMatchups?: Game[];
+  teamConfig: 'USA_VS_EUROPE' | 'EUROPE_VS_EUROPE' | 'USA_VS_USA';
+  onDeleteMatchup?: (matchup: Matchup) => void;
+  isAdmin?: boolean;
+  useHandicaps?: boolean;
 }
 
-export default function MatchupList({ matchups, isAdmin, onDelete, useHandicaps }: MatchupListProps) {
+export default function MatchupList({ 
+  matchups = [], 
+  currentMatchups = [], 
+  teamConfig, 
+  onDeleteMatchup, 
+  isAdmin = false,
+  useHandicaps = false
+}: MatchupListProps) {
+  const getTeamLabel = (playerId: string) => {
+    switch (teamConfig) {
+      case 'USA_VS_EUROPE':
+        return playerId === matchups[0]?.usaPlayerId ? 'USA' : 'EUROPE';
+      case 'EUROPE_VS_EUROPE':
+        return 'EUROPE';
+      case 'USA_VS_USA':
+        return 'USA';
+      default:
+        return '';
+    }
+  };
+
+  const getGameStatus = (matchup: Matchup) => {
+    const game = currentMatchups.find(g => g.id === matchup.id);
+    if (!game) return '⏰ not started';
+    
+    // First check the status field directly
+    switch (game.status) {
+      case 'complete':
+        return '✅ completed';
+      case 'in_progress':
+        return '⛳️ in progress';
+      case 'not_started':
+        return '⏰ not started';
+      default:
+        // Fallback to legacy flags if status is not set
+        if (game.isComplete) return '✅ completed';
+        if (game.isStarted) return '⛳️ in progress';
+        return '⏰ not started';
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium dark:text-white">Current Matchups</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 className="text-lg font-medium mb-4 dark:text-white">Current Matchups</h3>
       <div className="space-y-4">
-        {matchups.map((game) => (
-          <div key={game.id} className="relative">
-            <GameCard
-              game={game}
-              isAdmin={isAdmin}
-              showControls={false}
-              useHandicaps={useHandicaps}
-            />
-            {isAdmin && (
-              <button
-                onClick={() => onDelete(game.id)}
-                className="absolute top-2 right-2 p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-500"
-                title="Delete Matchup"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-        ))}
-        {matchups.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        {matchups.length === 0 ? (
+          <div className="text-gray-500 dark:text-gray-400 text-center py-4">
             No matchups created yet
           </div>
+        ) : (
+          matchups.map((matchup) => (
+            <div
+              key={matchup.id}
+              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+            >
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {getTeamLabel(matchup.usaPlayerId)}:
+                  </span>
+                  <span className="text-gray-900 dark:text-white">
+                    {matchup.usaPlayerName}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {getTeamLabel(matchup.europePlayerId)}:
+                  </span>
+                  <span className="text-gray-900 dark:text-white">
+                    {matchup.europePlayerName}
+                  </span>
+                </div>
+                {useHandicaps && matchup.handicapStrokes !== undefined && matchup.handicapStrokes > 0 && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {matchup.handicapStrokes > 0 
+                      ? `${matchup.usaPlayerName} gets ${matchup.handicapStrokes} stroke${matchup.handicapStrokes > 1 ? 's' : ''} added`
+                      : `${matchup.europePlayerName} gets ${Math.abs(matchup.handicapStrokes)} stroke${Math.abs(matchup.handicapStrokes) > 1 ? 's' : ''} added`
+                    }
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {getGameStatus(matchup)}
+                </span>
+                {isAdmin && onDeleteMatchup && (
+                  <button
+                    onClick={() => onDeleteMatchup(matchup)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

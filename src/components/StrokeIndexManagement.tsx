@@ -12,6 +12,7 @@ export default function StrokeIndexManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     const fetchStrokeIndices = async () => {
@@ -24,7 +25,7 @@ export default function StrokeIndexManagement() {
           setIndices(data.indices);
         }
       } catch (err: any) {
-        setError(err.message);
+        showErrorToast('Failed to load stroke indices');
       } finally {
         setIsLoading(false);
       }
@@ -34,6 +35,7 @@ export default function StrokeIndexManagement() {
   }, []);
 
   const handleIndexChange = (holeNumber: number, value: string) => {
+    if (!isEditMode) return;
     const newValue = parseInt(value) || 0;
     setIndices(prev => {
       const newIndices = [...prev];
@@ -49,6 +51,8 @@ export default function StrokeIndexManagement() {
   };
 
   const handleSave = async () => {
+    if (!isEditMode) return;
+    
     if (!validateIndices()) {
       setError('Each number from 1 to 18 must be used exactly once');
       return;
@@ -66,11 +70,32 @@ export default function StrokeIndexManagement() {
       setSuccessMessage('Stroke indices updated successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
       showSuccessToast('Stroke indices updated');
+      setIsEditMode(false);
     } catch (err: any) {
       setError(err.message);
       showErrorToast('Failed to update stroke indices');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleEditMode = () => {
+    if (isEditMode) {
+      // If we're exiting edit mode, confirm if there are unsaved changes
+      const docRef = doc(db, 'config', 'strokeIndices');
+      getDoc(docRef).then(docSnap => {
+        if (docSnap.exists()) {
+          const currentIndices = docSnap.data().indices;
+          const hasChanges = !currentIndices.every((value: number, index: number) => value === indices[index]);
+          if (hasChanges) {
+            const confirm = window.confirm('You have unsaved changes. Are you sure you want to exit edit mode?');
+            if (!confirm) return;
+          }
+        }
+        setIsEditMode(false);
+      });
+    } else {
+      setIsEditMode(true);
     }
   };
 
@@ -86,13 +111,27 @@ export default function StrokeIndexManagement() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold dark:text-white">Stroke Index Configuration</h2>
-        <button
-          onClick={handleSave}
-          disabled={isLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Saving...' : 'Save Changes'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleToggleEditMode}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+              isEditMode 
+                ? 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            {isEditMode ? 'Cancel Editing' : 'Edit Values'}
+          </button>
+          {isEditMode && (
+            <button
+              onClick={handleSave}
+              disabled={isLoading}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -123,7 +162,12 @@ export default function StrokeIndexManagement() {
                   max="18"
                   value={indices[hole - 1] || ''}
                   onChange={(e) => handleIndexChange(hole, e.target.value)}
-                  className="w-20 px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`w-20 px-3 py-2 rounded-lg border dark:border-gray-600 dark:text-white transition-colors duration-150 ${
+                    isEditMode
+                      ? 'bg-white dark:bg-gray-700 cursor-text'
+                      : 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed'
+                  }`}
+                  disabled={!isEditMode}
                 />
               </div>
             ))}
@@ -145,7 +189,12 @@ export default function StrokeIndexManagement() {
                   max="18"
                   value={indices[hole - 1] || ''}
                   onChange={(e) => handleIndexChange(hole, e.target.value)}
-                  className="w-20 px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`w-20 px-3 py-2 rounded-lg border dark:border-gray-600 dark:text-white transition-colors duration-150 ${
+                    isEditMode
+                      ? 'bg-white dark:bg-gray-700 cursor-text'
+                      : 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed'
+                  }`}
+                  disabled={!isEditMode}
                 />
               </div>
             ))}

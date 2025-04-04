@@ -14,40 +14,50 @@ export function calculateGamePoints(game: Game): {
     adjusted: { USA: 0, EUROPE: 0 }
   };
 
+  // Safely get score values with fallbacks to 0
+  const strokePlayUSA = game.strokePlayScore?.USA ?? 0;
+  const strokePlayEUROPE = game.strokePlayScore?.EUROPE ?? 0;
+  const strokePlayAdjustedUSA = game.strokePlayScore?.adjustedUSA ?? 0;
+  const strokePlayAdjustedEUROPE = game.strokePlayScore?.adjustedEUROPE ?? 0;
+  const matchPlayUSA = game.matchPlayScore?.USA ?? 0;
+  const matchPlayEUROPE = game.matchPlayScore?.EUROPE ?? 0;
+  const matchPlayAdjustedUSA = game.matchPlayScore?.adjustedUSA ?? 0;
+  const matchPlayAdjustedEUROPE = game.matchPlayScore?.adjustedEUROPE ?? 0;
+
   // Calculate stroke play points
-  if (game.strokePlayScore.USA < game.strokePlayScore.EUROPE) {
+  if (strokePlayUSA < strokePlayEUROPE) {
     points.raw.USA += 1;
-  } else if (game.strokePlayScore.USA > game.strokePlayScore.EUROPE) {
+  } else if (strokePlayUSA > strokePlayEUROPE) {
     points.raw.EUROPE += 1;
-  } else if (game.strokePlayScore.USA === game.strokePlayScore.EUROPE) {
+  } else if (strokePlayUSA === strokePlayEUROPE) {
     points.raw.USA += 0.5;
     points.raw.EUROPE += 0.5;
   }
 
-  if (game.strokePlayScore.adjustedUSA < game.strokePlayScore.adjustedEUROPE) {
+  if (strokePlayAdjustedUSA < strokePlayAdjustedEUROPE) {
     points.adjusted.USA += 1;
-  } else if (game.strokePlayScore.adjustedUSA > game.strokePlayScore.adjustedEUROPE) {
+  } else if (strokePlayAdjustedUSA > strokePlayAdjustedEUROPE) {
     points.adjusted.EUROPE += 1;
-  } else if (game.strokePlayScore.adjustedUSA === game.strokePlayScore.adjustedEUROPE) {
+  } else if (strokePlayAdjustedUSA === strokePlayAdjustedEUROPE) {
     points.adjusted.USA += 0.5;
     points.adjusted.EUROPE += 0.5;
   }
 
   // Calculate match play points
-  if (game.matchPlayScore.USA > game.matchPlayScore.EUROPE) {
+  if (matchPlayUSA > matchPlayEUROPE) {
     points.raw.USA += 1;
-  } else if (game.matchPlayScore.USA < game.matchPlayScore.EUROPE) {
+  } else if (matchPlayUSA < matchPlayEUROPE) {
     points.raw.EUROPE += 1;
-  } else if (game.matchPlayScore.USA === game.matchPlayScore.EUROPE) {
+  } else if (matchPlayUSA === matchPlayEUROPE) {
     points.raw.USA += 0.5;
     points.raw.EUROPE += 0.5;
   }
 
-  if (game.matchPlayScore.adjustedUSA > game.matchPlayScore.adjustedEUROPE) {
+  if (matchPlayAdjustedUSA > matchPlayAdjustedEUROPE) {
     points.adjusted.USA += 1;
-  } else if (game.matchPlayScore.adjustedUSA < game.matchPlayScore.adjustedEUROPE) {
+  } else if (matchPlayAdjustedUSA < matchPlayAdjustedEUROPE) {
     points.adjusted.EUROPE += 1;
-  } else if (game.matchPlayScore.adjustedUSA === game.matchPlayScore.adjustedEUROPE) {
+  } else if (matchPlayAdjustedUSA === matchPlayAdjustedEUROPE) {
     points.adjusted.USA += 0.5;
     points.adjusted.EUROPE += 0.5;
   }

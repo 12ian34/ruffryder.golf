@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
@@ -15,6 +15,7 @@ interface GameCardProps {
   showControls?: boolean;
   compact?: boolean;
   useHandicaps?: boolean;
+  tournamentSettings?: any;
 }
 
 export default function GameCard({ 
@@ -24,10 +25,12 @@ export default function GameCard({
   onEnterScores,
   showControls = false,
   compact = false,
-  useHandicaps = false
+  useHandicaps = false,
+  tournamentSettings
 }: GameCardProps) {
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [game, setGame] = useState(initialGame);
+  const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
 
   // Get current user ID from auth context
   const currentUserId = isAdmin ? localStorage.getItem('userId') : null;
@@ -36,25 +39,41 @@ export default function GameCard({
     game.europePlayerId === currentUserId
   );
 
-  const handleShowScoreModal = async () => {
-    try {
-      // Fetch player handicaps
-      const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
-        getDoc(doc(db, 'players', game.usaPlayerId)),
-        getDoc(doc(db, 'players', game.europePlayerId))
-      ]);
+  // Update game state when initialGame prop changes
+  useEffect(() => {
+    setGame(initialGame);
+  }, [initialGame]);
 
-      setGame({
-        ...game,
-        usaPlayerHandicap: usaPlayerDoc.exists() ? usaPlayerDoc.data().averageScore : 0,
-        europePlayerHandicap: europePlayerDoc.exists() ? europePlayerDoc.data().averageScore : 0
-      });
-      setShowScoreModal(true);
-    } catch (error) {
-      console.error('Error fetching player handicaps:', error);
-      // Still show the modal even if handicap fetch fails
-      setShowScoreModal(true);
+  // Fetch handicap data when game or tournament settings change
+  useEffect(() => {
+    const fetchHandicapData = async () => {
+      if (!game.usaPlayerId || !game.europePlayerId) return;
+
+      try {
+        const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
+          getDoc(doc(db, 'players', game.usaPlayerId)),
+          getDoc(doc(db, 'players', game.europePlayerId))
+        ]);
+
+        setGame(prevGame => ({
+          ...prevGame,
+          usaPlayerHandicap: usaPlayerDoc.exists() ? usaPlayerDoc.data().averageScore : 0,
+          europePlayerHandicap: europePlayerDoc.exists() ? europePlayerDoc.data().averageScore : 0,
+          handicapStrokes: tournamentSettings?.handicapStrokes ?? 0,
+          higherHandicapTeam: tournamentSettings?.higherHandicapTeam ?? 'USA'
+        }));
+      } catch (error) {
+        console.error('Error fetching player handicaps:', error);
+      }
+    };
+
+    if (effectiveUseHandicaps) {
+      fetchHandicapData();
     }
+  }, [game.usaPlayerId, game.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
+
+  const handleShowScoreModal = () => {
+    setShowScoreModal(true);
   };
 
   return (
@@ -68,11 +87,23 @@ export default function GameCard({
         <div className="space-y-4">
           <PlayerPair game={game} currentUserId={currentUserId} compact={compact} />
           
-          <GameScoreDisplay game={game} compact={compact} useHandicaps={useHandicaps} />
+          <GameScoreDisplay game={game} compact={compact} useHandicaps={effectiveUseHandicaps} />
 
           {showControls && (
             <div className="space-y-2">
-              {onEnterScores && (
+              {!game.isStarted && onStatusChange && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusChange(game, 'in_progress');
+                  }}
+                  className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                >
+                  Start Game
+                </button>
+              )}
+              
+              {game.isStarted && !game.isComplete && onEnterScores && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -83,7 +114,8 @@ export default function GameCard({
                   Enter Scores
                 </button>
               )}
-              {onStatusChange && (
+
+              {onStatusChange && game.isStarted && (
                 <div className="space-y-2">
                   {game.isComplete ? (
                     <button
@@ -95,7 +127,7 @@ export default function GameCard({
                     >
                       Mark as In Progress
                     </button>
-                  ) : game.isStarted ? (
+                  ) : (
                     <>
                       <button
                         onClick={(e) => {
@@ -116,23 +148,13 @@ export default function GameCard({
                         Mark as Complete
                       </button>
                     </>
-                  ) : game.strokePlayScore.USA > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onStatusChange(game, 'in_progress');
-                      }}
-                      className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
-                    >
-                      Mark as In Progress
-                    </button>
                   )}
                 </div>
               )}
             </div>
           )}
 
-          <HandicapDisplay game={game} compact={compact} />
+          <HandicapDisplay game={game} compact={compact} useHandicaps={effectiveUseHandicaps} />
         </div>
       </div>
 
@@ -140,7 +162,7 @@ export default function GameCard({
         game={game}
         isOpen={showScoreModal}
         onClose={() => setShowScoreModal(false)}
-        useHandicaps={useHandicaps}
+        useHandicaps={effectiveUseHandicaps}
       />
     </>
   );

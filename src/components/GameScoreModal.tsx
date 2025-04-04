@@ -17,13 +17,20 @@ export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape, { capture: true });
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape, { capture: true });
+    };
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     const fetchTournamentSettings = async () => {
@@ -49,7 +56,14 @@ export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold dark:text-white">Game Score</h2>

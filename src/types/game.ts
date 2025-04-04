@@ -1,17 +1,17 @@
-export type GameStatus = 'all' | 'complete' | 'in_progress' | 'not_started';
+export type GameStatus = 'not_started' | 'in_progress' | 'complete' | 'all';
 
 export interface HoleScore {
   holeNumber: number;
   strokeIndex: number;
   parScore: number;
-  usaPlayerScore?: number;
-  europePlayerScore?: number;
-  usaPlayerAdjustedScore?: number;
-  europePlayerAdjustedScore?: number;
-  usaPlayerMatchPlayScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (raw)
-  europePlayerMatchPlayScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (raw)
-  usaPlayerMatchPlayAdjustedScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (adjusted)
-  europePlayerMatchPlayAdjustedScore?: number;  // 1 for win, 0.5 for halve, 0 for loss (adjusted)
+  usaPlayerScore: number | null;
+  europePlayerScore: number | null;
+  usaPlayerAdjustedScore: number | null;
+  europePlayerAdjustedScore: number | null;
+  usaPlayerMatchPlayScore: number;
+  europePlayerMatchPlayScore: number;
+  usaPlayerMatchPlayAdjustedScore: number;
+  europePlayerMatchPlayAdjustedScore: number;
 }
 
 export interface Game {
@@ -40,10 +40,29 @@ export interface Game {
     adjustedUSA: number;
     adjustedEUROPE: number;
   };
+  points: {
+    raw: {
+      USA: number;
+      EUROPE: number;
+    };
+    adjusted: {
+      USA: number;
+      EUROPE: number;
+    };
+  };
   isComplete: boolean;
   isStarted: boolean;
   startTime?: Date;
   endTime?: Date;
   playerIds: string[];
+  useHandicaps?: boolean;
+  status: GameStatus;
+  updatedAt?: any;
+}
+
+export interface TournamentSettings {
+  id: string;
   useHandicaps: boolean;
+  handicapStrokes: number;
+  higherHandicapTeam: 'USA' | 'EUROPE';
 }

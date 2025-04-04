@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Game, GameStatus } from '../types/game';
+import { Game, GameStatus, TournamentSettings } from '../types/game';
 import GameCard from './GameCard';
 import ScoreEntry from './ScoreEntry';
 import GameCompletionModal from './GameCompletionModal';
@@ -11,13 +11,28 @@ interface GameListProps {
   onGameStatusChange: (game: Game, newStatus: GameStatus) => Promise<void>;
   isOnline: boolean;
   useHandicaps: boolean;
+  tournamentSettings?: TournamentSettings | null;
+  showStatusFilter?: boolean;
+  showControls?: boolean;
 }
 
-export default function GameList({ games, isAdmin, onGameStatusChange, isOnline, useHandicaps }: GameListProps) {
+export function GameList({ 
+  games, 
+  isAdmin, 
+  onGameStatusChange, 
+  isOnline, 
+  useHandicaps, 
+  tournamentSettings = null,
+  showStatusFilter = true,
+  showControls = true
+}: GameListProps) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
   const [modalKey, setModalKey] = useState(0);
-  const [activeStatus, setActiveStatus] = useState<GameStatus>('in_progress');
+  const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
+
+  // Always use tournament settings' useHandicaps value if available
+  const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
 
   const filteredGames = games.filter(game => {
     if (activeStatus === 'all') return true;
@@ -31,46 +46,35 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline,
       setGameToComplete(game);
     } else {
       await onGameStatusChange(game, newStatus);
+      setModalKey(prev => prev + 1);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-semibold dark:text-white">Your Games</h2>
-          {!isOnline && (
-            <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
-              Offline Mode
-            </div>
-          )}
-        </div>
-        <StatusFilter
-          activeStatus={activeStatus}
-          onStatusChange={setActiveStatus}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:gap-6">
-        {filteredGames.map((game) => (
+    <div className="space-y-4">
+      {showStatusFilter && (
+        <StatusFilter activeStatus={activeStatus} onStatusChange={setActiveStatus} />
+      )}
+      <div className="grid gap-4">
+        {filteredGames.map(game => (
           <GameCard
             key={`${game.id}-${modalKey}`}
             game={game}
             isAdmin={isAdmin}
             onStatusChange={handleGameStatusChange}
             onEnterScores={() => setSelectedGame(game)}
-            showControls={true}
-            useHandicaps={useHandicaps}
+            showControls={showControls}
+            useHandicaps={effectiveUseHandicaps}
+            tournamentSettings={tournamentSettings}
           />
         ))}
-
+        
         {filteredGames.length === 0 && (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No games found
           </div>
         )}
       </div>
-
       {selectedGame && (
         <ScoreEntry
           gameId={selectedGame.id}
@@ -85,13 +89,17 @@ export default function GameList({ games, isAdmin, onGameStatusChange, isOnline,
           }}
         />
       )}
-
       {gameToComplete && (
         <GameCompletionModal
+          key={modalKey}
           game={gameToComplete}
           tournamentId={gameToComplete.tournamentId}
-          onClose={() => setGameToComplete(null)}
+          onClose={() => {
+            setGameToComplete(null);
+            setModalKey(prev => prev + 1);
+          }}
           isOnline={isOnline}
+          useHandicaps={effectiveUseHandicaps}
         />
       )}
     </div>

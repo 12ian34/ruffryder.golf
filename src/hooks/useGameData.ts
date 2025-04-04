@@ -1,152 +1,93 @@
 import { useState, useEffect } from 'react';
-import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { Game } from '../types/game';
+import type { Game, TournamentSettings, GameStatus } from '../types/game';
+import { updateTournamentScores } from '../utils/tournamentScores';
 
-const LOCAL_STORAGE_KEY = 'ruffryder_games';
-
-export function useGameData(userId: string | undefined, linkedPlayerId: string | null, isAdmin: boolean) {
+export function useGameData(tournamentId: string | undefined, linkedPlayerId: string | null, isAdmin: boolean) {
   const [games, setGames] = useState<Game[]>([]);
-  const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
-  const [tournamentSettings, setTournamentSettings] = useState<{ useHandicaps: boolean } | null>(null);
+  const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Handle online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Load from local storage on mount
-  useEffect(() => {
-    // Don't load from local storage until we have an active tournament
-    if (!activeTournamentId || !tournamentSettings) {
-      return;
-    }
-
-    try {
-      const savedGames = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedGames !== null) {
-        const parsedGames = JSON.parse(savedGames as string);
-        // Add tournamentId and useHandicaps to each game if missing
-        const gamesWithSettings = parsedGames.map((game: Game) => ({
-          ...game,
-          tournamentId: activeTournamentId, // Always use the current activeTournamentId
-          useHandicaps: tournamentSettings.useHandicaps // Always use current tournament settings
-        }));
-        setGames(gamesWithSettings);
-      }
-    } catch (err) {
-      console.error('Error loading games from local storage:', err);
-    }
-  }, [activeTournamentId, tournamentSettings]);
 
   useEffect(() => {
-    if (!userId) {
-      setError('User ID not found');
+    if (!tournamentId) {
+      setGames([]);
+      setTournamentSettings(null);
       setIsLoading(false);
       return;
     }
 
-    let unsubscribeGames: (() => void) | undefined;
-    let isMounted = true;
+    setIsLoading(true);
 
-    const unsubscribeTournament = onSnapshot(
-      collection(db, 'tournaments'),
-      async (snapshot) => {
-        const activeTournament = snapshot.docs.find(doc => doc.data().isActive);
-        if (activeTournament) {
-          const tournamentId = activeTournament.id;
-          const tournamentData = activeTournament.data();
-          setActiveTournamentId(tournamentId);
-          setTournamentSettings({
-            useHandicaps: tournamentData.useHandicaps ?? false
-          });
-
-          if (unsubscribeGames) {
-            unsubscribeGames();
-          }
-
-          unsubscribeGames = onSnapshot(
-            collection(db, 'tournaments', tournamentId, 'games'),
-            async (gamesSnapshot) => {
-              if (!isMounted) return;
-
-              try {
-                const gamesData = gamesSnapshot.docs.map(doc => ({
-                  id: doc.id,
-                  ...doc.data(),
-                  tournamentId, // Always include tournamentId
-                  useHandicaps: tournamentData.useHandicaps ?? false // Include useHandicaps in each game
-                })) as Game[];
-
-                const filteredGames = isAdmin 
-                  ? gamesData 
-                  : gamesData.filter(game => 
-                      linkedPlayerId !== null && game.playerIds?.includes(linkedPlayerId)
-                    );
-
-                const sortedGames = sortGames(filteredGames);
-                setGames(sortedGames);
-                setIsLoading(false);
-                setError(null);
-
-                try {
-                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sortedGames));
-                } catch (err) {
-                  console.error('Error saving games to local storage:', err);
-                }
-              } catch (err) {
-                if (isMounted) {
-                  console.error('Failed to process games data:', err);
-                  setError('Failed to process games data');
-                  setIsLoading(false);
-                }
-              }
-            },
-            (err) => {
-              if (isMounted) {
-                console.error('Failed to load games:', err);
-                setError('Failed to load games');
-                setIsLoading(false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setGames([]);
-            setTournamentSettings(null);
-            setIsLoading(false);
-          }
-        }
-      },
-      (err) => {
-        if (isMounted) {
-          console.error('Failed to load tournament:', err);
-          setError('Failed to load tournament');
-          setIsLoading(false);
-        }
+    // Set up real-time listener for tournament settings
+    const tournamentRef = doc(db, 'tournaments', tournamentId);
+    const unsubscribeTournament = onSnapshot(tournamentRef, (doc) => {
+      if (doc.exists()) {
+        const tournamentData = doc.data();
+        const settings = {
+          id: doc.id,
+          useHandicaps: tournamentData.useHandicaps || false,
+          handicapStrokes: tournamentData.handicapStrokes || 0,
+          higherHandicapTeam: tournamentData.higherHandicapTeam || 'USA'
+        };
+        console.log('Tournament settings updated:', settings);
+        setTournamentSettings(settings);
+      } else {
+        console.log('No tournament found');
+        setTournamentSettings(null);
+        setGames([]);
+        setIsLoading(false);
+        return;
       }
-    );
+    });
+
+    // Set up real-time listener for games
+    const gamesRef = collection(db, 'tournaments', tournamentId, 'games');
+    const unsubscribeGames = onSnapshot(gamesRef, (snapshot) => {
+      const gamesData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const game: Game = {
+          id: doc.id,
+          tournamentId,
+          usaPlayerId: data.usaPlayerId,
+          usaPlayerName: data.usaPlayerName,
+          europePlayerId: data.europePlayerId,
+          europePlayerName: data.europePlayerName,
+          handicapStrokes: data.handicapStrokes || 0,
+          higherHandicapTeam: data.higherHandicapTeam || 'USA',
+          holes: data.holes || [],
+          strokePlayScore: data.strokePlayScore || { USA: 0, EUROPE: 0, adjustedUSA: 0, adjustedEUROPE: 0 },
+          matchPlayScore: data.matchPlayScore || { USA: 0, EUROPE: 0, adjustedUSA: 0, adjustedEUROPE: 0 },
+          points: data.points || {
+            raw: { USA: 0, EUROPE: 0 },
+            adjusted: { USA: 0, EUROPE: 0 }
+          },
+          isComplete: data.isComplete || false,
+          isStarted: data.isStarted || false,
+          playerIds: data.playerIds || [],
+          status: data.status || 'not_started'
+        };
+        console.log('Game data processed:', game);
+        return game;
+      });
+
+      const filteredGames = isAdmin 
+        ? gamesData 
+        : gamesData.filter(game => 
+            linkedPlayerId !== null && game.playerIds?.includes(linkedPlayerId)
+          );
+
+      const sortedGames = sortGames(filteredGames);
+      console.log('Final games list:', sortedGames);
+      setGames(sortedGames);
+      setIsLoading(false);
+    });
 
     return () => {
-      isMounted = false;
       unsubscribeTournament();
-      if (unsubscribeGames) {
-        unsubscribeGames();
-      }
+      unsubscribeGames();
     };
-  }, [userId, linkedPlayerId, isAdmin]);
+  }, [tournamentId, isAdmin, linkedPlayerId]);
 
   const sortGames = (games: Game[]): Game[] => {
     return [...games].sort((a, b) => {
@@ -160,62 +101,37 @@ export function useGameData(userId: string | undefined, linkedPlayerId: string |
     });
   };
 
-  const handleGameStatusChange = async (game: Game, newStatus: 'not_started' | 'in_progress' | 'complete') => {
-    if (!isAdmin || !activeTournamentId) {
-      throw new Error('You do not have permission to change game status');
-    }
+  const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
+    if (!tournamentId || !isAdmin || !tournamentSettings?.id) return;
+
+    // Only allow actual game statuses, not 'all'
+    if (newStatus === 'all') return;
 
     try {
-      const updates: Partial<Game> = {};
+      const gameRef = doc(db, 'tournaments', tournamentSettings.id, 'games', game.id);
+      await updateDoc(gameRef, {
+        status: newStatus,
+        isStarted: newStatus !== 'not_started',
+        isComplete: newStatus === 'complete',
+        // If moving back to in_progress, ensure points don't count in total
+        points: newStatus === 'in_progress' ? {
+          raw: { USA: 0, EUROPE: 0 },
+          adjusted: { USA: 0, EUROPE: 0 }
+        } : game.points,
+        updatedAt: serverTimestamp()
+      });
 
-      switch (newStatus) {
-        case 'not_started':
-          updates.isStarted = false;
-          updates.isComplete = false;
-          break;
-        case 'in_progress':
-          updates.isStarted = true;
-          updates.isComplete = false;
-          break;
-        case 'complete':
-          // Check if all holes have scores
-          const hasAllScores = game.holes.every(hole => 
-            typeof hole.usaPlayerScore === 'number' && 
-            typeof hole.europePlayerScore === 'number'
-          );
-
-          if (!hasAllScores) {
-            throw new Error('All holes must have scores before marking the game as complete');
-          }
-
-          // Validate scores are reasonable
-          const hasInvalidScores = game.holes.some(hole => 
-            (hole.usaPlayerScore !== undefined && hole.usaPlayerScore !== null && (hole.usaPlayerScore < 1 || hole.usaPlayerScore > 20)) ||
-            (hole.europePlayerScore !== undefined && hole.europePlayerScore !== null && (hole.europePlayerScore < 1 || hole.europePlayerScore > 20))
-          );
-
-          if (hasInvalidScores) {
-            throw new Error('All scores must be between 1 and 20');
-          }
-
-          updates.isComplete = true;
-          updates.isStarted = true;
-          break;
-      }
-
-      await updateDoc(doc(db, 'tournaments', activeTournamentId, 'games', game.id), updates);
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to update game status');
+      // Update tournament scores to reflect the change
+      await updateTournamentScores(tournamentId);
+    } catch (error) {
+      console.error('Error updating game status:', error);
     }
   };
 
   return {
     games,
-    isLoading,
-    error,
     handleGameStatusChange,
-    activeTournamentId,
-    isOnline,
-    tournamentSettings
+    tournamentSettings,
+    isLoading
   };
 }

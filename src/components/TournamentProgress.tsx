@@ -10,6 +10,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
+import type { TournamentProgressDisplay } from '../types/tournament';
 
 ChartJS.register(
   CategoryScale,
@@ -22,11 +23,7 @@ ChartJS.register(
 );
 
 interface TournamentProgressProps {
-  progress: {
-    timestamp: any;
-    score: { USA: number; EUROPE: number };
-    completedGames: number;
-  }[];
+  progress: TournamentProgressDisplay[];
   totalGames: number;
 }
 
@@ -68,7 +65,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         callbacks: {
           title: (context: any) => {
             const index = context[0].dataIndex;
-            return format(progress[index].timestamp.toDate(), 'MMM d, yyyy h:mm a');
+            return format(progress[index].timestamp, 'MMM d, yyyy h:mm a');
           },
           label: (context: any) => {
             const team = context.dataset.label;
@@ -91,7 +88,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         ticks: {
           callback: (_value: any, index: number) => {
             if (index === 0 || index === progress.length - 1) {
-              return format(progress[index].timestamp.toDate(), 'MMM d');
+              return format(progress[index].timestamp, 'MMM d');
             }
             return '';
           },

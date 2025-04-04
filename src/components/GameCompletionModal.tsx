@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
+import { updateTournamentScores } from '../utils/tournamentScores';
 
 interface GameCompletionModalProps {
   game: Game;
   tournamentId: string;
   onClose: () => void;
   isOnline: boolean;
+  useHandicaps: boolean;
 }
 
-export default function GameCompletionModal({ game, tournamentId, onClose, isOnline }: GameCompletionModalProps) {
+export default function GameCompletionModal({ game, tournamentId, onClose, isOnline, useHandicaps }: GameCompletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,8 +51,12 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
 
       await updateDoc(doc(db, 'tournaments', tournamentId, 'games', game.id), {
         isComplete: true,
-        isStarted: true
+        isStarted: true,
+        status: 'complete'
       });
+
+      // Update tournament scores after marking the game as complete
+      await updateTournamentScores(tournamentId);
 
       onClose();
     } catch (err: any) {
@@ -58,6 +64,22 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const strokePlayScores = useHandicaps ? {
+    USA: game.strokePlayScore.adjustedUSA,
+    EUROPE: game.strokePlayScore.adjustedEUROPE
+  } : {
+    USA: game.strokePlayScore.USA,
+    EUROPE: game.strokePlayScore.EUROPE
+  };
+
+  const matchPlayScores = useHandicaps ? {
+    USA: game.matchPlayScore.adjustedUSA,
+    EUROPE: game.matchPlayScore.adjustedEUROPE
+  } : {
+    USA: game.matchPlayScore.USA,
+    EUROPE: game.matchPlayScore.EUROPE
   };
 
   return (
@@ -96,13 +118,23 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
                   <div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Stroke Play</div>
                     <div className="font-medium dark:text-white">
-                      {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
+                      {strokePlayScores.USA} - {strokePlayScores.EUROPE}
+                      {useHandicaps && (
+                        <div className="text-xs text-gray-400">
+                          ({game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE})
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Match Play</div>
                     <div className="font-medium dark:text-white">
-                      {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
+                      {matchPlayScores.USA} - {matchPlayScores.EUROPE}
+                      {useHandicaps && (
+                        <div className="text-xs text-gray-400">
+                          ({game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE})
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,43 +1,35 @@
-import { useState, useEffect } from 'react';
 import type { Game } from '../../types/game';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 
 interface HandicapDisplayProps {
   game: Game;
   compact?: boolean;
+  useHandicaps: boolean;
 }
 
-export default function HandicapDisplay({ game, compact = false }: HandicapDisplayProps) {
-  const [useHandicaps, setUseHandicaps] = useState(false);
+export default function HandicapDisplay({ game, compact = false, useHandicaps }: HandicapDisplayProps) {
+  // Log useHandicaps value
+  console.log('HandicapDisplay - useHandicaps:', { 
+    gameId: game.id,
+    useHandicaps,
+    handicapStrokes: game.handicapStrokes,
+    higherHandicapTeam: game.higherHandicapTeam
+  });
 
-  useEffect(() => {
-    const fetchTournamentSettings = async () => {
-      if (!game?.tournamentId) {
-        return;
-      }
-
-      try {
-        const tournamentRef = doc(db, 'tournaments', game.tournamentId);
-        const tournamentDoc = await getDoc(tournamentRef);
-        if (tournamentDoc.exists()) {
-          setUseHandicaps(tournamentDoc.data().useHandicaps);
-        }
-      } catch (error) {
-        console.error('Error fetching tournament settings:', error);
-      }
-    };
-
-    fetchTournamentSettings();
-  }, [game?.tournamentId, game?.id]);
-
-  if (!game?.tournamentId || !useHandicaps || !game.handicapStrokes || !game.higherHandicapTeam) {
+  // Don't show anything if handicaps are disabled or if required data is missing
+  if (!useHandicaps || 
+      !game?.handicapStrokes || 
+      game.handicapStrokes <= 0 || 
+      !game.higherHandicapTeam || 
+      !game.usaPlayerName || 
+      !game.europePlayerName) {
     return null;
   }
 
+  const playerGettingStrokes = game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName;
+
   return (
     <div className={`text-center text-sm text-gray-500 dark:text-gray-400 ${compact ? 'text-xs' : ''}`}>
-      {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
+      {playerGettingStrokes} gets {game.handicapStrokes} stroke{game.handicapStrokes !== 1 ? 's' : ''} added
     </div>
   );
 }

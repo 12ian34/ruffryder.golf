@@ -1,96 +1,51 @@
-import GameList from './game/GameList';
+import { User } from 'firebase/auth';
 import { useGameData } from '../hooks/useGameData';
-import { useAuth } from '../hooks/useAuth';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { useActiveTournament } from '../hooks/useActiveTournament';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { GameList } from './GameList';
 
-interface UserData {
-  linkedPlayerId?: string | null;
-  isAdmin?: boolean;
-  isOnline?: boolean;
+interface GameManagementProps {
+  currentUser: User;
+  isAdmin: boolean;
+  linkedPlayerId: string | null;
 }
 
-export default function GameManagement() {
-  const { user, loading: authLoading } = useAuth();
-  const [linkedPlayerId, setLinkedPlayerId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [useHandicaps, setUseHandicaps] = useState(false);
-
-  const { games, handleGameStatusChange } = useGameData(
-    user?.uid,
+export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameManagementProps) {
+  const isOnline = useOnlineStatus();
+  const { activeTournament, isLoading: isLoadingTournament } = useActiveTournament(currentUser?.uid);
+  const { games, handleGameStatusChange, tournamentSettings, isLoading: isLoadingGames } = useGameData(
+    activeTournament?.id,
     linkedPlayerId,
     isAdmin
   );
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user?.uid) return;
-
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as UserData;
-          setLinkedPlayerId(userData.linkedPlayerId || null);
-          setIsAdmin(userData.isAdmin || false);
-          setIsOnline(userData.isOnline || false);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
-    fetchUserData();
-  }, [user?.uid]);
-
-  useEffect(() => {
-    const fetchTournamentSettings = async () => {
-      try {
-        // Query for active tournament
-        const tournamentsRef = collection(db, 'tournaments');
-        const tournamentsSnapshot = await getDocs(tournamentsRef);
-        const activeTournament = tournamentsSnapshot.docs
-          .find(doc => doc.data().isActive);
-
-        if (activeTournament) {
-          setUseHandicaps(activeTournament.data().useHandicaps);
-        }
-      } catch (error) {
-        console.error('Error fetching tournament settings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTournamentSettings();
-  }, []);
-
-  if (authLoading || loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+  if (!currentUser) {
+    return <div>Please sign in to view games.</div>;
   }
 
-  if (!user) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        Please log in to view your games
-      </div>
-    );
+  if (isLoadingTournament || isLoadingGames) {
+    return <div>Loading games...</div>;
+  }
+
+  if (!isAdmin && !linkedPlayerId) {
+    return <div>Please link your player profile to view games.</div>;
+  }
+
+  if (!activeTournament) {
+    return <div>No active tournament found.</div>;
   }
 
   return (
-    <GameList
-      games={games}
-      isAdmin={isAdmin}
-      onGameStatusChange={handleGameStatusChange}
-      isOnline={isOnline}
-      useHandicaps={useHandicaps}
-    />
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold">Games</h2>
+      <GameList
+        games={games}
+        onGameStatusChange={handleGameStatusChange}
+        isAdmin={isAdmin}
+        isOnline={isOnline}
+        useHandicaps={tournamentSettings?.useHandicaps ?? false}
+        tournamentSettings={tournamentSettings}
+      />
+    </div>
   );
 }

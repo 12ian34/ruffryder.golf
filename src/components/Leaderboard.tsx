@@ -5,8 +5,9 @@ import type { Tournament } from '../types/tournament';
 import type { Game, GameStatus } from '../types/game';
 import TournamentProgress from './TournamentProgress';
 import ScoreCard from './scorecard/ScoreCard';
-import GameCard from './GameCard';
 import StatusFilter from './filters/StatusFilter';
+import { GameList } from './GameList';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -15,21 +16,7 @@ export default function Leaderboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Handle online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isOnline = useOnlineStatus();
 
   // Fetch active tournament and games
   useEffect(() => {
@@ -129,10 +116,12 @@ export default function Leaderboard() {
   }
 
   // Calculate totals from stored scores
-  const totalStrokes = games.reduce((total, game) => ({
-    USA: total.USA + (tournament.useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA),
-    EUROPE: total.EUROPE + (tournament.useHandicaps ? game.strokePlayScore.adjustedEUROPE : game.strokePlayScore.EUROPE)
-  }), { USA: 0, EUROPE: 0 });
+  const totalStrokes = games.reduce((total, game) => {
+    return {
+      USA: total.USA + (tournament.useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA),
+      EUROPE: total.EUROPE + (tournament.useHandicaps ? game.strokePlayScore.adjustedEUROPE : game.strokePlayScore.EUROPE)
+    };
+  }, { USA: 0, EUROPE: 0 });
 
   const rawStrokes = games.reduce((total, game) => ({
     USA: total.USA + game.strokePlayScore.USA,
@@ -151,7 +140,9 @@ export default function Leaderboard() {
       <div className="flex items-center justify-between">
         <ScoreCard
           currentScore={tournament.useHandicaps ? tournament.totalScore.adjusted : tournament.totalScore.raw}
-          projectedScore={tournament.useHandicaps ? tournament.projectedScore.adjusted : tournament.projectedScore.raw}
+          projectedScore={tournament.useHandicaps 
+            ? (tournament.projectedScore?.adjusted || { USA: 0, EUROPE: 0 })
+            : (tournament.projectedScore?.raw || { USA: 0, EUROPE: 0 })}
           totalStrokes={totalStrokes}
           rawStrokes={rawStrokes}
           totalHoles={totalHoles}
@@ -168,8 +159,9 @@ export default function Leaderboard() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <TournamentProgress 
             progress={tournament.progress.map(p => ({
-              ...p,
-              score: tournament.useHandicaps ? p.score.adjusted : p.score.raw
+              timestamp: new Date(p.date),
+              score: tournament.useHandicaps ? p.totalScore.adjusted : p.totalScore.raw,
+              completedGames: games.filter(g => g.isComplete).length
             }))}
             totalGames={games.length}
           />
@@ -185,17 +177,21 @@ export default function Leaderboard() {
           />
         </div>
         
-        <div className="space-y-4">
-          {filteredGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              isAdmin={false}
-              showControls={false}
-              useHandicaps={tournament.useHandicaps}
-            />
-          ))}
-        </div>
+        <GameList
+          games={filteredGames}
+          isAdmin={false}
+          onGameStatusChange={async () => {}} // No-op since we don't allow status changes in leaderboard
+          isOnline={isOnline}
+          useHandicaps={tournament.useHandicaps}
+          tournamentSettings={{
+            id: tournament.id,
+            useHandicaps: tournament.useHandicaps,
+            handicapStrokes: tournament.handicapStrokes || 0,
+            higherHandicapTeam: tournament.higherHandicapTeam || 'USA'
+          }}
+          showControls={false}
+          showStatusFilter={false}
+        />
       </div>
     </div>
   );

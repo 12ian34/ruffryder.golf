@@ -13,23 +13,34 @@ interface PlayerPairProps {
 export default function PlayerPair({ game, currentUserId, compact }: PlayerPairProps) {
   const [usaHandicap, setUsaHandicap] = useState<number>(0);
   const [europeHandicap, setEuropeHandicap] = useState<number>(0);
+  const [usaCustomEmoji, setUsaCustomEmoji] = useState<string | undefined>();
+  const [europeCustomEmoji, setEuropeCustomEmoji] = useState<string | undefined>();
 
   useEffect(() => {
-    const fetchHandicaps = async () => {
+    const fetchPlayerData = async () => {
       try {
         const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
           getDoc(doc(db, 'players', game.usaPlayerId)),
           getDoc(doc(db, 'players', game.europePlayerId))
         ]);
 
-        setUsaHandicap(usaPlayerDoc.exists() ? usaPlayerDoc.data().averageScore : 0);
-        setEuropeHandicap(europePlayerDoc.exists() ? europePlayerDoc.data().averageScore : 0);
+        if (usaPlayerDoc.exists()) {
+          const usaData = usaPlayerDoc.data();
+          setUsaHandicap(usaData.averageScore);
+          setUsaCustomEmoji(usaData.customEmoji);
+        }
+
+        if (europePlayerDoc.exists()) {
+          const europeData = europePlayerDoc.data();
+          setEuropeHandicap(europeData.averageScore);
+          setEuropeCustomEmoji(europeData.customEmoji);
+        }
       } catch (error) {
-        console.error('Error fetching player handicaps:', error);
+        console.error('Error fetching player data:', error);
       }
     };
 
-    fetchHandicaps();
+    fetchPlayerData();
   }, [game.usaPlayerId, game.europePlayerId]);
 
   return (
@@ -40,7 +51,8 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
           name: game.usaPlayerName,
           team: 'USA',
           historicalScores: [],
-          averageScore: usaHandicap
+          averageScore: usaHandicap,
+          customEmoji: usaCustomEmoji
         }}
         team="USA"
         showAverage={true}
@@ -56,7 +68,8 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
           name: game.europePlayerName,
           team: 'EUROPE',
           historicalScores: [],
-          averageScore: europeHandicap
+          averageScore: europeHandicap,
+          customEmoji: europeCustomEmoji
         }}
         team="EUROPE"
         showAverage={true}

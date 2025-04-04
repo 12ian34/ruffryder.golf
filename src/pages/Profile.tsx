@@ -58,9 +58,17 @@ export default function Profile() {
         customEmoji: pendingEmoji || undefined
       };
 
+      // Update user document
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
-      setUserData(prev => prev ? { ...prev, ...updates } : null);
 
+      // If user has a linked player, update the player's custom emoji
+      if (userData?.linkedPlayerId) {
+        await updateDoc(doc(db, 'players', userData.linkedPlayerId), {
+          customEmoji: pendingEmoji || undefined
+        });
+      }
+
+      setUserData(prev => prev ? { ...prev, ...updates } : null);
       showSuccessToast('Profile updated successfully!');
     } catch (err: any) {
       showErrorToast('Failed to update profile');
