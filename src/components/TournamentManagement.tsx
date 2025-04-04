@@ -263,14 +263,7 @@ export default function TournamentManagement() {
         
         if (player1 && player2) {
           higherHandicapTeam = player1.averageScore > player2.averageScore ? team1 : team2;
-          console.log('Handicap calculation:', {
-            player1: { name: player1.name, score: player1.averageScore, team: team1 },
-            player2: { name: player2.name, score: player2.averageScore, team: team2 },
-            handicapStrokes,
-            higherHandicapTeam
-          });
         }
-        console.log('higherHandicapTeam', higherHandicapTeam);
       }
 
       // Fetch stroke indices from config
@@ -325,9 +318,13 @@ export default function TournamentManagement() {
       // Add the game to the games subcollection
       const gameDocRef = await addDoc(collection(db, 'tournaments', selectedTournament.id, 'games'), game);
 
+      // Update the game with its ID
+      const gameWithId = { ...game, id: gameDocRef.id };
+      await updateDoc(gameDocRef, { id: gameDocRef.id });
+
       // Create the matchup object
       const matchup: Matchup = {
-        id: gameDocRef.id,
+        id: gameDocRef.id, // Use the same ID as the game
         usaPlayerId: player1Id,
         europePlayerId: player2Id,
         usaPlayerName: player1Name,
@@ -341,6 +338,9 @@ export default function TournamentManagement() {
       await updateDoc(tournamentRef, {
         matchups: arrayUnion(matchup)
       });
+
+      // Update local state with the new game
+      setCurrentMatchups(prev => [...prev, gameWithId]);
 
       // Reset player selection
       setSelectedUsaPlayer('');
@@ -466,31 +466,64 @@ export default function TournamentManagement() {
 
     try {
       setIsLoading(true);
+      console.log('Deleting matchup:', {
+        matchupId: matchup.id,
+        tournamentId: selectedTournament.id,
+        matchupDetails: matchup,
+        selectedTournament: selectedTournament
+      });
 
-      // Delete the game document from the games subcollection
-      await deleteDoc(doc(db, 'tournaments', selectedTournament.id, 'games', matchup.id));
+      // Validate that we have both IDs
+      if (!matchup.id || !selectedTournament.id) {
+        throw new Error('Missing required IDs for deletion');
+      }
+
+      // Create the reference to the game document in the games subcollection
+      const gamesCollectionRef = collection(db, 'tournaments', selectedTournament.id, 'games');
+      const gameDocRef = doc(gamesCollectionRef, matchup.id);
+      
+      console.log('Attempting to delete game document with ref:', {
+        path: gameDocRef.path,
+        id: gameDocRef.id
+      });
+
+      // Delete the game document
+      await deleteDoc(gameDocRef);
+      console.log('Successfully deleted game document');
 
       // Update the tournament document to remove the matchup
       const tournamentRef = doc(db, 'tournaments', selectedTournament.id);
       const updatedMatchups = selectedTournament.matchups.filter(m => m.id !== matchup.id);
+      
+      console.log('Updating tournament with filtered matchups:', {
+        originalCount: selectedTournament.matchups.length,
+        newCount: updatedMatchups.length,
+        removedId: matchup.id
+      });
+
       await updateDoc(tournamentRef, {
         matchups: updatedMatchups
       });
+      console.log('Successfully updated tournament document');
 
       // Update local state for both tournament and currentMatchups
       setSelectedTournament(prev => prev ? {
         ...prev,
         matchups: updatedMatchups
       } : null);
-      
       setCurrentMatchups(prev => prev.filter(m => m.id !== matchup.id));
-
+      
       // Force a re-render by updating lastUpdated
       setLastUpdated(Date.now());
 
       toast.success('Matchup deleted successfully');
     } catch (error) {
       console.error('Error deleting matchup:', error);
+      console.error('Error details:', {
+        matchupId: matchup.id,
+        tournamentId: selectedTournament.id,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       toast.error('Failed to delete matchup');
     } finally {
       setIsLoading(false);
@@ -755,6 +788,7 @@ export default function TournamentManagement() {
             teamConfig={selectedTournament.teamConfig}
           />
           <MatchupList
+            key={`matchup-list-${selectedTournament.id}`}
             matchups={selectedTournament.matchups}
             currentMatchups={currentMatchups}
             teamConfig={selectedTournament.teamConfig}

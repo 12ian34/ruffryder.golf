@@ -7,13 +7,6 @@ interface HandicapDisplayProps {
 }
 
 export default function HandicapDisplay({ game, compact = false, useHandicaps }: HandicapDisplayProps) {
-  // Log useHandicaps value
-  console.log('HandicapDisplay - useHandicaps:', { 
-    gameId: game.id,
-    useHandicaps,
-    handicapStrokes: game.handicapStrokes,
-    higherHandicapTeam: game.higherHandicapTeam
-  });
 
   // Don't show anything if handicaps are disabled or if required data is missing
   if (!useHandicaps || 

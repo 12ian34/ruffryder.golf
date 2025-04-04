@@ -58,7 +58,7 @@ export function GameList({
       <div className="grid gap-4">
         {filteredGames.map(game => (
           <GameCard
-            key={`${game.id}-${modalKey}`}
+            key={game.id}
             game={game}
             isAdmin={isAdmin}
             onStatusChange={handleGameStatusChange}

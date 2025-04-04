@@ -6,8 +6,6 @@ interface GameScoreTableProps {
 }
 
 export default function GameScoreTable({ game, useHandicaps }: GameScoreTableProps) {
-  // Log useHandicaps value
-  console.log('GameScoreTable - useHandicaps:', { gameId: game.id, useHandicaps });
 
   // Calculate totals from stored scores
   const totals = {

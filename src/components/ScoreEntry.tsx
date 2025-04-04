@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { Game, HoleScore } from '../types/game';
+import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 
@@ -141,16 +141,6 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave }: Sc
     setShowClearConfirm(null);
   };
 
-  // Remove all the debug console.log statements for handicap calculations
-  const calculateStrokesForHole = (hole: HoleScore, handicap: number) => {
-    const baseStrokes = Math.floor(handicap / 18);
-    const extraStrokeHoles = handicap % 18;
-    const getsExtraStroke = extraStrokeHoles >= hole.strokeIndex;
-    const strokesForHole = baseStrokes + (getsExtraStroke ? 1 : 0);
-    return strokesForHole;
-  };
-  
-  console.log('calculateStrokesForHole', calculateStrokesForHole)
   const handleScoreSubmit = async () => {
     if (!game) return;
 

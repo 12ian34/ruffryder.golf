@@ -30,10 +30,8 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
           handicapStrokes: tournamentData.handicapStrokes || 0,
           higherHandicapTeam: tournamentData.higherHandicapTeam || 'USA'
         };
-        console.log('Tournament settings updated:', settings);
         setTournamentSettings(settings);
       } else {
-        console.log('No tournament found');
         setTournamentSettings(null);
         setGames([]);
         setIsLoading(false);
@@ -67,7 +65,6 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
           playerIds: data.playerIds || [],
           status: data.status || 'not_started'
         };
-        console.log('Game data processed:', game);
         return game;
       });
 
@@ -78,7 +75,6 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
           );
 
       const sortedGames = sortGames(filteredGames);
-      console.log('Final games list:', sortedGames);
       setGames(sortedGames);
       setIsLoading(false);
     });

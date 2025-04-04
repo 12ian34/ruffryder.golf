@@ -55,10 +55,14 @@ export default function Leaderboard() {
 
     const gamesRef = collection(db, 'tournaments', tournament.id, 'games');
     const unsubscribe = onSnapshot(gamesRef, (snapshot) => {
-      const gamesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Game[];
+      const gamesData = snapshot.docs.map(doc => {
+        const data = doc.data() as Game;
+        // Ensure the id is set from the document ID
+        return {
+          ...data,
+          id: doc.id || data.id || `game-${doc.id}` // Fallback to ensure we always have an ID
+        };
+      });
       setGames(gamesData);
     });
 

@@ -62,7 +62,7 @@ export default function MatchupList({
         ) : (
           matchups.map((matchup) => (
             <div
-              key={matchup.id}
+              key={matchup.id || `${matchup.usaPlayerId}-${matchup.europePlayerId}`}
               className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
               <div className="flex flex-col space-y-2">

@@ -7,8 +7,6 @@ interface GameScoreDisplayProps {
 }
 
 export default function GameScoreDisplay({ game, compact = false, useHandicaps }: GameScoreDisplayProps) {
-  // Log useHandicaps value
-  console.log('GameScoreDisplay - useHandicaps:', { gameId: game.id, useHandicaps });
 
   const isComplete = game.isComplete;
   const isInProgress = !isComplete && game.isStarted;
