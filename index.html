@@ -10,6 +10,11 @@
       posthog.init('phc_iQFZ5QydI97wLVWfa8V5NADjkJFs5SIteULiMEyxJ2',{
         api_host: 'https://eu.i.posthog.com',
         person_profiles: 'identified_only',
+        persistence: 'cookie',
+        cookie_name: 'ph_' + 'phc_iQFZ5QydI97wLVWfa8V5NADjkJFs5SIteULiMEyxJ2',
+        cookie_domain: '.ruffryder.golf',
+        cross_subdomain_cookie: false,
+        secure_cookie: true,
         loaded: function(posthog) {
           // Add loaded callback to ensure script is loaded properly
           console.log('PostHog loaded successfully');
