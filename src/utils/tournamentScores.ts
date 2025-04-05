@@ -1,4 +1,4 @@
-import { doc, updateDoc, getDoc, getDocs, collection, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, getDocs, collection, arrayUnion } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import { calculateGamePoints } from './gamePoints';

@@ -190,11 +190,12 @@ export default function Leaderboard() {
           tournamentSettings={{
             id: tournament.id,
             useHandicaps: tournament.useHandicaps,
-            handicapStrokes: tournament.handicapStrokes || 0,
-            higherHandicapTeam: tournament.higherHandicapTeam || 'USA'
+            handicapStrokes: tournament.handicapStrokes,
+            higherHandicapTeam: tournament.higherHandicapTeam
           }}
           showControls={false}
           showStatusFilter={false}
+          linkedPlayerId={null}
         />
       </div>
     </div>
