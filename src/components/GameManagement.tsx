@@ -45,6 +45,7 @@ export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameMan
         isOnline={isOnline}
         useHandicaps={tournamentSettings?.useHandicaps ?? false}
         tournamentSettings={tournamentSettings}
+        linkedPlayerId={linkedPlayerId}
       />
     </div>
   );

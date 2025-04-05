@@ -63,6 +63,11 @@ function getErrorMessage(error: FirebaseAuthError): string {
     case 'auth/invalid-login-credentials':
       return 'Invalid email or password. Please check your credentials and try again.';
     default:
+      // Check for the UNAUTHORIZED_DOMAIN error which comes as a message rather than a code
+      if (error.message?.includes('UNAUTHORIZED_DOMAIN')) {
+        console.error('Firebase Auth Error: Unauthorized domain. Please contact support or try again later.');
+        return 'Unable to send verification email due to a configuration issue. Please contact support.';
+      }
       console.error('Firebase Auth Error:', error);
       return 'An error occurred during authentication. Please try again.';
   }
@@ -96,9 +101,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date()
       });
 
-      await firebaseSignOut(auth);
-      await sendPasswordResetEmail(auth, email);
-      showSuccessToast('Account created! Please check your email to set your password.');
+      try {
+        await firebaseSignOut(auth);
+        await sendPasswordResetEmail(auth, email);
+        showSuccessToast('Account created! Please check your email to set your password.');
+      } catch (resetError: any) {
+        // If we fail to send the reset email, but the account was created
+        if (resetError.message?.includes('UNAUTHORIZED_DOMAIN')) {
+          showSuccessToast('Account created! Please use the "Forgot Password" option on the login page to set your password.');
+        } else {
+          throw resetError;
+        }
+      }
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));
       throw error;
@@ -128,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function resetUserPassword(email: string) {
     try {
       const actionCodeSettings = {
-        url: `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`,
+        url: `${window.location.origin}/password-reset-complete?email=${encodeURIComponent(email)}`,
         handleCodeInApp: true
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);

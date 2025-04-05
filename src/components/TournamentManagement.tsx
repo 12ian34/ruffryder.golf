@@ -466,12 +466,6 @@ export default function TournamentManagement() {
 
     try {
       setIsLoading(true);
-      console.log('Deleting matchup:', {
-        matchupId: matchup.id,
-        tournamentId: selectedTournament.id,
-        matchupDetails: matchup,
-        selectedTournament: selectedTournament
-      });
 
       // Validate that we have both IDs
       if (!matchup.id || !selectedTournament.id) {
@@ -481,30 +475,17 @@ export default function TournamentManagement() {
       // Create the reference to the game document in the games subcollection
       const gamesCollectionRef = collection(db, 'tournaments', selectedTournament.id, 'games');
       const gameDocRef = doc(gamesCollectionRef, matchup.id);
-      
-      console.log('Attempting to delete game document with ref:', {
-        path: gameDocRef.path,
-        id: gameDocRef.id
-      });
 
       // Delete the game document
       await deleteDoc(gameDocRef);
-      console.log('Successfully deleted game document');
 
       // Update the tournament document to remove the matchup
       const tournamentRef = doc(db, 'tournaments', selectedTournament.id);
       const updatedMatchups = selectedTournament.matchups.filter(m => m.id !== matchup.id);
-      
-      console.log('Updating tournament with filtered matchups:', {
-        originalCount: selectedTournament.matchups.length,
-        newCount: updatedMatchups.length,
-        removedId: matchup.id
-      });
 
       await updateDoc(tournamentRef, {
         matchups: updatedMatchups
       });
-      console.log('Successfully updated tournament document');
 
       // Update local state for both tournament and currentMatchups
       setSelectedTournament(prev => prev ? {
@@ -519,11 +500,6 @@ export default function TournamentManagement() {
       toast.success('Matchup deleted successfully');
     } catch (error) {
       console.error('Error deleting matchup:', error);
-      console.error('Error details:', {
-        matchupId: matchup.id,
-        tournamentId: selectedTournament.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
       toast.error('Failed to delete matchup');
     } finally {
       setIsLoading(false);

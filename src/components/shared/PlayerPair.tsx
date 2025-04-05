@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import PlayerDisplay from './PlayerDisplay';
 import type { Game } from '../../types/game';
+import type { User } from '../../types/user';
 
 interface PlayerPairProps {
   game: Game;
@@ -15,6 +16,8 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
   const [europeHandicap, setEuropeHandicap] = useState<number>(0);
   const [usaCustomEmoji, setUsaCustomEmoji] = useState<string | undefined>();
   const [europeCustomEmoji, setEuropeCustomEmoji] = useState<string | undefined>();
+  const [usaLinkedUser, setUsaLinkedUser] = useState<User | null>(null);
+  const [europeLinkedUser, setEuropeLinkedUser] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
@@ -35,6 +38,22 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
           setEuropeHandicap(europeData.averageScore);
           setEuropeCustomEmoji(europeData.customEmoji);
         }
+
+        // Fetch linked users
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('linkedPlayerId', 'in', [game.usaPlayerId, game.europePlayerId])
+        );
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        usersSnapshot.forEach(doc => {
+          const userData = { id: doc.id, ...doc.data() } as User;
+          if (userData.linkedPlayerId === game.usaPlayerId) {
+            setUsaLinkedUser(userData);
+          } else if (userData.linkedPlayerId === game.europePlayerId) {
+            setEuropeLinkedUser(userData);
+          }
+        });
       } catch (error) {
         console.error('Error fetching player data:', error);
       }
@@ -44,7 +63,7 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
   }, [game.usaPlayerId, game.europePlayerId]);
 
   return (
-    <div className="flex justify-between items-center gap-4">
+    <div className="flex justify-between items-center">
       <PlayerDisplay
         player={{
           id: game.usaPlayerId,
@@ -58,9 +77,10 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
         showAverage={true}
         compact={compact}
         isCurrentUser={currentUserId === game.usaPlayerId}
+        linkedUserName={usaLinkedUser?.name}
       />
 
-      <div className="text-gray-400 dark:text-gray-500">vs</div>
+      <div className="text-gray-400 dark:text-gray-500 mx-2 sm:mx-4">vs</div>
 
       <PlayerDisplay
         player={{
@@ -75,6 +95,7 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
         showAverage={true}
         compact={compact}
         isCurrentUser={currentUserId === game.europePlayerId}
+        linkedUserName={europeLinkedUser?.name}
       />
     </div>
   );

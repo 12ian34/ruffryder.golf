@@ -12,6 +12,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
+    function getUserLinkedPlayerId() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) ?
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedPlayerId : null;
+    }
+    
     // Allow read access to all authenticated users for common collections
     match /{document=**} {
       allow read: if isSignedIn();
@@ -29,11 +35,11 @@ service cloud.firestore {
       
       allow read: if isSignedIn();
       
-      // Regular users can only update their name and email
+      // Regular users can only update their name and customEmoji
       allow update: if (request.auth.uid == userId && 
-        request.resource.data.keys().hasAll(['email', 'name']) &&
-        request.resource.data.email is string &&
-        request.resource.data.name is string) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'customEmoji']) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['name']) || request.resource.data.name is string) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['customEmoji']) || request.resource.data.customEmoji is string || request.resource.data.customEmoji == null)) ||
       // Admins can update all fields
       (isAdmin() && 
         request.resource.data.keys().hasAll(['email', 'name', 'isAdmin']) &&
@@ -48,21 +54,46 @@ service cloud.firestore {
     match /players/{playerId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      allow update: if isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.linkedPlayerId == playerId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customEmoji']) &&
+        (request.resource.data.customEmoji is string || request.resource.data.customEmoji == null);
     }
     
     // Tournament rules
     match /tournaments/{tournamentId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        getUserLinkedPlayerId() != null
+      );
       
       match /games/{gameId} {
         allow read: if isSignedIn();
-        allow write: if isAdmin() || (
-          isSignedIn() && (
-            resource.data.usaPlayerId == request.auth.uid ||
-            resource.data.europePlayerId == request.auth.uid
+        allow create: if isAdmin();
+        allow update: if isAdmin() || (
+          isSignedIn() && 
+          getUserLinkedPlayerId() != null && (
+            // Check both existing and new data to ensure player is in the game
+            (resource.data.usaPlayerId == getUserLinkedPlayerId() ||
+             resource.data.europePlayerId == getUserLinkedPlayerId()) &&
+            (request.resource.data.usaPlayerId == getUserLinkedPlayerId() ||
+             request.resource.data.europePlayerId == getUserLinkedPlayerId()) &&
+            // Ensure all required fields are present and unchanged
+            request.resource.data.usaPlayerId == resource.data.usaPlayerId &&
+            request.resource.data.europePlayerId == resource.data.europePlayerId &&
+            request.resource.data.usaPlayerName == resource.data.usaPlayerName &&
+            request.resource.data.europePlayerName == resource.data.europePlayerName &&
+            request.resource.data.tournamentId == resource.data.tournamentId &&
+            request.resource.data.playerIds == resource.data.playerIds &&
+            // Only allow updating specific fields
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['holes', 'strokePlayScore', 'matchPlayScore', 'points', 'status', 'isStarted', 'isComplete', 'endTime', 'updatedAt'])
           )
         );
+        allow delete: if isAdmin();
       }
     }
 

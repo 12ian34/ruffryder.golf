@@ -98,14 +98,33 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
   };
 
   const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
-    if (!tournamentId || !isAdmin || !tournamentSettings?.id) return;
+    if (!tournamentId || !tournamentSettings?.id) {
+      throw new Error('Missing required IDs');
+    }
+
+    // Check if user is admin or a player in the game
+    const isPlayerInGame = linkedPlayerId && game.playerIds?.includes(linkedPlayerId);
+
+    if (!isAdmin && !isPlayerInGame) {
+      throw new Error('Permission denied: User is neither admin nor player in game');
+    }
 
     // Only allow actual game statuses, not 'all'
-    if (newStatus === 'all') return;
+    if (newStatus === 'all') {
+      throw new Error('Invalid status: all');
+    }
 
     try {
       const gameRef = doc(db, 'tournaments', tournamentSettings.id, 'games', game.id);
       await updateDoc(gameRef, {
+        // Preserve existing fields
+        usaPlayerId: game.usaPlayerId,
+        europePlayerId: game.europePlayerId,
+        usaPlayerName: game.usaPlayerName,
+        europePlayerName: game.europePlayerName,
+        tournamentId: game.tournamentId,
+        playerIds: game.playerIds,
+        // Update status fields
         status: newStatus,
         isStarted: newStatus !== 'not_started',
         isComplete: newStatus === 'complete',
@@ -117,10 +136,21 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
         updatedAt: serverTimestamp()
       });
 
-      // Update tournament scores to reflect the change
-      await updateTournamentScores(tournamentId);
-    } catch (error) {
+      // Only update tournament scores if user is admin
+      if (isAdmin) {
+        await updateTournamentScores(tournamentId);
+      }
+    } catch (error: any) {
       console.error('Error updating game status:', error);
+      console.error('Error details:', {
+        errorCode: error.code,
+        errorMessage: error.message,
+        gameId: game.id,
+        tournamentId: tournamentSettings.id,
+        isAdmin,
+        isPlayerInGame: isPlayerInGame,
+        linkedPlayerId
+      });
     }
   };
 

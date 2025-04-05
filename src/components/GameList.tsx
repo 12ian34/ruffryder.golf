@@ -14,6 +14,7 @@ interface GameListProps {
   tournamentSettings?: TournamentSettings | null;
   showStatusFilter?: boolean;
   showControls?: boolean;
+  linkedPlayerId: string | null;
 }
 
 export function GameList({ 
@@ -24,7 +25,8 @@ export function GameList({
   useHandicaps, 
   tournamentSettings = null,
   showStatusFilter = true,
-  showControls = true
+  showControls = true,
+  linkedPlayerId
 }: GameListProps) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
@@ -42,32 +44,45 @@ export function GameList({
   });
 
   const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
-    if (newStatus === 'complete') {
-      setGameToComplete(game);
-    } else {
-      await onGameStatusChange(game, newStatus);
-      setModalKey(prev => prev + 1);
+    try {
+      if (newStatus === 'complete') {
+        setGameToComplete(game);
+      } else {
+        await onGameStatusChange(game, newStatus);
+        setModalKey(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error updating game status:', error);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-3xl mx-auto">
       {showStatusFilter && (
         <StatusFilter activeStatus={activeStatus} onStatusChange={setActiveStatus} />
       )}
       <div className="grid gap-4">
-        {filteredGames.map(game => (
-          <GameCard
-            key={game.id}
-            game={game}
-            isAdmin={isAdmin}
-            onStatusChange={handleGameStatusChange}
-            onEnterScores={() => setSelectedGame(game)}
-            showControls={showControls}
-            useHandicaps={effectiveUseHandicaps}
-            tournamentSettings={tournamentSettings}
-          />
-        ))}
+        {filteredGames.map(game => {
+          const isPlayerInGame = linkedPlayerId && 
+            (game.usaPlayerId === linkedPlayerId || game.europePlayerId === linkedPlayerId);
+          
+          // Ensure showControls is always a boolean by explicitly checking against false
+          const shouldShowControls = showControls !== false && (isAdmin || isPlayerInGame);
+          
+          return (
+            <GameCard
+              key={game.id}
+              game={game}
+              isAdmin={isAdmin}
+              onStatusChange={(isAdmin || isPlayerInGame) ? handleGameStatusChange : undefined}
+              onEnterScores={() => setSelectedGame(game)}
+              showControls={!!shouldShowControls}
+              useHandicaps={effectiveUseHandicaps}
+              tournamentSettings={tournamentSettings}
+              linkedPlayerId={linkedPlayerId}
+            />
+          );
+        })}
         
         {filteredGames.length === 0 && (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">

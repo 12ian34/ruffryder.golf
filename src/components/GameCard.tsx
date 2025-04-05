@@ -16,6 +16,7 @@ interface GameCardProps {
   compact?: boolean;
   useHandicaps?: boolean;
   tournamentSettings?: any;
+  linkedPlayerId?: string | null;
 }
 
 export default function GameCard({ 
@@ -26,42 +27,49 @@ export default function GameCard({
   showControls = false,
   compact = false,
   useHandicaps = false,
-  tournamentSettings
+  tournamentSettings,
+  linkedPlayerId = null
 }: GameCardProps) {
   const [showScoreModal, setShowScoreModal] = useState(false);
-  const [game, setGame] = useState(initialGame);
+  const [handicapData, setHandicapData] = useState({
+    usaPlayerHandicap: initialGame.usaPlayerHandicap || 0,
+    europePlayerHandicap: initialGame.europePlayerHandicap || 0,
+    handicapStrokes: initialGame.handicapStrokes || 0,
+    higherHandicapTeam: initialGame.higherHandicapTeam || 'USA'
+  });
   const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
 
-  // Get current user ID from auth context
-  const currentUserId = isAdmin ? localStorage.getItem('userId') : null;
-  const isAdminPlayer = currentUserId && (
-    game.usaPlayerId === currentUserId || 
-    game.europePlayerId === currentUserId
+  const isPlayerInGame = linkedPlayerId && (
+    initialGame.usaPlayerId === linkedPlayerId || 
+    initialGame.europePlayerId === linkedPlayerId
   );
 
-  // Update game state when initialGame prop changes
-  useEffect(() => {
-    setGame(initialGame);
-  }, [initialGame]);
+  // Show special styling if user is admin or player in the game
+  const showSpecialStyling = isAdmin || isPlayerInGame;
+
+  const getBorderColor = () => {
+    if (initialGame.isComplete) return 'border-green-500 dark:border-green-400';
+    if (initialGame.isStarted) return 'border-amber-500 dark:border-amber-400';
+    return 'border-gray-600 dark:border-gray-500';
+  };
 
   // Fetch handicap data when game or tournament settings change
   useEffect(() => {
     const fetchHandicapData = async () => {
-      if (!game.usaPlayerId || !game.europePlayerId) return;
+      if (!initialGame.usaPlayerId || !initialGame.europePlayerId) return;
 
       try {
         const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
-          getDoc(doc(db, 'players', game.usaPlayerId)),
-          getDoc(doc(db, 'players', game.europePlayerId))
+          getDoc(doc(db, 'players', initialGame.usaPlayerId)),
+          getDoc(doc(db, 'players', initialGame.europePlayerId))
         ]);
 
-        setGame(prevGame => ({
-          ...prevGame,
+        setHandicapData({
           usaPlayerHandicap: usaPlayerDoc.exists() ? usaPlayerDoc.data().averageScore : 0,
           europePlayerHandicap: europePlayerDoc.exists() ? europePlayerDoc.data().averageScore : 0,
           handicapStrokes: tournamentSettings?.handicapStrokes ?? 0,
           higherHandicapTeam: tournamentSettings?.higherHandicapTeam ?? 'USA'
-        }));
+        });
       } catch (error) {
         console.error('Error fetching player handicaps:', error);
       }
@@ -70,40 +78,52 @@ export default function GameCard({
     if (effectiveUseHandicaps) {
       fetchHandicapData();
     }
-  }, [game.usaPlayerId, game.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
+  }, [initialGame.usaPlayerId, initialGame.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
 
   const handleShowScoreModal = () => {
     setShowScoreModal(true);
   };
 
+  const handleStartGame = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onStatusChange) {
+      await onStatusChange(initialGame, 'in_progress');
+    }
+  };
+
+  // Combine game data with handicap data
+  const gameWithHandicaps = {
+    ...initialGame,
+    ...handicapData
+  };
+
   return (
     <>
       <div 
-        className={`bg-white dark:bg-gray-800 rounded-lg shadow ${compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'} ${
-          isAdminPlayer ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''
+        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-2 ${getBorderColor()} ${
+          compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
+        } ${
+          showSpecialStyling ? 'ring-1 ring-blue-500 dark:ring-blue-400' : ''
         } cursor-pointer hover:shadow-md transition-shadow duration-200`}
         onClick={handleShowScoreModal}
       >
         <div className="space-y-4">
-          <PlayerPair game={game} currentUserId={currentUserId} compact={compact} />
+          <PlayerPair game={gameWithHandicaps} currentUserId={linkedPlayerId} compact={compact} />
           
-          <GameScoreDisplay game={game} compact={compact} useHandicaps={effectiveUseHandicaps} />
+          <GameScoreDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
 
-          {showControls && (
-            <div className="space-y-2">
-              {!game.isStarted && onStatusChange && (
+          {showControls && (isAdmin || isPlayerInGame) && (
+            <div className="space-y-2 md:max-w-xs mx-auto">
+              {!initialGame.isStarted && onStatusChange && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStatusChange(game, 'in_progress');
-                  }}
+                  onClick={handleStartGame}
                   className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
                 >
                   Start Game
                 </button>
               )}
               
-              {game.isStarted && !game.isComplete && onEnterScores && (
+              {initialGame.isStarted && !initialGame.isComplete && onEnterScores && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -115,13 +135,13 @@ export default function GameCard({
                 </button>
               )}
 
-              {onStatusChange && game.isStarted && (
+              {onStatusChange && initialGame.isStarted && (
                 <div className="space-y-2">
-                  {game.isComplete ? (
+                  {initialGame.isComplete ? (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onStatusChange(game, 'in_progress');
+                        onStatusChange(initialGame, 'in_progress');
                       }}
                       className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
                     >
@@ -132,7 +152,7 @@ export default function GameCard({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStatusChange(game, 'not_started');
+                          onStatusChange(initialGame, 'not_started');
                         }}
                         className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
                       >
@@ -141,7 +161,7 @@ export default function GameCard({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStatusChange(game, 'complete');
+                          onStatusChange(initialGame, 'complete');
                         }}
                         className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
                       >
@@ -154,12 +174,12 @@ export default function GameCard({
             </div>
           )}
 
-          <HandicapDisplay game={game} compact={compact} useHandicaps={effectiveUseHandicaps} />
+          <HandicapDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
         </div>
       </div>
 
       <GameScoreModal
-        game={game}
+        game={gameWithHandicaps}
         isOpen={showScoreModal}
         onClose={() => setShowScoreModal(false)}
         useHandicaps={effectiveUseHandicaps}

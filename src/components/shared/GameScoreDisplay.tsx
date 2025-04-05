@@ -46,24 +46,32 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
 
   const status = {
     label: isComplete ? 'Complete' : isInProgress ? 'In Progress' : 'Not Started',
-    bgColor: isComplete ? 'bg-green-100 dark:bg-green-900' : isInProgress ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-gray-100 dark:bg-gray-800',
-    textColor: isComplete ? 'text-green-800 dark:text-green-200' : isInProgress ? 'text-yellow-800 dark:text-yellow-200' : 'text-gray-800 dark:text-gray-200',
+    bgColor: isComplete ? 'bg-green-500 dark:bg-green-400' : isInProgress ? 'bg-amber-500 dark:bg-amber-400' : 'bg-gray-800 dark:bg-gray-700',
+    textColor: isComplete ? 'text-white' : isInProgress ? 'text-black' : 'text-white',
     icon: isComplete ? '✓' : isInProgress ? '⏳' : '⏸'
   };
 
   return (
-    <div className={`space-y-${compact ? '2' : '3'}`} data-testid="game-score-display">
-      {/* Game Status - Moved to top for more prominence */}
-      <div className="text-center">
-        <div className={`inline-flex items-center px-3 py-1.5 rounded-full ${status.bgColor} ${status.textColor} font-medium text-sm`} data-testid="game-status">
-          <span className="mr-1">{status.icon}</span>
-          {status.label}
-        </div>
-      </div>
-
+    <div className={`relative ${compact ? "space-y-2" : "space-y-3"}`} data-testid="game-score-display">
       {/* Show scores if game has started or is complete */}
-      {(game.isStarted || game.isComplete) && (
-        <>
+      {(game.isStarted || game.isComplete) ? (
+        <div>
+          {/* Game Status - Within the component */}
+          <div className="flex justify-center mb-2">
+            <div 
+              className={`
+                inline-flex items-center px-3 py-1
+                text-xs font-medium
+                ${status.bgColor} ${status.textColor}
+                rounded-md shadow-md
+              `} 
+              data-testid="game-status"
+            >
+              <span className="mr-1">{status.icon}</span>
+              {status.label}
+            </div>
+          </div>
+          
           {/* Stroke Play Score */}
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-1" data-testid="stroke-play-label">
@@ -115,7 +123,25 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
               </div>
             </div>
           </div>
-        </>
+        </div>
+      ) : (
+        <div>
+          {/* Game Status when not started */}
+          <div className="flex justify-center my-2">
+            <div 
+              className={`
+                inline-flex items-center px-3 py-1
+                text-xs font-medium
+                ${status.bgColor} ${status.textColor}
+                rounded-md shadow-md
+              `} 
+              data-testid="game-status"
+            >
+              <span className="mr-1">{status.icon}</span>
+              {status.label}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

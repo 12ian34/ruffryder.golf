@@ -12,7 +12,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [userData, setUserData] = useState<User | null>(null);
   const [name, setName] = useState('');
-  const [pendingEmoji, setPendingEmoji] = useState<string>('');
+  const [pendingEmoji, setPendingEmoji] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -22,28 +22,28 @@ export default function Profile() {
       return;
     }
 
-    const fetchData = async () => {
+    const fetchUserData = async () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
-          const user = userDoc.data() as User;
-          setUserData(user);
-          setName(user.name);
-          setPendingEmoji(user.customEmoji || '');
+          const data = userDoc.data() as User;
+          setUserData(data);
+          setName(data.name || '');
+          setPendingEmoji(data.customEmoji || null);
         }
       } catch (err: any) {
-        showErrorToast('Failed to load profile data');
+        showErrorToast('Failed to load profile');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchUserData();
   }, [currentUser, navigate]);
 
   const hasChanges = useMemo(() => {
     if (!userData) return false;
-    return name !== userData.name || pendingEmoji !== (userData.customEmoji || '');
+    return name !== userData.name || pendingEmoji !== (userData.customEmoji || null);
   }, [userData, name, pendingEmoji]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -131,7 +131,7 @@ export default function Profile() {
                   <button
                     key={`emoji-${index}`}
                     type="button"
-                    onClick={() => setPendingEmoji(emoji === pendingEmoji ? '' : emoji)}
+                    onClick={() => setPendingEmoji(emoji === pendingEmoji ? null : emoji)}
                     className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
                       pendingEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
                     }`}
@@ -180,13 +180,9 @@ export default function Profile() {
                 Linked Player
               </label>
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 rounded-lg">
-                {userData.linkedPlayerId ? (
+                {userData?.linkedPlayerId ? (
                   <div className="flex items-center space-x-2">
-                    <span>{userData.customEmoji || '👤'}</span>
-                    <span>{userData.name}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      ({userData.team || 'No Team'})
-                    </span>
+                    <span>{userData.linkedPlayerId}</span>
                   </div>
                 ) : (
                   <span className="text-gray-500 dark:text-gray-400">No player linked</span>

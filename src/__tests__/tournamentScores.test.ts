@@ -37,6 +37,7 @@ vi.mock('firebase/firestore', () => ({
   })),
   getDocs: vi.fn(),
   arrayUnion: vi.fn((...elements) => elements),
+  serverTimestamp: vi.fn(() => new Date().toISOString()),
 }));
 
 describe('Tournament Scores Tests', () => {
@@ -104,6 +105,10 @@ describe('Tournament Scores Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mock implementations
+    (getDoc as any).mockReset();
+    (updateDoc as any).mockReset();
+    (getDocs as any).mockReset();
   });
 
   describe('Score Updates', () => {
@@ -115,6 +120,23 @@ describe('Tournament Scores Tests', () => {
         }]
       });
 
+      // Mock first getDoc call for tournament data
+      (getDoc as any).mockResolvedValueOnce({
+        data: () => ({
+          progress: [],
+          name: 'Test Tournament',
+          year: 2024,
+          isActive: true,
+          useHandicaps: false,
+          teamConfig: 'USA_VS_EUROPE',
+          handicapStrokes: 0,
+          higherHandicapTeam: 'USA',
+          matchups: [],
+          createdAt: new Date().toISOString()
+        })
+      });
+
+      // Mock second getDoc call for progress array
       (getDoc as any).mockResolvedValueOnce({
         data: () => ({
           progress: []
@@ -159,6 +181,23 @@ describe('Tournament Scores Tests', () => {
         ]
       });
 
+      // Mock first getDoc call for tournament data
+      (getDoc as any).mockResolvedValueOnce({
+        data: () => ({
+          progress: [],
+          name: 'Test Tournament',
+          year: 2024,
+          isActive: true,
+          useHandicaps: false,
+          teamConfig: 'USA_VS_EUROPE',
+          handicapStrokes: 0,
+          higherHandicapTeam: 'USA',
+          matchups: [],
+          createdAt: new Date().toISOString()
+        })
+      });
+
+      // Mock second getDoc call for progress array
       (getDoc as any).mockResolvedValueOnce({
         data: () => ({
           progress: []
@@ -208,10 +247,26 @@ describe('Tournament Scores Tests', () => {
         }]
       });
 
+      // Mock first getDoc call for tournament data
       (getDoc as any).mockResolvedValueOnce({
         data: () => ({
           progress: [],
-          useHandicaps: true
+          name: 'Test Tournament',
+          year: 2024,
+          isActive: true,
+          useHandicaps: true,
+          teamConfig: 'USA_VS_EUROPE',
+          handicapStrokes: 5,
+          higherHandicapTeam: 'EUROPE',
+          matchups: [],
+          createdAt: new Date().toISOString()
+        })
+      });
+
+      // Mock second getDoc call for progress array
+      (getDoc as any).mockResolvedValueOnce({
+        data: () => ({
+          progress: []
         })
       });
 
@@ -276,27 +331,35 @@ describe('Tournament Scores Tests', () => {
         docs: []
       });
 
+      // Mock first getDoc call for tournament data
+      (getDoc as any).mockResolvedValueOnce({
+        data: () => ({
+          progress: [],
+          name: 'Test Tournament',
+          year: 2024,
+          isActive: true,
+          useHandicaps: false,
+          teamConfig: 'USA_VS_EUROPE',
+          handicapStrokes: 0,
+          higherHandicapTeam: 'USA',
+          matchups: [],
+          createdAt: new Date().toISOString(),
+          totalScore: { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } },
+          projectedScore: { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } }
+        })
+      });
+
+      // Mock second getDoc call for progress array
       (getDoc as any).mockResolvedValueOnce({
         data: () => ({
           progress: []
         })
       });
 
-      (updateDoc as any).mockResolvedValueOnce(undefined);
-
       await updateTournamentScores(mockTournament.id);
 
-      expect(updateDoc).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.objectContaining({
-          totalScore: expect.objectContaining({
-            raw: expect.objectContaining({
-              USA: 0,
-              EUROPE: 0
-            })
-          })
-        })
-      );
+      // Since there are no changes (all scores are 0), updateDoc should not be called
+      expect(updateDoc).not.toHaveBeenCalled();
     });
 
     it('should handle incomplete games', async () => {
