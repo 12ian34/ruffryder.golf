@@ -186,10 +186,16 @@ export default function Leaderboard() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <ScoreCard
-          currentScore={tournament.useHandicaps ? tournament.totalScore.adjusted : tournament.totalScore.raw}
-          projectedScore={tournament.useHandicaps 
-            ? (tournament.projectedScore?.adjusted || { USA: 0, EUROPE: 0 })
-            : (tournament.projectedScore?.raw || { USA: 0, EUROPE: 0 })}
+          currentScore={tournament.totalScore ? 
+            (tournament.useHandicaps ? tournament.totalScore.adjusted : tournament.totalScore.raw) 
+            : { USA: 0, EUROPE: 0 }
+          }
+          projectedScore={tournament.projectedScore ? 
+            (tournament.useHandicaps 
+              ? (tournament.projectedScore.adjusted || { USA: 0, EUROPE: 0 })
+              : (tournament.projectedScore.raw || { USA: 0, EUROPE: 0 }))
+            : { USA: 0, EUROPE: 0 }
+          }
           totalStrokes={totalStrokes}
           rawStrokes={rawStrokes}
           totalHoles={totalHoles}
