@@ -129,12 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function signOutUser() {
+  async function signOut() {
     try {
+      // Unsubscribe from all Firestore listeners by triggering auth state change
+      // This will cause all useEffect cleanup functions to run
       await firebaseSignOut(auth);
-      showSuccessToast('Successfully signed out');
+      showSuccessToast('Successfully signed out!');
     } catch (error: any) {
-      showErrorToast('Failed to sign out. Please try again.');
+      showErrorToast(getErrorMessage(error));
       throw error;
     }
   }
@@ -168,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signUp: signUpUser,
     signIn: signInUser,
-    signOut: signOutUser,
+    signOut,
     resetPassword: resetUserPassword,
     completePasswordReset: completeUserPasswordReset
   };

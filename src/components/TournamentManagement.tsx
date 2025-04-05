@@ -154,7 +154,10 @@ export default function TournamentManagement() {
       }
     );
 
-    return () => unsubscribe();
+    // Clean up subscription on unmount or when selectedTournament changes
+    return () => {
+      unsubscribe();
+    };
   }, [selectedTournament?.id]);
 
   const handleCreateTournament = async () => {

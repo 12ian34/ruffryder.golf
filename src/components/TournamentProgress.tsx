@@ -9,7 +9,8 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+import { useEffect, useRef } from 'react';
 import type { TournamentProgressDisplay } from '../types/tournament';
 
 ChartJS.register(
@@ -28,9 +29,27 @@ interface TournamentProgressProps {
 }
 
 export default function TournamentProgress({ progress, totalGames }: TournamentProgressProps) {
+  const chartRef = useRef<ChartJS | null>(null);
+
+  // Cleanup chart instance on unmount
+  useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+    };
+  }, []);
+
   if (!progress || progress.length === 0) {
     return null;
   }
+
+  const formatDate = (date: Date) => {
+    if (!isValid(date)) {
+      return '';
+    }
+    return format(date, 'MMM d, yyyy h:mm a');
+  };
 
   const options = {
     responsive: true,
@@ -65,7 +84,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         callbacks: {
           title: (context: any) => {
             const index = context[0].dataIndex;
-            return format(progress[index].timestamp, 'MMM d, yyyy h:mm a');
+            return formatDate(progress[index].timestamp);
           },
           label: (context: any) => {
             const team = context.dataset.label;
@@ -88,7 +107,8 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         ticks: {
           callback: (_value: any, index: number) => {
             if (index === 0 || index === progress.length - 1) {
-              return format(progress[index].timestamp, 'MMM d');
+              const date = progress[index].timestamp;
+              return isValid(date) ? format(date, 'MMM d') : '';
             }
             return '';
           },
@@ -151,7 +171,15 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         Tournament Progress
       </h3>
       <div className="h-[200px]">
-        <Line options={options} data={data} />
+        <Line 
+          options={options} 
+          data={data}
+          ref={(ref) => {
+            if (ref) {
+              chartRef.current = ref;
+            }
+          }}
+        />
       </div>
       <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
         Games completed: {progress[progress.length - 1].completedGames} of {totalGames}
