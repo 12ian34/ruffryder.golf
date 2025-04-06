@@ -5,6 +5,11 @@ import { db } from '../config/firebase';
 // Cache to avoid multiple requests
 let cachedDistances: number[] | null = null;
 
+// Reset function for testing
+export function __resetCacheForTesting() {
+  cachedDistances = null;
+}
+
 export function useHoleDistances() {
   const [distances, setDistances] = useState<number[]>(cachedDistances || []);
   const [isLoading, setIsLoading] = useState(cachedDistances === null);
@@ -25,7 +30,8 @@ export function useHoleDistances() {
         
         if (holeDistancesDoc.exists()) {
           // Extract the indices array directly
-          const distancesArray = holeDistancesDoc.data().indices || [];
+          const data = holeDistancesDoc.data();
+          const distancesArray = data && data.indices ? data.indices : [];
           
           // Cache the result
           cachedDistances = distancesArray;
@@ -40,6 +46,10 @@ export function useHoleDistances() {
       } catch (err: any) {
         console.error('Error fetching hole distances:', err);
         setError(err.message || 'Failed to load hole distances');
+        // Important: Reset distances to empty array on error
+        setDistances([]);
+        // Don't cache on error
+        cachedDistances = null;
       } finally {
         setIsLoading(false);
       }
