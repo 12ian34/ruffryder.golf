@@ -9,7 +9,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
   const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const isMounted = useRef(true);
-  const authStateRef = useRef<boolean>(false);
+  const authStateRef = useRef<boolean>(!!auth.currentUser);
   const listenersRef = useRef<{
     tournament: (() => void) | undefined;
     games: (() => void) | undefined;
@@ -123,6 +123,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       });
     };
 
+    // Set up auth state change listener first
     listenersRef.current.auth = auth.onAuthStateChanged((user) => {
       if (!isMounted.current) {
         return;
@@ -130,24 +131,38 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       
       // Update auth state ref
       const newAuthState = !!user;
-      authStateRef.current = newAuthState;
       
-      // Clean up existing listeners first
-      cleanupListeners();
-      
-      if (user) {
-        setupListeners();
-      } else {
-        setTournamentSettings(null);
-        setGames([]);
-        setIsLoading(false);
+      // Only clean up and re-setup if auth state actually changed or it's the initial setup
+      if (authStateRef.current !== newAuthState || !listenersRef.current.tournament) {
+        authStateRef.current = newAuthState;
+        
+        // Clean up existing listeners first
+        cleanupListeners();
+        
+        if (user) {
+          // Small delay to ensure auth state is fully registered before setting up listeners
+          setTimeout(() => {
+            if (isMounted.current) {
+              setupListeners();
+            }
+          }, 100);
+        } else {
+          setTournamentSettings(null);
+          setGames([]);
+          setIsLoading(false);
+        }
       }
     });
 
-    // Initial setup if already authenticated
+    // Initial setup if already authenticated - but wait a short moment
+    // to ensure auth state is fully initialized
     if (auth.currentUser) {
       authStateRef.current = true;
-      setupListeners();
+      setTimeout(() => {
+        if (isMounted.current) {
+          setupListeners();
+        }
+      }, 100);
     }
 
     // Cleanup function

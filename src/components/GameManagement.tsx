@@ -33,10 +33,6 @@ export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameMan
     return <div>Loading games...</div>;
   }
 
-  if (!isAdmin && !linkedPlayerId) {
-    return <div>Please link your player profile to view games.</div>;
-  }
-
   if (!activeTournament) {
     return <div>No active tournament found.</div>;
   }

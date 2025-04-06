@@ -15,7 +15,11 @@ export default function About() {
                 href="https://github.com/12ian34/ruff-ryders-app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors no-underline"
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-gray-900 dark:bg-gray-700 text-white hover:text-white rounded-lg 
+                hover:bg-gradient-to-r hover:from-purple-500 hover:to-indigo-600
+                hover:shadow-lg hover:shadow-purple-500/20 dark:hover:shadow-indigo-500/30
+                transform hover:scale-105 hover:-translate-y-1
+                transition-all duration-300 ease-out no-underline"
               >
                 <span>🌚 open sourced on github</span>
               </a>
