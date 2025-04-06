@@ -26,7 +26,7 @@ export default function BlogList({ posts }: BlogListProps) {
           onClick={() => navigate(`/blog/${post.id}`)}
         >
           <div className="group">
-            <h2 className="text-2xl font-bold mb-2 group-hover:text-blue-500 dark:text-white">
+            <h2 className="text-2xl font-bold mb-2 group-hover:text-purple-500 dark:text-white">
               {post.title}
             </h2>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
@@ -45,7 +45,7 @@ export default function BlogList({ posts }: BlogListProps) {
                 </span>
               </div>
             )}
-            <div className="text-blue-500 group-hover:text-blue-600 dark:text-blue-400 flex items-center">
+            <div className="text-purple-500 group-hover:text-purple-600 dark:text-purple-400 flex items-center">
               <span>Read more</span>
               <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

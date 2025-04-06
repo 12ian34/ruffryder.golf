@@ -116,7 +116,7 @@ export default function PasswordResetComplete() {
 
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-br from-purple-500 to-purple-600 hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 disabled:opacity-50"
               disabled={isLoading || !oobCode || !email}
             >
               {isLoading ? 'Setting password...' : 'Set Password & Sign In'}
@@ -126,7 +126,7 @@ export default function PasswordResetComplete() {
               <div className="text-center mt-4">
                 <a
                   href="/"
-                  className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-sm text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
                 >
                   Return to Login
                 </a>

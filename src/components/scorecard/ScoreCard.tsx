@@ -10,8 +10,8 @@ interface ScoreCardProps {
 export default function ScoreCard({ currentScore, projectedScore, totalStrokes, rawStrokes, totalHoles, useHandicaps }: ScoreCardProps) {
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4 dark:text-white">Current Score</h2>
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+      <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Current Score</h2>
       <div className="grid grid-cols-2 gap-4 text-center">
         <div>
           <div className={`text-3xl font-bold ${currentScore.USA > currentScore.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>

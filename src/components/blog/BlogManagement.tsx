@@ -55,8 +55,8 @@ export default function BlogManagement() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -75,9 +75,9 @@ export default function BlogManagement() {
         <h2 className="text-xl font-semibold dark:text-white">Blog Posts</h2>
         <button
           onClick={() => navigate('/blog/new')}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200"
         >
-          New Post
+          Create New Post
         </button>
       </div>
 
@@ -108,7 +108,7 @@ export default function BlogManagement() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
                     to={`/blog/${post.id}`}
-                    className="text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                    className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
                   >
                     {post.title}
                   </Link>
@@ -131,7 +131,7 @@ export default function BlogManagement() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-4">
                   <button
                     onClick={() => navigate(`/blog/edit/${post.id}`)}
-                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
                   >
                     Edit
                   </button>

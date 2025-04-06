@@ -84,8 +84,8 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
-        <h3 className="text-lg font-semibold mb-4 dark:text-white">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full p-6">
+        <h3 className="text-lg font-semibold mb-4 dark:text-gray-100">
           Complete Game
         </h3>
 
@@ -159,7 +159,7 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
             <button
               onClick={handleConfirm}
               disabled={isLoading || missingScores.length > 0 || !isOnline}
-              className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {isLoading ? 'Completing...' : 'Complete Game'}
             </button>

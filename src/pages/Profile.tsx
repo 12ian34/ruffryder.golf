@@ -89,7 +89,7 @@ export default function Profile() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function Profile() {
             <h1 className="text-2xl font-bold dark:text-white">Profile Settings</h1>
             <button
               onClick={() => navigate('/dashboard')}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400"
+              className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
             >
               Back to Dashboard
             </button>
@@ -133,7 +133,7 @@ export default function Profile() {
                     type="button"
                     onClick={() => setPendingEmoji(emoji === pendingEmoji ? null : emoji)}
                     className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                      pendingEmoji === emoji ? 'bg-blue-100 dark:bg-blue-900' : ''
+                      pendingEmoji === emoji ? 'bg-purple-100 dark:bg-purple-900' : ''
                     }`}
                     disabled={isSaving}
                   >
@@ -196,7 +196,7 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Role
                 </label>
-                <div className="px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200 rounded-lg">
+                <div className="px-4 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded-lg">
                   Administrator
                 </div>
               </div>
@@ -215,7 +215,7 @@ export default function Profile() {
               <button
                 type="submit"
                 disabled={isSaving || !hasChanges}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-6 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {isSaving && (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

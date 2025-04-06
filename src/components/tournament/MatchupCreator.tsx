@@ -159,7 +159,7 @@ export default function MatchupCreator({
       <button
         onClick={onCreateMatchup}
         disabled={!selectedUsaPlayer || !selectedEuropePlayer || isLoading}
-        className="mt-4 w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-4 w-full bg-purple-500 text-white py-2 px-4 rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Create Matchup
       </button>

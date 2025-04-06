@@ -117,7 +117,7 @@ export default function BlogEditor({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Post title"
-        className="w-full px-4 py-2 text-2xl font-bold border-0 border-b-2 border-gray-200 dark:border-gray-700 focus:ring-0 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+        className="w-full px-4 py-2 text-2xl font-bold border-0 border-b-2 border-gray-200 dark:border-gray-700 focus:ring-0 focus:border-purple-500 dark:bg-gray-800 dark:text-white"
       />
 
       <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
@@ -255,7 +255,7 @@ export default function BlogEditor({
         <button
           onClick={() => handleSave('published')}
           disabled={isLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200"
         >
           {isLoading ? 'Publishing...' : 'Publish'}
         </button>

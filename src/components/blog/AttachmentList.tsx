@@ -40,7 +40,7 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
           <li key={`${attachment.filename}-${index}`}>
             <button
               onClick={() => downloadAttachment(attachment)}
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 flex items-center space-x-2"
+              className="text-purple-500 hover:text-purple-600 dark:text-purple-400 flex items-center space-x-2"
             >
               <span>{attachment.type === 'image' ? '📷' : '📄'}</span>
               <span className="underline">{attachment.filename}</span>

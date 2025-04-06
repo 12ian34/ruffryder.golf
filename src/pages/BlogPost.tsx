@@ -70,7 +70,7 @@ export default function BlogPostPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function BlogPostPage() {
         <div className="flex justify-between items-center mb-8">
           <button
             onClick={handleBack}
-            className="inline-flex items-center text-blue-500 hover:text-blue-600"
+            className="inline-flex items-center text-purple-500 hover:text-purple-600"
           >
             ← Back to Blog
           </button>
@@ -104,7 +104,7 @@ export default function BlogPostPage() {
             <div className="flex space-x-4">
               <button
                 onClick={handleEdit}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 font-medium"
               >
                 Edit Post
               </button>

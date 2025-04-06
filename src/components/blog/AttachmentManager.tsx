@@ -70,7 +70,7 @@ export default function AttachmentManager({
   return (
     <div className="space-y-4">
       <div {...getRootProps()} className={`border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center ${
-        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-blue-500 dark:hover:border-blue-400'
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-purple-500 dark:hover:border-purple-400'
       }`}>
         <input {...getInputProps()} />
         <p className="text-gray-600 dark:text-gray-400">

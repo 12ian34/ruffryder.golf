@@ -337,7 +337,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div data-testid="loading-spinner" className="bg-white dark:bg-gray-800 rounded-lg p-6">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
         </div>
       </div>
     );
@@ -431,7 +431,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                       </div>
                     ) : null}
                     {useHandicaps && showStrokeIndicator && (
-                      <div className="text-xs text-blue-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
+                      <div className="text-xs text-purple-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -618,7 +618,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-red-500">{getTotals().front9USA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-blue-500">{getTotals().front9Europe}</span>
+                      <span className="text-sm font-medium text-purple-500">{getTotals().front9Europe}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
@@ -626,7 +626,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-red-500">{getTotals().back9USA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-blue-500">{getTotals().back9Europe}</span>
+                      <span className="text-sm font-medium text-purple-500">{getTotals().back9Europe}</span>
                     </div>
                   </div>
                 </div>
@@ -636,12 +636,12 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-red-500">{getTotals().totalUSA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-blue-500">{getTotals().totalEurope}</span>
+                      <span className="text-sm font-medium text-purple-500">{getTotals().totalEurope}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Difference:</span>
-                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-red-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-blue-500' : 'text-gray-500')}`}>
+                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-red-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-purple-500' : 'text-gray-500')}`}>
                       {getTotals().totalUSA < getTotals().totalEurope 
                         ? `USA ahead by ${getTotals().totalEurope - getTotals().totalUSA}` 
                         : (getTotals().totalUSA > getTotals().totalEurope 
@@ -672,7 +672,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             <button
               onClick={handleScoreSubmit}
               disabled={isLoading}
-              className="px-6 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="px-6 py-2.5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               aria-label="Save scores"
             >
               {isLoading ? 'Saving...' : 'Save Scores'}

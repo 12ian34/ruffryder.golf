@@ -18,7 +18,7 @@ export default function PlayerStats() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -70,11 +70,11 @@ export default function PlayerStats() {
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {players.map((player) => {
               const isCurrentPlayer = player.id === linkedPlayerId;
               return (
-                <tr key={player.id} className={isCurrentPlayer ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
+                <tr key={player.id} className={isCurrentPlayer ? 'bg-amber-50 dark:bg-purple-900/20' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
                       <PlayerEmoji

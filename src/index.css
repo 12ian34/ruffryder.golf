@@ -11,31 +11,31 @@
   --tw-prose-quote-borders: theme('colors.gray.300');
   --tw-prose-invert-body: theme('colors.gray.300');
   --tw-prose-invert-headings: theme('colors.white');
-  --tw-prose-invert-links: theme('colors.blue.400');
-  --tw-prose-invert-pre-bg: theme('colors.gray.800');
+  --tw-prose-invert-links: theme('colors.purple.400');
+  --tw-prose-invert-pre-bg: theme('colors.gray.900');
   --tw-prose-invert-quote-borders: theme('colors.gray.700');
 }
 
 /* Input styles */
 input {
-  @apply bg-white border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md shadow-sm px-4 py-2;
+  @apply bg-white border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 rounded-md shadow-sm px-4 py-2;
 }
 
 /* Dark mode overrides */
 .dark {
-  @apply bg-gray-900;
+  @apply bg-gray-950;
 }
 
 .dark body {
-  @apply text-white;
+  @apply text-gray-100;
 }
 
 .dark input {
-  @apply bg-gray-800 border-gray-700 text-white;
+  @apply bg-gray-900 border-gray-800 text-gray-100;
 }
 
 .dark .bg-white {
-  @apply bg-gray-800;
+  @apply bg-gray-900;
 }
 
 /* Blog content styles */
@@ -48,7 +48,7 @@ input {
 }
 
 .blog-content a {
-  @apply text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300;
+  @apply text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300;
 }
 
 .blog-content blockquote {
@@ -56,11 +56,11 @@ input {
 }
 
 .blog-content pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto;
+  @apply bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto;
 }
 
 .blog-content code {
-  @apply bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded;
+  @apply bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded;
 }
 
 .blog-content ul {
@@ -116,11 +116,11 @@ input {
 }
 
 .ProseMirror pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg font-mono text-sm my-4;
+  @apply bg-gray-100 dark:bg-gray-900 p-4 rounded-lg font-mono text-sm my-4;
 }
 
 .ProseMirror code {
-  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono text-sm;
+  @apply bg-gray-100 dark:bg-gray-900 px-1.5 py-0.5 rounded font-mono text-sm;
 }
 
 .ProseMirror hr {
@@ -128,7 +128,7 @@ input {
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
-  @apply text-gray-400 dark:text-gray-500;
+  @apply text-gray-400 dark:text-gray-600;
   content: "Start writing your post...";
   float: left;
   pointer-events: none;

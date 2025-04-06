@@ -189,10 +189,10 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
             </button>
             <button
               type="submit"
+              className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50"
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
             >
-              {isLoading ? 'Saving...' : 'Save Changes'}
+              {isLoading ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

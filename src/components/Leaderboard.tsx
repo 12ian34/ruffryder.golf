@@ -174,7 +174,7 @@ export default function Leaderboard() {
       </div>
 
       {tournament.progress && tournament.progress.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
           <TournamentProgress 
             progress={tournament.progress.map(p => ({
               timestamp: new Date(p.timestamp),
@@ -190,7 +190,7 @@ export default function Leaderboard() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Games</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Games</h2>
           <StatusFilter activeStatus={activeStatus} onStatusChange={setActiveStatus} />
         </div>
         <GameList 

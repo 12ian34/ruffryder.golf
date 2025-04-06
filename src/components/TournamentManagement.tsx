@@ -565,7 +565,7 @@ export default function TournamentManagement() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -596,7 +596,7 @@ export default function TournamentManagement() {
           {isAdmin && (
             <button
               onClick={() => setShowCreateForm(prev => !prev)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+              className="bg-gradient-to-br from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all duration-200"
             >
               {showCreateForm ? 'Cancel' : 'Create New Tournament'}
             </button>
@@ -649,7 +649,7 @@ export default function TournamentManagement() {
                   id="useHandicaps"
                   checked={newTournament.useHandicaps}
                   onChange={(e) => setNewTournament({ ...newTournament, useHandicaps: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                 />
                 <label htmlFor="useHandicaps" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                   Use Handicaps
@@ -658,7 +658,7 @@ export default function TournamentManagement() {
               <button
                 onClick={handleCreateTournament}
                 disabled={isLoading}
-                className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-br from-purple-500 to-purple-600 text-white py-2 px-4 rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Create Tournament
               </button>
@@ -672,7 +672,7 @@ export default function TournamentManagement() {
               key={tournament.id}
               className={`p-6 rounded-lg ${
                 tournament.isActive
-                  ? 'border-2 border-blue-500 bg-gray-50 dark:bg-gray-700'
+                  ? 'border-2 border-purple-500 bg-gray-50 dark:bg-gray-700'
                   : 'bg-white dark:bg-gray-800'
               }`}
             >
@@ -715,8 +715,8 @@ export default function TournamentManagement() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleToggleHandicaps(tournament)}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        tournament.useHandicaps ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                        tournament.useHandicaps ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
                       }`}
                       role="switch"
                       aria-checked={tournament.useHandicaps}
@@ -739,11 +739,11 @@ export default function TournamentManagement() {
                 )}
                 <button
                   onClick={() => handleToggleActive(tournament)}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`px-4 py-2 rounded-lg transition-colors ${
                     tournament.isActive
-                      ? 'bg-red-500 hover:bg-red-600'
-                      : 'bg-green-500 hover:bg-green-600'
-                  } text-white text-sm`}
+                      ? 'bg-opacity-10 bg-purple-200 text-purple-600 border border-purple-500 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700'
+                      : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-sm'
+                  } text-sm`}
                 >
                   {tournament.isActive ? 'Deactivate' : 'Activate'}
                 </button>

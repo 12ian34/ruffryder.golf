@@ -38,8 +38,8 @@ export default function TeamFilter({ onFilterChange }: TeamFilterProps) {
         onClick={() => handleTeamChange('EUROPE')}
         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
           activeTeam === 'EUROPE'
-            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-            : 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/50'
+            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+            : 'text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/50'
         }`}
       >
         Europe

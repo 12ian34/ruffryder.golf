@@ -85,7 +85,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -124,11 +124,11 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
+      <header className="bg-white dark:bg-gray-900 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Ruff Ryders Cup
             </h1>
             <div className="flex items-center space-x-4">
@@ -148,7 +148,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => navigate('/profile')}
-                className="text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
               >
                 Profile
               </button>
@@ -157,7 +157,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <nav className="bg-white dark:bg-gray-800 shadow-sm overflow-x-auto">
+      <nav className="bg-white dark:bg-gray-900 shadow-sm overflow-x-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-1 sm:space-x-4">
             {tabs.map((tab) => (
@@ -166,7 +166,7 @@ export default function Dashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab.id
-                    ? 'text-blue-500 border-b-2 border-blue-500'
+                    ? 'text-purple-500 border-b-2 border-purple-500'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >

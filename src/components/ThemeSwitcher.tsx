@@ -10,7 +10,7 @@ export default function ThemeSwitcher() {
         onClick={() => setTheme('light')}
         className={`p-2 rounded-lg transition-colors ${
           theme === 'light'
-            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300'
             : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
         }`}
         title="Light Mode"
@@ -21,7 +21,7 @@ export default function ThemeSwitcher() {
         onClick={() => setTheme('dark')}
         className={`p-2 rounded-lg transition-colors ${
           theme === 'dark'
-            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+            ? 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300'
             : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
         }`}
         title="Dark Mode"

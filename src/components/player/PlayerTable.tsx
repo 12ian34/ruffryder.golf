@@ -73,7 +73,7 @@ export default function PlayerTable({
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   player.team === 'USA'
                     ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                 }`}>
                   {player.team}
                 </span>
@@ -89,7 +89,7 @@ export default function PlayerTable({
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-4">
                 <button
                   onClick={() => onEdit(player)}
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
                 >
                   Edit
                 </button>

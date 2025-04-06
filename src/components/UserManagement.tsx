@@ -112,7 +112,7 @@ export default function UserManagement() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -179,7 +179,7 @@ export default function UserManagement() {
                     user.team === 'USA'
                       ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                       : user.team === 'EUROPE'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
                       : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                   }`}>
                     {user.team || 'None'}
@@ -188,10 +188,10 @@ export default function UserManagement() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
                     onClick={() => handleUserUpdate(user.id, { isAdmin: !user.isAdmin })}
-                    className={`px-3 py-1 rounded-lg text-white ${
+                    className={`px-3 py-1 rounded-lg transition-colors ${
                       user.isAdmin
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-green-500 hover:bg-green-600'
+                        ? 'bg-opacity-10 bg-purple-200 text-purple-600 border border-purple-500 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700'
+                        : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-sm'
                     }`}
                   >
                     {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
