@@ -185,7 +185,7 @@ export default function Profile() {
                     <span>{userData.linkedPlayerId}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">No player linked</span>
+                  <span className="text-gray-500 dark:text-gray-400">ask admin to link you</span>
                 )}
               </div>
             </div>
