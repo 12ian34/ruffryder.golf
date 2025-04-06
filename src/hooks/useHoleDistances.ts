@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -11,52 +11,61 @@ export function __resetCacheForTesting() {
 }
 
 export function useHoleDistances() {
-  const [distances, setDistances] = useState<number[]>(cachedDistances || []);
+  const [distances, setDistances] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(cachedDistances === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we already have cached distances, return them
-    if (cachedDistances !== null) {
-      setDistances(cachedDistances);
-      setIsLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    const fetchHoleDistances = async () => {
+    async function fetchDistances() {
+      // Skip fetching if we already have cached data
+      if (cachedDistances !== null) {
+        setDistances(cachedDistances);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Fetch distances from the holeDistances document in the config collection
-        const holeDistancesDoc = await getDoc(doc(db, 'config', 'holeDistances'));
+        const docRef = doc(db, 'config', 'holeDistances');
+        const docSnap = await getDoc(docRef);
         
-        if (holeDistancesDoc.exists()) {
-          // Extract the indices array directly
-          const data = holeDistancesDoc.data();
-          const distancesArray = data && data.indices ? data.indices : [];
-          
-          // Cache the result
-          cachedDistances = distancesArray;
-          
-          setDistances(distancesArray);
+        if (!isMounted) return;
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const indices = data?.indices || [];
+          cachedDistances = indices;
+          setDistances(indices);
         } else {
-          console.log('No hole distances document found');
-          // Cache an empty array to avoid trying again
+          // If no document exists, use default empty array
           cachedDistances = [];
           setDistances([]);
         }
+        setError(null);
       } catch (err: any) {
+        if (!isMounted) return;
         console.error('Error fetching hole distances:', err);
         setError(err.message || 'Failed to load hole distances');
-        // Important: Reset distances to empty array on error
         setDistances([]);
-        // Don't cache on error
-        cachedDistances = null;
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    };
+    }
 
-    fetchHoleDistances();
+    fetchDistances();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  return { distances, isLoading, error };
+  // Use memoized return value to prevent unnecessary rerenders
+  return useMemo(() => ({
+    distances,
+    isLoading,
+    error
+  }), [distances, isLoading, error]);
 } 

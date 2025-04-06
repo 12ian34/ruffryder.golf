@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { collection, doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import type { Game, TournamentSettings, GameStatus } from '../types/game';
@@ -176,7 +176,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
     };
   }, [tournamentId]);
 
-  const sortGames = (games: Game[]): Game[] => {
+  const sortGames = useCallback((games: Game[]): Game[] => {
     return [...games].sort((a, b) => {
       if (a.isComplete !== b.isComplete) {
         return a.isComplete ? 1 : -1;
@@ -186,9 +186,9 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       }
       return a.usaPlayerName.localeCompare(b.usaPlayerName);
     });
-  };
+  }, []);
 
-  const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
+  const handleGameStatusChange = useCallback(async (game: Game, newStatus: GameStatus) => {
     if (!tournamentId || !tournamentSettings?.id) {
       throw new Error('Missing required IDs');
     }
@@ -258,12 +258,12 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       });
       throw error; // Re-throw to let caller handle the error
     }
-  };
+  }, [tournamentId, tournamentSettings, linkedPlayerId, isAdmin]);
 
-  return {
+  return useMemo(() => ({
     games,
     handleGameStatusChange,
     tournamentSettings,
     isLoading
-  };
+  }), [games, handleGameStatusChange, tournamentSettings, isLoading]);
 }

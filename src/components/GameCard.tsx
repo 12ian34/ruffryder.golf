@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
@@ -80,16 +80,27 @@ export default function GameCard({
     }
   }, [initialGame.usaPlayerId, initialGame.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
 
-  const handleShowScoreModal = () => {
-    setShowScoreModal(true);
-  };
-
-  const handleStartGame = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleStatusChange = useCallback(async (newStatus: 'not_started' | 'in_progress' | 'complete') => {
     if (onStatusChange) {
-      await onStatusChange(initialGame, 'in_progress');
+      await onStatusChange(initialGame, newStatus);
     }
-  };
+  }, [initialGame, onStatusChange]);
+
+  const handleStartGame = useCallback(() => {
+    handleStatusChange('in_progress');
+  }, [handleStatusChange]);
+
+  const handleCompleteGame = useCallback(() => {
+    handleStatusChange('complete');
+  }, [handleStatusChange]);
+
+  const handleCloseModal = useCallback(() => {
+    setShowScoreModal(false);
+  }, []);
+
+  const handleViewScores = useCallback(() => {
+    setShowScoreModal(true);
+  }, []);
 
   // Combine game data with handicap data
   const gameWithHandicaps = {
@@ -105,7 +116,7 @@ export default function GameCard({
         } ${
           showSpecialStyling ? 'ring-1 ring-purple-500 dark:ring-purple-400' : ''
         } cursor-pointer hover:shadow-md transition-shadow duration-200`}
-        onClick={handleShowScoreModal}
+        onClick={handleViewScores}
       >
         <div className="space-y-4">
           <PlayerPair game={gameWithHandicaps} currentUserId={linkedPlayerId} compact={compact} />
@@ -139,20 +150,17 @@ export default function GameCard({
                 <div className="space-y-2">
                   {initialGame.isComplete ? (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onStatusChange(initialGame, 'in_progress');
-                      }}
+                      onClick={handleCompleteGame}
                       className="w-full px-4 py-2 border border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-500/20 transition-colors duration-200 text-sm font-medium"
                     >
-                      Mark as In Progress
+                      Mark as Complete
                     </button>
                   ) : (
                     <>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStatusChange(initialGame, 'not_started');
+                          handleStatusChange('not_started');
                         }}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
                       >
@@ -161,7 +169,7 @@ export default function GameCard({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStatusChange(initialGame, 'complete');
+                          handleStatusChange('complete');
                         }}
                         className="w-full px-4 py-2 border border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-500/20 transition-colors duration-200 text-sm font-medium"
                       >
@@ -181,7 +189,7 @@ export default function GameCard({
       <GameScoreModal
         game={gameWithHandicaps}
         isOpen={showScoreModal}
-        onClose={() => setShowScoreModal(false)}
+        onClose={handleCloseModal}
         useHandicaps={effectiveUseHandicaps}
       />
     </>

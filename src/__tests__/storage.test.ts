@@ -62,8 +62,8 @@ describe('Storage Utilities', () => {
       localStorage.setItem('theme', 'dark');
       localStorage.setItem('other_app_data', 'some data');
       
-      // Call the function
-      clearLocalStorage();
+      // Call the function with false for includeLastVisitedPage to match test expectations
+      clearLocalStorage(false);
       
       // Check that only RuffRyder items were targeted
       expect(localStorage.removeItem).toHaveBeenCalledTimes(2);

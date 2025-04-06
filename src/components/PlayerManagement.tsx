@@ -17,7 +17,7 @@ export default function PlayerManagement() {
     sortField,
     sortDirection,
     toggleSort
-  } = usePlayerData();
+  } = usePlayerData(undefined);
 
   const onSavePlayer = async (playerId: string | null, updates: Partial<Player>) => {
     await handleSavePlayer(playerId, updates);

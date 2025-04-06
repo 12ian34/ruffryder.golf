@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Player } from '../types/player';
@@ -6,7 +6,7 @@ import type { Player } from '../types/player';
 type SortField = 'name' | 'team' | 'averageScore' | number;
 type SortDirection = 'asc' | 'desc';
 
-export function usePlayerData() {
+export function usePlayerData(tournamentId: string | undefined) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +15,8 @@ export function usePlayerData() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchPlayers = async () => {
       try {
         const playersSnapshot = await getDocs(collection(db, 'players'));
@@ -23,15 +25,24 @@ export function usePlayerData() {
           ...doc.data()
         })) as Player[];
         setPlayers(playersData);
+        
+        if (!isMounted) return;
       } catch (err: any) {
+        if (!isMounted) return;
         setError(err.message);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchPlayers();
-  }, []);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [tournamentId]);
 
   const handleSavePlayer = async (playerId: string | null, updates: Partial<Player>) => {
     try {
@@ -104,7 +115,8 @@ export function usePlayerData() {
     }
   });
 
-  return {
+  // Use memoized return value to prevent unnecessary rerenders
+  return useMemo(() => ({
     players: sortedPlayers,
     isLoading,
     error,
@@ -114,5 +126,5 @@ export function usePlayerData() {
     sortField,
     sortDirection,
     toggleSort
-  };
+  }), [sortedPlayers, isLoading, error, successMessage, handleSavePlayer, handleDeletePlayer, sortField, sortDirection, toggleSort]);
 }
