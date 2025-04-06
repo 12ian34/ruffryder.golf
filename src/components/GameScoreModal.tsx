@@ -28,6 +28,15 @@ export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: 
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (isOpen) {
+      window.posthog?.capture('game_score_modal_viewed', {
+        gameId: game.id,
+        playerNames: [game.usaPlayerName, game.europePlayerName]
+      });
+    }
+  }, [isOpen, game.id]);
+
   if (!isOpen) return null;
 
   return (
@@ -38,13 +47,15 @@ export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: 
           onClose();
         }
       }}
+      data-attr="game-score-modal-overlay"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" data-attr="game-score-modal-content">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold dark:text-white">Game Score</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            data-attr="game-score-modal-close"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

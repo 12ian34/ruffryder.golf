@@ -94,6 +94,7 @@ export function GameList({
         <ScoreEntry
           gameId={selectedGame.id}
           tournamentId={selectedGame.tournamentId}
+          useHandicaps={effectiveUseHandicaps}
           onClose={() => {
             setSelectedGame(null);
             setModalKey(prev => prev + 1);

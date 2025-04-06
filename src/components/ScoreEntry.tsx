@@ -4,21 +4,24 @@ import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
+import { useHoleDistances } from '../hooks/useHoleDistances';
 
 interface ScoreEntryProps {
   gameId: string;
   tournamentId: string;
   onClose: () => void;
   onSave?: () => void;
+  useHandicaps?: boolean;
 }
 
-export default function ScoreEntry({ gameId, tournamentId, onClose, onSave }: ScoreEntryProps) {
+export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useHandicaps = false }: ScoreEntryProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [scores, setScores] = useState<Array<{ USA: number | '', EUROPE: number | '' }>>([]);
   const [strokeIndices, setStrokeIndices] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<number | null>(null);
+  const { distances, isLoading: isLoadingDistances, error: distancesError } = useHoleDistances();
 
   // Add escape key handler
   useEffect(() => {
@@ -311,6 +314,25 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave }: Sc
     }
   };
 
+  // Calculate score totals
+  const getTotals = () => {
+    const front9USA = scores.slice(0, 9).reduce((sum, hole) => sum + (typeof hole.USA === 'number' ? hole.USA : 0), 0);
+    const front9Europe = scores.slice(0, 9).reduce((sum, hole) => sum + (typeof hole.EUROPE === 'number' ? hole.EUROPE : 0), 0);
+    const back9USA = scores.slice(9).reduce((sum, hole) => sum + (typeof hole.USA === 'number' ? hole.USA : 0), 0);
+    const back9Europe = scores.slice(9).reduce((sum, hole) => sum + (typeof hole.EUROPE === 'number' ? hole.EUROPE : 0), 0);
+    const totalUSA = front9USA + back9USA;
+    const totalEurope = front9Europe + back9Europe;
+
+    return {
+      front9USA,
+      front9Europe,
+      back9USA,
+      back9Europe,
+      totalUSA,
+      totalEurope
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -394,10 +416,21 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave }: Sc
                 <div key={hole.holeNumber} className="grid grid-cols-[60px_1fr_32px] gap-2 items-center">
                   <div className="text-sm">
                     <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
-                    <div className="text-gray-500 dark:text-gray-400">
-                      SI: {strokeIndices[index] ?? '-'}
-                    </div>
-                    {showStrokeIndicator && (
+                    {useHandicaps && (
+                      <div className="text-gray-500 dark:text-gray-400">
+                        SI: {strokeIndices[index] ?? '-'}
+                      </div>
+                    )}
+                    {isLoadingDistances ? (
+                      <div className="text-gray-400 dark:text-gray-500">
+                        Loading...
+                      </div>
+                    ) : distances[index] ? (
+                      <div className="text-gray-500 dark:text-gray-400">
+                        {distances[index]}yd
+                      </div>
+                    ) : null}
+                    {useHandicaps && showStrokeIndicator && (
                       <div className="text-xs text-blue-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
                     )}
                   </div>
@@ -573,9 +606,61 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave }: Sc
               );
             })}
           </div>
+          
+          {/* Score Totals */}
+          {scores.length > 0 && (
+            <div className="mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Score Totals</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-red-500">{getTotals().front9USA}</span>
+                      <span className="text-xs text-gray-400">|</span>
+                      <span className="text-sm font-medium text-blue-500">{getTotals().front9Europe}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Back 9:</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-red-500">{getTotals().back9USA}</span>
+                      <span className="text-xs text-gray-400">|</span>
+                      <span className="text-sm font-medium text-blue-500">{getTotals().back9Europe}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-600 pb-2">
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-red-500">{getTotals().totalUSA}</span>
+                      <span className="text-xs text-gray-400">|</span>
+                      <span className="text-sm font-medium text-blue-500">{getTotals().totalEurope}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Difference:</span>
+                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-red-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-blue-500' : 'text-gray-500')}`}>
+                      {getTotals().totalUSA < getTotals().totalEurope 
+                        ? `USA ahead by ${getTotals().totalEurope - getTotals().totalUSA}` 
+                        : (getTotals().totalUSA > getTotals().totalEurope 
+                          ? `Europe ahead by ${getTotals().totalUSA - getTotals().totalEurope}` 
+                          : 'Tied')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="sticky bottom-0 bg-white dark:bg-gray-800 px-6 py-4 border-t dark:border-gray-700">
+          {distancesError && (
+            <div className="text-sm text-red-500 mb-2">
+              Error loading hole distances: {distancesError}
+            </div>
+          )}
           <div className="flex justify-end gap-3">
             <button
               onClick={onClose}
