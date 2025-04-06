@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Tournament } from '../types/tournament';
@@ -9,7 +9,6 @@ import StatusFilter from './filters/StatusFilter';
 import { GameList } from './GameList';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useAuth } from '../contexts/AuthContext';
-import { auth } from '../config/firebase';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -20,149 +19,115 @@ export default function Leaderboard() {
   const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
   const isOnline = useOnlineStatus();
   const { currentUser } = useAuth();
+  const isMounted = useRef(true);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Fetch active tournament and games
+  useEffect(() => {
+    isMounted.current = true;
+
+    return () => {
+      isMounted.current = false;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!currentUser) {
+      setTournament(null);
+      setGames([]);
       setIsLoading(false);
       return;
     }
 
-    let unsubscribeTournament: (() => void) | undefined;
-    let unsubscribeGames: (() => void) | undefined;
+    setIsLoading(true);
 
-    const cleanupListeners = () => {
-      if (unsubscribeTournament) {
-        unsubscribeTournament();
-        unsubscribeTournament = undefined;
-      }
-      if (unsubscribeGames) {
-        unsubscribeGames();
-        unsubscribeGames = undefined;
-      }
-    };
-
-    const setupListeners = () => {
-      try {
-        // Get active tournament
-        const tournamentsRef = collection(db, 'tournaments');
-        const q = query(tournamentsRef, where('isActive', '==', true));
-        unsubscribeTournament = onSnapshot(q, (snapshot) => {
-          if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            const tournamentData = doc.data() as Tournament;
-            setTournament({
-              ...tournamentData,
-              id: doc.id
-            });
-
-            // Set up games listener only after we have tournament data
-            const gamesRef = collection(db, 'tournaments', doc.id, 'games');
-            unsubscribeGames = onSnapshot(gamesRef, (snapshot) => {
-              const gamesData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-              })) as Game[];
-              setGames(gamesData);
-              setFilteredGames(gamesData);
-              setIsLoading(false);
-            }, (error) => {
-              console.error('Error in games listener:', error);
-              setError('Failed to get real-time game updates');
-              setIsLoading(false);
-            });
-          } else {
-            setTournament(null);
-            setIsLoading(false);
-          }
-        }, (error) => {
-          console.error('Error in tournament listener:', error);
-          setError('Failed to get tournament data');
-          setIsLoading(false);
-        });
-      } catch (err: any) {
-        setError(err.message);
-        setIsLoading(false);
-      }
-    };
-
-    // Set up auth state change listener
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      cleanupListeners();
-      
-      if (user) {
-        setupListeners();
-      } else {
-        setTournament(null);
-        setGames([]);
-        setFilteredGames([]);
-        setIsLoading(false);
-      }
-    });
-
-    // Initial setup if already authenticated
-    if (auth.currentUser) {
-      setupListeners();
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
 
-    // Cleanup function
+    const tournamentsQuery = query(
+      collection(db, 'tournaments'),
+      where('isActive', '==', true)
+    );
+
+    const unsubscribeTournament = onSnapshot(tournamentsQuery, (snapshot) => {
+      if (!isMounted.current) return;
+
+      if (snapshot.empty) {
+        setTournament(null);
+        setGames([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const tournamentData = {
+        id: snapshot.docs[0].id,
+        ...snapshot.docs[0].data()
+      } as Tournament;
+
+      setTournament(tournamentData);
+
+      const gamesQuery = collection(db, 'tournaments', tournamentData.id, 'games');
+      const unsubscribeGames = onSnapshot(gamesQuery, (gamesSnapshot) => {
+        if (!isMounted.current) return;
+
+        const gamesData = gamesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Game[];
+        setGames(gamesData);
+        setIsLoading(false);
+      }, (error) => {
+        if (!isMounted.current) return;
+        console.error('Error fetching games:', error);
+        setError('Failed to load games');
+        setIsLoading(false);
+      });
+
+      unsubscribeRef.current = () => {
+        unsubscribeTournament();
+        unsubscribeGames();
+      };
+    }, (error) => {
+      console.error('Error fetching tournament:', error);
+      setError('Failed to load tournament');
+      setIsLoading(false);
+    });
+
     return () => {
-      cleanupListeners();
-      unsubscribeAuth();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [currentUser]);
 
-  // Filter games based on status
   useEffect(() => {
     if (!games) return;
 
-    let filtered = [...games];
-    if (activeStatus !== 'all') {
-      filtered = games.filter(game => {
-        if (activeStatus === 'not_started') return !game.isStarted;
-        if (activeStatus === 'in_progress') return game.isStarted && !game.isComplete;
-        if (activeStatus === 'complete') return game.isComplete;
-        return true;
-      });
+    if (activeStatus === 'all') {
+      setFilteredGames(games);
+    } else {
+      setFilteredGames(games.filter(game => game.status === activeStatus));
     }
-    setFilteredGames(filtered);
   }, [games, activeStatus]);
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-red-600 dark:text-red-400">
-          Error Loading Data
-        </h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          {error}
-        </p>
-      </div>
-    );
+    return <div>{error}</div>;
   }
 
   if (!tournament) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          No Active Tournament
-        </h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          There is no tournament currently in progress.
-        </p>
-      </div>
-    );
+    return <div>No active tournament found.</div>;
   }
 
-  // Calculate totals from stored scores
   const totalStrokes = games.reduce((total, game) => {
     return {
       USA: total.USA + (tournament.useHandicaps ? game.strokePlayScore.adjustedUSA : game.strokePlayScore.USA),
@@ -212,11 +177,11 @@ export default function Leaderboard() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <TournamentProgress 
             progress={tournament.progress.map(p => ({
-              timestamp: p.date ? new Date(p.date) : new Date(),
+              timestamp: new Date(p.timestamp),
               score: tournament.useHandicaps 
-                ? (p.totalScore?.adjusted || { USA: 0, EUROPE: 0 }) 
-                : (p.totalScore?.raw || { USA: 0, EUROPE: 0 }),
-              completedGames: games.filter(g => g.isComplete).length
+                ? p.score.adjusted
+                : p.score.raw,
+              completedGames: p.completedGames
             }))}
             totalGames={games.length}
           />
@@ -224,18 +189,15 @@ export default function Leaderboard() {
       )}
 
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-xl font-semibold dark:text-white">Individual Games</h2>
-          <StatusFilter
-            activeStatus={activeStatus}
-            onStatusChange={setActiveStatus}
-          />
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Games</h2>
+          <StatusFilter activeStatus={activeStatus} onStatusChange={setActiveStatus} />
         </div>
-        
-        <GameList
+        <GameList 
           games={filteredGames}
+          showStatusFilter={false}
+          showControls={false}
           isAdmin={false}
-          onGameStatusChange={async () => {}} // No-op since we don't allow status changes in leaderboard
           isOnline={isOnline}
           useHandicaps={tournament.useHandicaps}
           tournamentSettings={{
@@ -244,9 +206,8 @@ export default function Leaderboard() {
             handicapStrokes: tournament.handicapStrokes,
             higherHandicapTeam: tournament.higherHandicapTeam
           }}
-          showControls={false}
-          showStatusFilter={false}
           linkedPlayerId={null}
+          onGameStatusChange={async () => {}}
         />
       </div>
     </div>

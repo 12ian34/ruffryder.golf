@@ -9,7 +9,7 @@ import {
   Legend
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { format, isValid } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { useEffect, useRef } from 'react';
 import type { TournamentProgressDisplay } from '../types/tournament';
 
@@ -44,11 +44,12 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
     return null;
   }
 
-  const formatDate = (date: Date) => {
-    if (!isValid(date)) {
-      return '';
+  const formatDate = (dateStr: string | Date) => {
+    if (typeof dateStr === 'string') {
+      const date = parseISO(dateStr);
+      return isValid(date) ? format(date, 'MMM d, yyyy h:mm a') : '';
     }
-    return format(date, 'MMM d, yyyy h:mm a');
+    return isValid(dateStr) ? format(dateStr, 'MMM d, yyyy h:mm a') : '';
   };
 
   const options = {
@@ -107,15 +108,16 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         ticks: {
           callback: (_value: any, index: number) => {
             if (index === 0 || index === progress.length - 1) {
-              const date = progress[index].timestamp;
-              return isValid(date) ? format(date, 'MMM d') : '';
+              return formatDate(progress[index].timestamp);
             }
             return '';
           },
           color: '#6B7280',
           font: {
             size: 11
-          }
+          },
+          maxRotation: 45,
+          minRotation: 45
         }
       },
       y: {
@@ -140,27 +142,31 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
   };
 
   const data = {
-    labels: progress.map((_, i) => i),
+    labels: progress.map((p) => formatDate(p.timestamp)),
     datasets: [
       {
         label: 'USA',
         data: progress.map(p => p.score.USA),
-        borderColor: '#EF4444',
-        backgroundColor: '#EF4444',
+        borderColor: 'rgba(239, 68, 68, 0.8)', // Slightly transparent red
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
         tension: 0.3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        borderWidth: 2
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        borderWidth: 3,
+        borderDash: [],
+        order: 2 // Higher order means it's drawn later (on top)
       },
       {
         label: 'EUROPE',
         data: progress.map(p => p.score.EUROPE),
-        borderColor: '#3B82F6',
-        backgroundColor: '#3B82F6',
+        borderColor: 'rgba(59, 130, 246, 0.8)', // Slightly transparent blue
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
         tension: 0.3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        borderWidth: 2
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        borderWidth: 3,
+        borderDash: [5, 5], // Add dashed line style
+        order: 1 // Lower order means it's drawn first (underneath)
       }
     ]
   };
@@ -182,7 +188,7 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         />
       </div>
       <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        Games completed: {progress[progress.length - 1].completedGames} of {totalGames}
+        Games completed: {progress[progress.length - 1]?.completedGames || 0} of {totalGames}
       </div>
     </div>
   );

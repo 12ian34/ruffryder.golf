@@ -1,26 +1,60 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { showSuccessToast } from '../utils/toast';
+import { auth } from '../config/firebase';
+import { signOut as firebaseSignOut } from 'firebase/auth';
 
 export default function Login() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { currentUser, signUp, signIn, resetPassword } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { currentUser, signUp, signIn, resetPassword, loading: authLoading } = useAuth();
 
+  // Handle email verification redirect
   useEffect(() => {
-    if (currentUser) {
+    const handleVerificationRedirect = async () => {
+      const emailFromParams = searchParams.get('email');
+      if (emailFromParams) {
+        // Ensure user is signed out when returning from verification
+        if (auth.currentUser) {
+          await firebaseSignOut(auth);
+        }
+        setLoginEmail(emailFromParams);
+        showSuccessToast('Email verified! Please sign in to continue.');
+      }
+    };
+
+    handleVerificationRedirect();
+  }, [searchParams]);
+
+  // Handle dashboard redirect - only if user is verified and we're not in a verification flow
+  useEffect(() => {
+    if (!authLoading && currentUser?.emailVerified && !searchParams.get('email')) {
       navigate('/dashboard');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, authLoading, searchParams]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupEmail) {
-      setError('Please enter your email address');
+    if (!signupEmail || !signupPassword || !signupConfirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setError('Password should be at least 6 characters');
       return;
     }
 
@@ -28,11 +62,10 @@ export default function Login() {
     setError(null);
 
     try {
-      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-      await signUp(signupEmail, tempPassword);
-      await resetPassword(signupEmail);
-      alert('Account created! Please check your email to set your password.');
+      await signUp(signupEmail, signupPassword);
       setSignupEmail('');
+      setSignupPassword('');
+      setSignupConfirmPassword('');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -79,10 +112,6 @@ export default function Login() {
     }
   };
 
-  if (currentUser) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -101,7 +130,7 @@ export default function Login() {
         {/* Sign Up Form */}
         <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 mb-8">
           <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Create Account</h2>
-          <form onSubmit={handleSignUp}>
+          <form onSubmit={handleSignUp} className="space-y-4">
             <div>
               <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
@@ -111,14 +140,47 @@ export default function Login() {
                 type="email"
                 value={signupEmail}
                 onChange={(e) => setSignupEmail(e.target.value)}
-                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-md"
                 disabled={isLoading}
                 placeholder="Enter your email"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                id="signup-password"
+                type="password"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-md"
+                disabled={isLoading}
+                placeholder="Enter your password"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirm Password
+              </label>
+              <input
+                id="signup-confirm-password"
+                type="password"
+                value={signupConfirmPassword}
+                onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-md"
+                disabled={isLoading}
+                placeholder="Confirm your password"
+                required
+                minLength={6}
               />
             </div>
             <button
               type="submit"
-              className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               disabled={isLoading}
             >
               Create Account
@@ -139,9 +201,10 @@ export default function Login() {
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-md"
                 disabled={isLoading}
                 placeholder="Enter your email"
+                required
               />
             </div>
             <div>
@@ -153,9 +216,10 @@ export default function Login() {
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-md"
                 disabled={isLoading}
                 placeholder="Enter your password"
+                required
               />
             </div>
             <div>

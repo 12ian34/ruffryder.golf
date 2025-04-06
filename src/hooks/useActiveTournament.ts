@@ -66,7 +66,9 @@ export function useActiveTournament(userId: string | undefined) {
       if (unsubscribe) {
         unsubscribe();
       }
-      unsubscribeAuth();
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+      }
     };
   }, [userId]);
 

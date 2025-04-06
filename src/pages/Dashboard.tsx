@@ -27,6 +27,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!currentUser) {
       navigate('/');
+      setIsLoading(false);
       return;
     }
 
@@ -48,6 +49,8 @@ export default function Dashboard() {
 
         if (userDoc.exists()) {
           setUserData(userDoc.data() as User);
+        } else {
+          setError('User data not found');
         }
 
         const postsData = postsSnapshot.docs.map(doc => ({
@@ -66,6 +69,18 @@ export default function Dashboard() {
 
     fetchData();
   }, [currentUser, navigate, location]);
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+            Please sign in to access the dashboard
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -87,12 +102,12 @@ export default function Dashboard() {
     );
   }
 
-  if (!currentUser || !userData) {
+  if (!userData) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-            Please sign in to access the dashboard
+            Unable to load user data. Please try refreshing the page.
           </div>
         </div>
       </div>

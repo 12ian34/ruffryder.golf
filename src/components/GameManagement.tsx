@@ -3,6 +3,7 @@ import { useGameData } from '../hooks/useGameData';
 import { useActiveTournament } from '../hooks/useActiveTournament';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { GameList } from './GameList';
+import { useEffect } from 'react';
 
 interface GameManagementProps {
   currentUser: User;
@@ -18,6 +19,11 @@ export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameMan
     linkedPlayerId,
     isAdmin
   );
+
+  useEffect(() => {
+    return () => {
+    };
+  }, [currentUser, activeTournament]);
 
   if (!currentUser) {
     return <div>Please sign in to view games.</div>;

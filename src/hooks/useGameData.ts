@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import type { Game, TournamentSettings, GameStatus } from '../types/game';
@@ -8,35 +8,64 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
   const [games, setGames] = useState<Game[]>([]);
   const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isMounted = useRef(true);
+  const authStateRef = useRef<boolean>(false);
+  const listenersRef = useRef<{
+    tournament: (() => void) | undefined;
+    games: (() => void) | undefined;
+    auth: (() => void) | undefined;
+  }>({
+    tournament: undefined,
+    games: undefined,
+    auth: undefined
+  });
 
   useEffect(() => {
-    if (!tournamentId || !auth.currentUser) {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!tournamentId) {
       setGames([]);
       setTournamentSettings(null);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-
-    let unsubscribeTournament: (() => void) | undefined;
-    let unsubscribeGames: (() => void) | undefined;
-
     const cleanupListeners = () => {
-      if (unsubscribeTournament) {
-        unsubscribeTournament();
-        unsubscribeTournament = undefined;
+      if (listenersRef.current.games) {
+        listenersRef.current.games();
+        listenersRef.current.games = undefined;
       }
-      if (unsubscribeGames) {
-        unsubscribeGames();
-        unsubscribeGames = undefined;
+      // Then clean up tournament listener
+      if (listenersRef.current.tournament) {
+        listenersRef.current.tournament();
+        listenersRef.current.tournament = undefined;
       }
     };
 
     const setupListeners = () => {
+      if (!auth.currentUser || !isMounted.current) {
+        if (isMounted.current) {
+          setGames([]);
+          setTournamentSettings(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+
       // Set up real-time listener for tournament settings
       const tournamentRef = doc(db, 'tournaments', tournamentId);
-      unsubscribeTournament = onSnapshot(tournamentRef, (doc) => {
+      listenersRef.current.tournament = onSnapshot(tournamentRef, (doc) => {
+        if (!isMounted.current || !authStateRef.current) {
+          return;
+        }
+
         if (doc.exists()) {
           const tournamentData = doc.data();
           const settings = {
@@ -49,7 +78,11 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
 
           // Set up real-time listener for games only after tournament data is loaded
           const gamesRef = collection(db, 'tournaments', tournamentId, 'games');
-          unsubscribeGames = onSnapshot(gamesRef, (snapshot) => {
+          listenersRef.current.games = onSnapshot(gamesRef, (snapshot) => {
+            if (!isMounted.current || !authStateRef.current) {
+              return;
+            }
+
             const gamesData = snapshot.docs.map(doc => {
               const data = doc.data();
               return {
@@ -71,6 +104,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
             setGames(sortedGames);
             setIsLoading(false);
           }, (error) => {
+            if (!isMounted.current || !authStateRef.current) return;
             console.error('Error in games listener:', error);
             setGames([]);
             setIsLoading(false);
@@ -81,6 +115,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
           setIsLoading(false);
         }
       }, (error) => {
+        if (!isMounted.current || !authStateRef.current) return;
         console.error('Error in tournament settings listener:', error);
         setTournamentSettings(null);
         setGames([]);
@@ -88,8 +123,16 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       });
     };
 
-    // Set up auth state change listener
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+    listenersRef.current.auth = auth.onAuthStateChanged((user) => {
+      if (!isMounted.current) {
+        return;
+      }
+      
+      // Update auth state ref
+      const newAuthState = !!user;
+      authStateRef.current = newAuthState;
+      
+      // Clean up existing listeners first
       cleanupListeners();
       
       if (user) {
@@ -103,13 +146,18 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
 
     // Initial setup if already authenticated
     if (auth.currentUser) {
+      authStateRef.current = true;
       setupListeners();
     }
 
     // Cleanup function
     return () => {
       cleanupListeners();
-      unsubscribeAuth();
+      if (listenersRef.current.auth) {
+        listenersRef.current.auth();
+        listenersRef.current.auth = undefined;
+      }
+      authStateRef.current = false;
     };
   }, [tournamentId]);
 

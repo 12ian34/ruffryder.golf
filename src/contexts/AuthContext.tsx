@@ -8,10 +8,11 @@ import {
   confirmPasswordReset,
   setPersistence,
   browserLocalPersistence,
+  sendEmailVerification,
   type User,
   type AuthError as FirebaseAuthError
 } from 'firebase/auth';
-import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { auth } from '../config/firebase';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
 
@@ -62,6 +63,8 @@ function getErrorMessage(error: FirebaseAuthError): string {
       return 'Invalid email or password. Please check your credentials and try again.';
     case 'auth/invalid-login-credentials':
       return 'Invalid email or password. Please check your credentials and try again.';
+    case 'auth/unverified-email':
+      return 'Please verify your email address before signing in. Check your inbox for a verification link.';
     default:
       // Check for the UNAUTHORIZED_DOMAIN error which comes as a message rather than a code
       if (error.message?.includes('UNAUTHORIZED_DOMAIN')) {
@@ -88,8 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signUpUser(email: string, password: string) {
     try {
+      // Create user account with their chosen password
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
+      // Create user document in Firestore first
       const db = getFirestore();
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         id: userCredential.user.uid,
@@ -98,22 +103,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: false,
         linkedPlayerId: null,
         team: null,
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       });
 
-      try {
-        await firebaseSignOut(auth);
-        await sendPasswordResetEmail(auth, email);
-        showSuccessToast('Account created! Please check your email to set your password.');
-      } catch (resetError: any) {
-        // If we fail to send the reset email, but the account was created
-        if (resetError.message?.includes('UNAUTHORIZED_DOMAIN')) {
-          showSuccessToast('Account created! Please use the "Forgot Password" option on the login page to set your password.');
-        } else {
-          throw resetError;
-        }
-      }
+      // Send verification email
+      const actionCodeSettings = {
+        url: `${window.location.origin}/?email=${encodeURIComponent(email)}`,
+        handleCodeInApp: false
+      };
+      await sendEmailVerification(userCredential.user, actionCodeSettings);
+      
+      // Sign out immediately after sending verification
+      await firebaseSignOut(auth);
+      
+      showSuccessToast('Account created! Please check your email to verify your account before signing in.');
     } catch (error: any) {
+      // If we failed after creating the user but before verification, try to clean up
+      if (auth.currentUser) {
+        await firebaseSignOut(auth);
+      }
       showErrorToast(getErrorMessage(error));
       throw error;
     }
@@ -121,7 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signInUser(email: string, password: string) {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        await firebaseSignOut(auth);
+        throw { code: 'auth/unverified-email' };
+      }
+      
       showSuccessToast('Successfully signed in!');
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));
@@ -131,8 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     try {
-      // Unsubscribe from all Firestore listeners by triggering auth state change
-      // This will cause all useEffect cleanup functions to run
       await firebaseSignOut(auth);
       showSuccessToast('Successfully signed out!');
     } catch (error: any) {
@@ -144,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function resetUserPassword(email: string) {
     try {
       const actionCodeSettings = {
-        url: `${window.location.origin}/password-reset-complete?email=${encodeURIComponent(email)}`,
+        url: `${window.location.origin}/password-reset-complete`,
         handleCodeInApp: true
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
@@ -158,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function completeUserPasswordReset(oobCode: string, newPassword: string) {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
-      showSuccessToast('Password successfully reset!');
+      showSuccessToast('Password successfully reset! Please sign in with your new password.');
     } catch (error: any) {
       showErrorToast('Failed to reset password. The link may have expired.');
       throw error;
@@ -177,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

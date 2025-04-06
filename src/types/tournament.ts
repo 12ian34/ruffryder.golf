@@ -11,27 +11,18 @@ export interface Matchup {
 }
 
 export interface TournamentProgress {
-  date: string;
-  totalScore: {
-    raw: {
-      USA: number;
-      EUROPE: number;
-    };
+  timestamp: string;
+  score: {
     adjusted: {
       USA: number;
       EUROPE: number;
     };
-  };
-  projectedScore: {
     raw: {
       USA: number;
       EUROPE: number;
     };
-    adjusted: {
-      USA: number;
-      EUROPE: number;
-    };
   };
+  completedGames: number;
 }
 
 export interface TournamentProgressDisplay {

@@ -61,9 +61,12 @@ export async function updateTournamentScores(tournamentId: string) {
 
     // Create the progress entry
     const progressEntry = {
-      score: totalPoints,
-      completedGames: games.filter(g => g.isComplete).length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      score: {
+        adjusted: totalPoints.adjusted,
+        raw: totalPoints.raw
+      },
+      completedGames: games.filter(g => g.isComplete).length
     };
 
     // Only update if there are changes
@@ -81,7 +84,7 @@ export async function updateTournamentScores(tournamentId: string) {
       currentProjectedScore.adjusted.EUROPE !== projectedPoints.adjusted.EUROPE;
 
     if (hasChanges) {
-      // Preserve all required fields while updating scores
+      // Update tournament document with new scores and progress
       await updateDoc(tournamentRef, {
         // Preserve existing fields
         name: tournamentData.name,
@@ -93,10 +96,11 @@ export async function updateTournamentScores(tournamentId: string) {
         higherHandicapTeam: tournamentData.higherHandicapTeam,
         matchups: tournamentData.matchups,
         createdAt: tournamentData.createdAt,
-        // Update scores
+        // Update scores and progress
         totalScore: totalPoints,
         projectedScore: projectedPoints,
-        progress: arrayUnion(progressEntry)
+        progress: arrayUnion(progressEntry),
+        updatedAt: new Date().toISOString()
       });
     }
 
