@@ -249,7 +249,7 @@ describe('TournamentProgress', () => {
       value: 1024
     });
 
-    const { container, rerender } = render(<TournamentProgress progress={mockProgress} totalGames={6} />);
+    const { container } = render(<TournamentProgress progress={mockProgress} totalGames={6} />);
     
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 100));
