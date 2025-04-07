@@ -82,6 +82,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Check if session is stale (older than 24 hours)
+        const lastSignInTime = user.metadata.lastSignInTime;
+        if (lastSignInTime) {
+          const lastSignInDate = new Date(lastSignInTime);
+          const now = new Date();
+          const hoursSinceLastSignIn = (now.getTime() - lastSignInDate.getTime()) / (1000 * 60 * 60);
+          
+          if (hoursSinceLastSignIn > 96) {
+            firebaseSignOut(auth);
+            showErrorToast('Your session has expired. Please sign in again.');
+            return;
+          }
+        }
+      }
       setCurrentUser(user);
       setLoading(false);
     });
@@ -156,11 +171,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function resetUserPassword(email: string) {
     try {
+      // Check if user has requested too many password resets
+      const resetKey = `password_reset_${email}`;
+      const lastReset = localStorage.getItem(resetKey);
+      const now = Date.now();
+      
+      if (lastReset) {
+        const timeSinceLastReset = now - parseInt(lastReset);
+        if (timeSinceLastReset < 1 * 60 * 1000) { // 1 minute
+          throw { code: 'auth/too-many-requests' };
+        }
+      }
+
       const actionCodeSettings = {
         url: `${window.location.origin}/password-reset-complete`,
         handleCodeInApp: true
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      localStorage.setItem(resetKey, now.toString());
       showSuccessToast('Password reset email sent. Please check your inbox.');
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));

@@ -111,7 +111,9 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt', 'updatedAt']) &&
         request.resource.data.authorId == request.auth.uid &&
         request.resource.data.title is string &&
+        request.resource.data.title.size() <= 200 &&
         request.resource.data.content is string &&
+        request.resource.data.content.size() <= 10000 &&
         request.resource.data.createdAt is timestamp &&
         request.resource.data.updatedAt is timestamp;
       
@@ -119,7 +121,9 @@ service cloud.firestore {
         request.auth.uid == resource.data.authorId &&
         request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt', 'updatedAt']) &&
         request.resource.data.title is string &&
+        request.resource.data.title.size() <= 200 &&
         request.resource.data.content is string &&
+        request.resource.data.content.size() <= 10000 &&
         request.resource.data.createdAt is timestamp &&
         request.resource.data.updatedAt is timestamp &&
         request.resource.data.updatedAt > resource.data.updatedAt;

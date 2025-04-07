@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useAuth } from '../hooks/useAuth';
 
 // Mock modules first (these are hoisted by vitest)
@@ -62,7 +62,9 @@ describe('useAuth hook', () => {
   it('should set user to null when not authenticated', async () => {
     const { result } = renderHook(() => useAuth());
     
-    authCallback(null);
+    act(() => {
+      authCallback(null);
+    });
     
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
