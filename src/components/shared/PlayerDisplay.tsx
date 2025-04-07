@@ -18,10 +18,10 @@ export default function PlayerDisplay({
   isCurrentUser = false,
   linkedUserName
 }: PlayerDisplayProps) {
-  const textColor = team === 'USA' ? 'text-usa-500' : 'text-europe-500';
+  const textColor = team === 'USA' ? 'text-usa-400 font-bold' : 'text-europe-400 font-bold';
   const badgeClasses = team === 'USA' 
-    ? 'bg-usa-100 dark:bg-usa-900/30 text-usa-800 dark:text-usa-200' 
-    : 'bg-europe-100 dark:bg-europe-900/30 text-europe-800 dark:text-europe-200';
+    ? 'bg-usa-900/50 dark:bg-usa-900/50 text-usa-300 dark:text-usa-300 border border-usa-600/40' 
+    : 'bg-europe-900/50 dark:bg-europe-900/50 text-europe-300 dark:text-europe-300 border border-europe-600/40';
   
   return (
     <div className={`text-center ${compact ? 'w-[120px] sm:w-[140px]' : 'w-[140px] sm:w-[180px]'}`}>
@@ -42,16 +42,16 @@ export default function PlayerDisplay({
             )}
           </div>
           {linkedUserName && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+            <div className="text-xs text-gray-300 dark:text-gray-300 truncate mt-0.5">
               {linkedUserName}
             </div>
           )}
           {showAverage && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <div className="text-xs text-gray-300 dark:text-gray-300 mt-0.5">
               Handicap: {player.averageScore}
             </div>
           )}
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{team}</div>
+          <div className="text-xs text-gray-300 dark:text-gray-300 mt-1">{team}</div>
         </div>
       </div>
     </div>

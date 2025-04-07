@@ -368,6 +368,20 @@ export default function TournamentManagement() {
 
   const handleToggleActive = async (tournament: Tournament) => {
     try {
+      // Add confirmation when deactivating
+      if (tournament.isActive) {
+        const confirmDeactivate = window.confirm(`Are you sure you want to deactivate "${tournament.name}"?\n\nDeactivating will hide this tournament from players and make it unavailable for gameplay.`);
+        if (!confirmDeactivate) {
+          return;
+        }
+      } else {
+        // Add confirmation when activating
+        const confirmActivate = window.confirm(`Are you sure you want to activate "${tournament.name}"?\n\nThis will make it the active tournament and deactivate any currently active tournament.`);
+        if (!confirmActivate) {
+          return;
+        }
+      }
+      
       setIsLoading(true);
       
       // If trying to activate a tournament, first deactivate any currently active tournament
@@ -599,13 +613,13 @@ export default function TournamentManagement() {
   return (
     <div className="space-y-6" key={lastUpdated}>
       {/* Tournament Selection/Creation */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h2 className="text-xl font-semibold dark:text-white">Tournament Setup</h2>
           {isAdmin && (
             <button
               onClick={() => setShowCreateForm(prev => !prev)}
-              className="bg-gradient-to-br from-europe-500 to-europe-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all duration-200"
+              className="bg-gradient-to-br from-europe-500 to-europe-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all duration-200 w-full sm:w-auto"
             >
               {showCreateForm ? 'Cancel' : 'Create New Tournament'}
             </button>
@@ -627,30 +641,32 @@ export default function TournamentManagement() {
                   placeholder="Enter tournament name"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Year
-                </label>
-                <input
-                  type="number"
-                  value={newTournament.year}
-                  onChange={(e) => setNewTournament({ ...newTournament, year: Number(e.target.value) })}
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Team Configuration
-                </label>
-                <select
-                  value={newTournament.teamConfig}
-                  onChange={(e) => setNewTournament({ ...newTournament, teamConfig: e.target.value as TeamConfig })}
-                  className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="USA_VS_EUROPE">USA vs Europe</option>
-                  <option value="EUROPE_VS_EUROPE">Europe vs Europe</option>
-                  <option value="USA_VS_USA">USA vs USA</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Year
+                  </label>
+                  <input
+                    type="number"
+                    value={newTournament.year}
+                    onChange={(e) => setNewTournament({ ...newTournament, year: Number(e.target.value) })}
+                    className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Team Configuration
+                  </label>
+                  <select
+                    value={newTournament.teamConfig}
+                    onChange={(e) => setNewTournament({ ...newTournament, teamConfig: e.target.value as TeamConfig })}
+                    className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="USA_VS_EUROPE">USA vs Europe</option>
+                    <option value="EUROPE_VS_EUROPE">Europe vs Europe</option>
+                    <option value="USA_VS_USA">USA vs USA</option>
+                  </select>
+                </div>
               </div>
               <div className="flex items-center">
                 <input
@@ -675,87 +691,104 @@ export default function TournamentManagement() {
           </div>
         )}
 
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1">
           {tournaments.map((tournament) => (
             <div
               key={tournament.id}
-              className={`p-6 rounded-lg ${
+              className={`p-4 rounded-lg transition-all duration-300 ${
                 tournament.isActive
-                  ? 'border-2 border-purple-500 bg-gray-50 dark:bg-gray-700'
-                  : 'bg-white dark:bg-gray-800'
+                  ? 'border-2 border-purple-500 bg-gray-50 dark:bg-gray-700 shadow-md'
+                  : 'bg-white dark:bg-gray-800 shadow-sm hover:shadow'
               }`}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-medium dark:text-white">
-                  {tournament.name}
-                </h3>
-                {isAdmin && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => {
-                        const firstConfirm = window.confirm(`Are you sure you want to delete the tournament "${tournament.name}"?`);
-                        if (firstConfirm) {
-                          const secondConfirm = window.confirm(`⚠️ FINAL WARNING: This will permanently delete all games and data for "${tournament.name}". This action cannot be undone.`);
-                          if (secondConfirm) {
-                            handleDeleteTournament(tournament);
-                          }
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors duration-150"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-                      </svg>
-                      Delete
-                    </button>
-                    <div className="absolute hidden group-hover:block w-48 p-2 bg-gray-800 text-xs text-gray-300 rounded shadow-lg -bottom-12 right-0">
-                      Double confirmation required
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-medium dark:text-white">
+                      {tournament.name}
+                    </h3>
+                    {isAdmin && (
+                      <div className="relative group ml-auto sm:ml-0">
+                        <button
+                          onClick={() => {
+                            const firstConfirm = window.confirm(`Are you sure you want to delete the tournament "${tournament.name}"?`);
+                            if (firstConfirm) {
+                              const secondConfirm = window.confirm(`⚠️ FINAL WARNING: This will permanently delete all games and data for "${tournament.name}". This action cannot be undone.`);
+                              if (secondConfirm) {
+                                handleDeleteTournament(tournament);
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors duration-150"
+                          aria-label="Delete tournament"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                          </svg>
+                          <span className="sr-only sm:not-sr-only">Delete</span>
+                        </button>
+                        <div className="absolute hidden group-hover:block w-48 p-2 bg-gray-800 text-xs text-gray-300 rounded shadow-lg z-10 -bottom-12 right-0">
+                          Double confirmation required
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">Year:</span>
+                      <span className="font-medium">{tournament.year}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">Status:</span>
+                      <span className={`font-medium ${tournament.isActive ? 'text-green-600 dark:text-green-500' : 'text-gray-600 dark:text-gray-400'}`}>
+                        {tournament.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 col-span-2">
+                      <span className="text-xs text-gray-500">Team Config:</span>
+                      <span className="font-medium">{tournament.teamConfig.replace(/_/g, ' ')}</span>
                     </div>
                   </div>
-                )}
-              </div>
-              <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <div>Year: {tournament.year}</div>
-                <div>Team Config: {tournament.teamConfig}</div>
-                <div>Status: {tournament.isActive ? 'Active' : 'Inactive'}</div>
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                {tournament.isActive && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggleHandicaps(tournament)}
-                      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                        tournament.useHandicaps ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
-                      }`}
-                      role="switch"
-                      aria-checked={tournament.useHandicaps}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          tournament.useHandicaps ? 'translate-x-4' : 'translate-x-0'
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 sm:mt-0">
+                  {tournament.isActive && (
+                    <div className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                      <button
+                        onClick={() => handleToggleHandicaps(tournament)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                          tournament.useHandicaps ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-500'
                         }`}
-                      />
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Handicaps
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {tournament.useHandicaps ? 'Adjusted scores' : 'Raw scores'}
-                      </span>
+                        role="switch"
+                        aria-checked={tournament.useHandicaps}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            tournament.useHandicaps ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Handicaps
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {tournament.useHandicaps ? 'Adjusted scores' : 'Raw scores'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => handleToggleActive(tournament)}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
-                    tournament.isActive
-                      ? 'bg-opacity-10 bg-purple-200 text-purple-600 border border-purple-500 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700'
-                      : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-sm'
-                  } text-sm`}
-                >
-                  {tournament.isActive ? 'Deactivate' : 'Activate'}
-                </button>
+                  )}
+                  <button
+                    onClick={() => handleToggleActive(tournament)}
+                    className={`px-4 py-2 rounded-lg transition-colors shadow-sm hover:shadow ${
+                      tournament.isActive
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
+                    } text-sm whitespace-nowrap flex-1 sm:flex-auto text-center`}
+                  >
+                    {tournament.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -763,7 +796,7 @@ export default function TournamentManagement() {
       </div>
 
       {selectedTournament && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MatchupCreator
             availableUsaPlayers={availableUsaPlayers}
             availableEuropePlayers={availableEuropePlayers}

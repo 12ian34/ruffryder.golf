@@ -409,8 +409,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-xl relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-full sm:max-w-xl relative flex flex-col max-h-[95vh]">
         <style>
           {`
             /* Hide default number input spinners */
@@ -469,7 +469,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               const strokeColor = teamGettingStrokes === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
               return (
-                <div key={hole.holeNumber} className="grid grid-cols-[60px_1fr_32px] gap-2 items-center">
+                <div key={hole.holeNumber} className="grid grid-cols-[50px_1fr_28px] sm:grid-cols-[60px_1fr_32px] gap-1 sm:gap-2 items-center">
                   <div className="text-sm">
                     <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
                     {useHandicaps && (
@@ -500,11 +500,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         pattern="[0-9]*"
                         value={scores[index].USA}
                         onChange={(e) => handleScoreChange(index, 'USA', e.target.value)}
-                        className={`w-full h-12 pl-3 pr-10 py-2 rounded-lg border ${
+                        className={`w-full h-10 sm:h-12 pl-2 sm:pl-3 pr-10 py-1 sm:py-2 rounded-lg border ${
                           invalidScores[`${index}-USA`] 
                             ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
                             : 'dark:bg-gray-700 dark:border-gray-600'
-                        } dark:text-white text-center text-lg appearance-none`}
+                        } dark:text-white text-center text-base sm:text-lg appearance-none`}
                         placeholder="USA"
                         tabIndex={index * 2 + 1}
                         onKeyDown={(e) => {
@@ -583,11 +583,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         pattern="[0-9]*"
                         value={scores[index].EUROPE}
                         onChange={(e) => handleScoreChange(index, 'EUROPE', e.target.value)}
-                        className={`w-full h-12 pl-3 pr-10 py-2 rounded-lg border ${
+                        className={`w-full h-10 sm:h-12 pl-2 sm:pl-3 pr-10 py-1 sm:py-2 rounded-lg border ${
                           invalidScores[`${index}-EUROPE`] 
                             ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
                             : 'dark:bg-gray-700 dark:border-gray-600'
-                        } dark:text-white text-center text-lg appearance-none`}
+                        } dark:text-white text-center text-base sm:text-lg appearance-none`}
                         placeholder="EUR"
                         tabIndex={index * 2 + 2}
                         onKeyDown={(e) => {
@@ -723,9 +723,9 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           
           {/* Score Totals */}
           {scores.length > 0 && (
-            <div className="mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Score Totals (Unadjusted)</h3>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="mt-6 sm:mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2 sm:mb-3">Score Totals (Unadjusted)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
@@ -787,10 +787,10 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               Error loading hole distances: {distancesError}
             </div>
           )}
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-2 sm:gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm sm:text-base"
               aria-label="Cancel score entry"
             >
               Cancel
@@ -798,7 +798,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             <button
               onClick={handleScoreSubmit}
               disabled={isLoading}
-              className="px-6 py-2.5 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
               aria-label="Save scores"
             >
               {isLoading ? 'Saving...' : 'Save Scores'}

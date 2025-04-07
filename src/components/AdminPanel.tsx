@@ -12,63 +12,65 @@ export default function AdminPanel() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
-        <Tab.List className="flex space-x-1 rounded-xl bg-purple-900/20 p-1">
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5 ${
-                selected
-                  ? 'bg-purple-700 text-white shadow dark:bg-purple-800 dark:text-white dark:ring-2 dark:ring-purple-400'
-                  : 'text-purple-700 hover:bg-purple-200 hover:text-purple-900 dark:text-purple-100 dark:hover:bg-gray-800/[0.5] dark:hover:text-white'
-              }`
-            }
-          >
-            Tournament
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5 ${
-                selected
-                  ? 'bg-purple-700 text-white shadow dark:bg-purple-800 dark:text-white dark:ring-2 dark:ring-purple-400'
-                  : 'text-purple-700 hover:bg-purple-200 hover:text-purple-900 dark:text-purple-100 dark:hover:bg-gray-800/[0.5] dark:hover:text-white'
-              }`
-            }
-          >
-            Stroke Index
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5 ${
-                selected
-                  ? 'bg-purple-700 text-white shadow dark:bg-purple-800 dark:text-white dark:ring-2 dark:ring-purple-400'
-                  : 'text-purple-700 hover:bg-purple-200 hover:text-purple-900 dark:text-purple-100 dark:hover:bg-gray-800/[0.5] dark:hover:text-white'
-              }`
-            }
-          >
-            Players
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5 ${
-                selected
-                  ? 'bg-purple-700 text-white shadow dark:bg-purple-800 dark:text-white dark:ring-2 dark:ring-purple-400'
-                  : 'text-purple-700 hover:bg-purple-200 hover:text-purple-900 dark:text-purple-100 dark:hover:bg-gray-800/[0.5] dark:hover:text-white'
-              }`
-            }
-          >
-            Users
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5 ${
-                selected
-                  ? 'bg-purple-700 text-white shadow dark:bg-purple-800 dark:text-white dark:ring-2 dark:ring-purple-400'
-                  : 'text-purple-700 hover:bg-purple-200 hover:text-purple-900 dark:text-purple-100 dark:hover:bg-gray-800/[0.5] dark:hover:text-white'
-              }`
-            }
-          >
-            Blog
-          </Tab>
-        </Tab.List>
+        <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
+          <Tab.List className="flex space-x-1 sm:space-x-4 whitespace-nowrap">
+            <Tab
+              className={({ selected }) =>
+                `px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                  selected
+                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`
+              }
+            >
+              Tournament
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                  selected
+                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`
+              }
+            >
+              Stroke Index
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                  selected
+                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`
+              }
+            >
+              Players
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                  selected
+                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`
+              }
+            >
+              Users
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-3 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+                  selected
+                    ? 'text-purple-500 border-b-2 border-purple-500'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`
+              }
+            >
+              Blog
+            </Tab>
+          </Tab.List>
+        </div>
         <Tab.Panels className="mt-6">
           <Tab.Panel>
             <TournamentManagement />

@@ -150,7 +150,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                     </div>
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center justify-center w-full">
                       <span className="text-sm text-gray-900 dark:text-white">
                         {useHandicaps ? (usaScores.adjusted ?? '-') : (usaScores.raw ?? '-')}
                       </span>
@@ -160,7 +160,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                     </div>
                   </td>
                   <td className="px-4 py-2 text-center">
-                    <div className="flex flex-col items-center">
+                    <div className="flex flex-col items-center justify-center w-full">
                       <span className="text-sm text-gray-900 dark:text-white">
                         {useHandicaps ? (europeScores.adjusted ?? '-') : (europeScores.raw ?? '-')}
                       </span>
@@ -179,7 +179,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                 Front 9
               </td>
               <td className="px-4 py-2 text-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center w-full">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {totals.front9UsaAdjusted}
                   </span>
@@ -189,7 +189,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                 </div>
               </td>
               <td className="px-4 py-2 text-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center w-full">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {totals.front9EuropeAdjusted}
                   </span>
@@ -206,7 +206,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                 Back 9
               </td>
               <td className="px-4 py-2 text-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center w-full">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {totals.back9UsaAdjusted}
                   </span>
@@ -216,7 +216,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                 </div>
               </td>
               <td className="px-4 py-2 text-center">
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center justify-center w-full">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {totals.back9EuropeAdjusted}
                   </span>

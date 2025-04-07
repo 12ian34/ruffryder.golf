@@ -117,11 +117,11 @@ export default function GameCard({
   return (
     <>
       <div 
-        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-2 ${getBorderColor()} ${
+        className={`relative bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black rounded-lg shadow-lg border-2 ${getBorderColor()} ${
           compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         } ${
           showSpecialStyling ? `ring-1 ${initialGame.isComplete ? 'ring-emerald-500 dark:ring-emerald-600' : 'ring-europe-500 dark:ring-europe-400'}` : ''
-        } cursor-pointer hover:shadow-md transition-shadow duration-200`}
+        } cursor-pointer hover:shadow-xl transition-all duration-200 backdrop-blur-sm backdrop-filter`}
         onClick={(e) => {
           // Only open score modal if clicking on the card itself, not buttons
           if (!(e.target instanceof HTMLButtonElement)) {

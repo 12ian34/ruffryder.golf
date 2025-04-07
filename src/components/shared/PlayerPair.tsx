@@ -80,7 +80,7 @@ export default function PlayerPair({ game, currentUserId, compact }: PlayerPairP
         linkedUserName={usaLinkedUser?.name}
       />
 
-      <div className="text-gray-400 dark:text-gray-500 mx-2 sm:mx-4">vs</div>
+      <div className="text-gray-200 dark:text-gray-200 bg-gradient-to-r from-usa-900/30 via-transparent to-europe-900/30 px-3 py-1 rounded-full text-sm font-semibold mx-2 sm:mx-4 shadow-inner">vs</div>
 
       <PlayerDisplay
         player={{

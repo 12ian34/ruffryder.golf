@@ -80,7 +80,7 @@ export function GameList({
       {showStatusFilter && (
         <StatusFilter activeStatus={activeStatus} onStatusChange={setActiveStatus} />
       )}
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4 w-full max-w-full">
         {filteredGames.map(game => {
           const isPlayerInGame = linkedPlayerId && 
             (game.usaPlayerId === linkedPlayerId || game.europePlayerId === linkedPlayerId);

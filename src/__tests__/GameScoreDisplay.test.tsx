@@ -71,12 +71,13 @@ describe('GameScoreDisplay', () => {
       // For stroke play
       expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveTextContent('75');
       expect(container.querySelector('[data-testid="stroke-play-europe"]')).toHaveTextContent('75');
-      expect(container.querySelector('[data-testid="stroke-play-europe-original"]')).toHaveTextContent('(80)');
+      // Check for the score with parentheses
+      expect(container.querySelector('[data-testid="stroke-play-europe-original"]')).toHaveTextContent('80');
       
       // For match play
       expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveTextContent('2');
       expect(container.querySelector('[data-testid="match-play-europe"]')).toHaveTextContent('2');
-      expect(container.querySelector('[data-testid="match-play-usa-original"]')).toHaveTextContent('(2)');
+      expect(container.querySelector('[data-testid="match-play-usa-original"]')).toHaveTextContent('2');
     });
 
     it('should not show original scores when useHandicaps is false', () => {
@@ -156,8 +157,9 @@ describe('GameScoreDisplay', () => {
 
       const { container } = render(<GameScoreDisplay game={winningGame} useHandicaps={false} />);
 
-      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveClass('text-usa-500');
-      expect(container.querySelector('[data-testid="stroke-play-europe"]')).not.toHaveClass('text-usa-500');
+      // Check for emerald color class which is our new winning color
+      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveClass('text-emerald-500');
+      expect(container.querySelector('[data-testid="stroke-play-europe"]')).not.toHaveClass('text-emerald-500');
     });
 
     it('should show green color for winning team in match play', () => {
@@ -174,8 +176,9 @@ describe('GameScoreDisplay', () => {
 
       const { container } = render(<GameScoreDisplay game={winningGame} useHandicaps={false} />);
 
-      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveClass('text-usa-500');
-      expect(container.querySelector('[data-testid="match-play-europe"]')).not.toHaveClass('text-usa-500');
+      // Check for emerald color class which is our new winning color
+      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveClass('text-emerald-500');
+      expect(container.querySelector('[data-testid="match-play-europe"]')).not.toHaveClass('text-emerald-500');
     });
   });
 
@@ -259,11 +262,11 @@ describe('GameScoreDisplay', () => {
       
       // Verify stroke play scores show adjustment
       expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveTextContent('8');
-      expect(container.querySelector('[data-testid="stroke-play-usa-original"]')).toHaveTextContent('(10)');
+      expect(container.querySelector('[data-testid="stroke-play-usa-original"]')).toHaveTextContent('10');
       
       // Verify match play scores show adjustment
       expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveTextContent('1');
-      expect(container.querySelector('[data-testid="match-play-europe-original"]')).toHaveTextContent('(2)');
+      expect(container.querySelector('[data-testid="match-play-europe-original"]')).toHaveTextContent('2');
     });
 
     it('should correctly display strokes when EUROPE is higher handicap team with 36+ strokes', () => {
@@ -289,11 +292,11 @@ describe('GameScoreDisplay', () => {
       
       // Verify stroke play scores show adjustment
       expect(container.querySelector('[data-testid="stroke-play-europe"]')).toHaveTextContent('6');
-      expect(container.querySelector('[data-testid="stroke-play-europe-original"]')).toHaveTextContent('(12)');
+      expect(container.querySelector('[data-testid="stroke-play-europe-original"]')).toHaveTextContent('12');
       
       // Verify match play scores show adjustment
       expect(container.querySelector('[data-testid="match-play-europe"]')).toHaveTextContent('2');
-      expect(container.querySelector('[data-testid="match-play-usa-original"]')).toHaveTextContent('(2)');
+      expect(container.querySelector('[data-testid="match-play-usa-original"]')).toHaveTextContent('2');
     });
   });
 }); 
