@@ -116,7 +116,7 @@ export default function BlogManagement() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     post.status === 'published'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
                       : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                   }`}>
                     {post.status}

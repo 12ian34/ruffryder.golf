@@ -51,7 +51,7 @@ export default function GameCard({
   const showSpecialStyling = isAdmin || isPlayerInGame;
 
   const getBorderColor = () => {
-    if (initialGame.isComplete) return 'border-success-500 dark:border-success-600';
+    if (initialGame.isComplete) return 'border-emerald-500 dark:border-emerald-600';
     if (initialGame.isStarted) return 'border-europe-500 dark:border-europe-400';
     return 'border-gray-600 dark:border-gray-500';
   };
@@ -120,7 +120,7 @@ export default function GameCard({
         className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-2 ${getBorderColor()} ${
           compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         } ${
-          showSpecialStyling ? `ring-1 ${initialGame.isComplete ? 'ring-success-500 dark:ring-success-600' : 'ring-europe-500 dark:ring-europe-400'}` : ''
+          showSpecialStyling ? `ring-1 ${initialGame.isComplete ? 'ring-emerald-500 dark:ring-emerald-600' : 'ring-europe-500 dark:ring-europe-400'}` : ''
         } cursor-pointer hover:shadow-md transition-shadow duration-200`}
         onClick={(e) => {
           // Only open score modal if clicking on the card itself, not buttons

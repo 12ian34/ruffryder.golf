@@ -46,7 +46,7 @@ export default function PlayerManagement() {
             setSelectedPlayer(null);
             setShowEditModal(true);
           }}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
         >
           Add New Player
         </button>
