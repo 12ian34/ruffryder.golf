@@ -19,6 +19,8 @@ https://ruffryder.golf
   - Offline mode support with data persistence
   - Projected scores and current standings
   - Hole-by-hole score entry and validation
+  - Auto-scrolling score entry interface
+  - Enhanced input validation and error handling
 
 - Player Management
   - Player profiles and statistics
@@ -38,8 +40,10 @@ https://ruffryder.golf
   - Dark mode support
   - Real-time updates and notifications
   - Offline mode with sync capabilities
-  - Intuitive score entry interface
+  - Intuitive score entry interface with auto-scroll
   - Game filtering by status
+  - Enhanced security features
+  - Improved input validation and error handling
 
 - Administrative Features
   - Tournament configuration and setup
