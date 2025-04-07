@@ -22,8 +22,8 @@ export default function StatusFilter({ activeStatus, onStatusChange }: StatusFil
         onClick={() => onStatusChange('complete')}
         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
           activeStatus === 'complete'
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-            : 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/50'
+            ? 'bg-usa-100 text-usa-800 dark:bg-usa-900 dark:text-usa-200'
+            : 'text-usa-600 hover:bg-usa-50 dark:text-usa-400 dark:hover:bg-usa-900/50'
         }`}
       >
         Complete
@@ -32,8 +32,8 @@ export default function StatusFilter({ activeStatus, onStatusChange }: StatusFil
         onClick={() => onStatusChange('in_progress')}
         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
           activeStatus === 'in_progress'
-            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-            : 'text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/50'
+            ? 'bg-europe-100 text-europe-800 dark:bg-europe-900 dark:text-europe-200'
+            : 'text-europe-600 hover:bg-europe-50 dark:text-europe-400 dark:hover:bg-europe-900/50'
         }`}
       >
         In Progress

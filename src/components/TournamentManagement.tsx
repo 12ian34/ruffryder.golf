@@ -596,7 +596,7 @@ export default function TournamentManagement() {
           {isAdmin && (
             <button
               onClick={() => setShowCreateForm(prev => !prev)}
-              className="bg-gradient-to-br from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all duration-200"
+              className="bg-gradient-to-br from-europe-500 to-europe-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all duration-200"
             >
               {showCreateForm ? 'Cancel' : 'Create New Tournament'}
             </button>

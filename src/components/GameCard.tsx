@@ -48,8 +48,8 @@ export default function GameCard({
   const showSpecialStyling = isAdmin || isPlayerInGame;
 
   const getBorderColor = () => {
-    if (initialGame.isComplete) return 'border-green-500 dark:border-green-400';
-    if (initialGame.isStarted) return 'border-amber-500 dark:border-amber-400';
+    if (initialGame.isComplete) return 'border-usa-500 dark:border-usa-400';
+    if (initialGame.isStarted) return 'border-europe-500 dark:border-europe-400';
     return 'border-gray-600 dark:border-gray-500';
   };
 
@@ -114,7 +114,7 @@ export default function GameCard({
         className={`relative bg-white dark:bg-gray-800 rounded-lg shadow border-2 ${getBorderColor()} ${
           compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'
         } ${
-          showSpecialStyling ? 'ring-1 ring-purple-500 dark:ring-purple-400' : ''
+          showSpecialStyling ? 'ring-1 ring-europe-500 dark:ring-europe-400' : ''
         } cursor-pointer hover:shadow-md transition-shadow duration-200`}
         onClick={handleViewScores}
       >
@@ -128,7 +128,7 @@ export default function GameCard({
               {!initialGame.isStarted && onStatusChange && (
                 <button
                   onClick={handleStartGame}
-                  className="w-full px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
                 >
                   Start Game
                 </button>
@@ -140,7 +140,7 @@ export default function GameCard({
                     e.stopPropagation();
                     onEnterScores();
                   }}
-                  className="w-full px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
+                  className="w-full px-4 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
                 >
                   Enter Scores
                 </button>

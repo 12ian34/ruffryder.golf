@@ -72,8 +72,8 @@ export default function PlayerTable({
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   player.team === 'USA'
-                    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                    ? 'bg-usa-100 text-usa-800 dark:bg-usa-900/30 dark:text-usa-200'
+                    : 'bg-europe-100 text-europe-800 dark:bg-europe-900/30 dark:text-europe-200'
                 }`}>
                   {player.team}
                 </span>
@@ -89,13 +89,13 @@ export default function PlayerTable({
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-4">
                 <button
                   onClick={() => onEdit(player)}
-                  className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  className="text-europe-600 hover:text-europe-700 dark:text-europe-400"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => onDelete(player.id)}
-                  className="text-red-600 hover:text-red-700 dark:text-red-400"
+                  className="text-usa-600 hover:text-usa-700 dark:text-usa-400"
                 >
                   Delete
                 </button>

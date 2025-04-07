@@ -98,7 +98,7 @@ export default function MatchupList({
                 {isAdmin && onDeleteMatchup && (
                   <button
                     onClick={() => onDeleteMatchup(matchup)}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-europe-500 hover:text-europe-600"
                   >
                     Delete
                   </button>

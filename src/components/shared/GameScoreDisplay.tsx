@@ -22,9 +22,9 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
                   (usaScore > 0 || europeScore > 0);
 
     if (isUSA) {
-      return usaWinning || isTied ? 'text-green-500' : 'text-gray-500';
+      return usaWinning || isTied ? 'text-usa-500' : 'text-gray-500';
     } else {
-      return europeWinning || isTied ? 'text-green-500' : 'text-gray-500';
+      return europeWinning || isTied ? 'text-europe-500' : 'text-gray-500';
     }
   };
 
@@ -38,16 +38,16 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
                   (usaScore > 0 || europeScore > 0);
 
     if (isUSA) {
-      return usaWinning || isTied ? 'text-green-500' : 'text-gray-500';
+      return usaWinning || isTied ? 'text-usa-500' : 'text-gray-500';
     } else {
-      return europeWinning || isTied ? 'text-green-500' : 'text-gray-500';
+      return europeWinning || isTied ? 'text-europe-500' : 'text-gray-500';
     }
   };
 
   const status = {
     label: isComplete ? 'Complete' : isInProgress ? 'In Progress' : 'Not Started',
-    bgColor: isComplete ? 'bg-green-500 dark:bg-green-400' : isInProgress ? 'bg-amber-500 dark:bg-amber-400' : 'bg-gray-800 dark:bg-gray-700',
-    textColor: isComplete ? 'text-white' : isInProgress ? 'text-black' : 'text-white',
+    bgColor: isComplete ? 'bg-usa-500 dark:bg-usa-400' : isInProgress ? 'bg-europe-500 dark:bg-europe-400' : 'bg-gray-800 dark:bg-gray-700',
+    textColor: isComplete ? 'text-white' : isInProgress ? 'text-white' : 'text-white',
     icon: isComplete ? '✓' : isInProgress ? '⏳' : '⏸'
   };
 

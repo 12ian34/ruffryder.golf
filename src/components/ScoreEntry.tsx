@@ -389,14 +389,14 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
 
           <div className="flex justify-between items-center">
             <div className="w-[40%] text-center">
-              <div className="font-medium text-red-500 text-lg">
+              <div className="font-medium text-usa-500 text-lg">
                 {game.usaPlayerName}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
             </div>
             <div className="text-2xl text-gray-400 dark:text-gray-600">vs</div>
             <div className="w-[40%] text-center">
-              <div className="font-medium text-blue-500 text-lg">
+              <div className="font-medium text-europe-500 text-lg">
                 {game.europePlayerName}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
@@ -431,7 +431,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                       </div>
                     ) : null}
                     {useHandicaps && showStrokeIndicator && (
-                      <div className="text-xs text-purple-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
+                      <div className="text-xs text-europe-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -450,7 +450,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                       <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y dark:divide-gray-600">
                         <button
                           type="button"
-                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-green-500 dark:text-gray-500 dark:hover:text-green-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-green-50 dark:active:bg-green-900/20"
+                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-usa-500 dark:text-gray-500 dark:hover:text-usa-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-usa-50 dark:active:bg-usa-900/20"
                           onClick={(e) => {
                             e.preventDefault();
                             const currentValue = scores[index].USA;
@@ -553,7 +553,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 transition-all duration-200 animate-fade-in">
                             <button
                               onClick={() => handleClearHole(index)}
-                              className="p-1.5 text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors duration-150 group"
+                              className="p-1.5 text-white bg-europe-500 rounded-md hover:bg-europe-600 transition-colors duration-150 group"
                               title="Confirm clear"
                               aria-label={`Confirm clear scores for hole ${hole.holeNumber}`}
                             >
@@ -616,17 +616,17 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-red-500">{getTotals().front9USA}</span>
+                      <span className="text-sm font-medium text-usa-500">{getTotals().front9USA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-purple-500">{getTotals().front9Europe}</span>
+                      <span className="text-sm font-medium text-europe-500">{getTotals().front9Europe}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Back 9:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-red-500">{getTotals().back9USA}</span>
+                      <span className="text-sm font-medium text-usa-500">{getTotals().back9USA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-purple-500">{getTotals().back9Europe}</span>
+                      <span className="text-sm font-medium text-europe-500">{getTotals().back9Europe}</span>
                     </div>
                   </div>
                 </div>
@@ -634,14 +634,14 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                   <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-600 pb-2">
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-red-500">{getTotals().totalUSA}</span>
+                      <span className="text-sm font-medium text-usa-500">{getTotals().totalUSA}</span>
                       <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-purple-500">{getTotals().totalEurope}</span>
+                      <span className="text-sm font-medium text-europe-500">{getTotals().totalEurope}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Difference:</span>
-                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-red-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-purple-500' : 'text-gray-500')}`}>
+                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-usa-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-europe-500' : 'text-gray-500')}`}>
                       {getTotals().totalUSA < getTotals().totalEurope 
                         ? `USA ahead by ${getTotals().totalEurope - getTotals().totalUSA}` 
                         : (getTotals().totalUSA > getTotals().totalEurope 
@@ -672,7 +672,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             <button
               onClick={handleScoreSubmit}
               disabled={isLoading}
-              className="px-6 py-2.5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="px-6 py-2.5 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               aria-label="Save scores"
             >
               {isLoading ? 'Saving...' : 'Save Scores'}

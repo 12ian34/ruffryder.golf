@@ -117,7 +117,7 @@ export default function StrokeIndexManagement() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
               isEditMode 
                 ? 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
-                : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-sm hover:shadow'
+                : 'bg-gradient-to-br from-europe-500 to-europe-600 text-white shadow-sm hover:shadow'
             }`}
           >
             {isEditMode ? 'Cancel Editing' : 'Edit Values'}
@@ -126,7 +126,7 @@ export default function StrokeIndexManagement() {
             <button
               onClick={handleSave}
               disabled={isLoading}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="px-4 py-2 bg-usa-500 text-white rounded-lg hover:bg-usa-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             >
               {isLoading ? 'Saving...' : 'Save Changes'}
             </button>

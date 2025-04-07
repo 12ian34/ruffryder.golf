@@ -14,13 +14,13 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
       <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Current Score</h2>
       <div className="grid grid-cols-2 gap-4 text-center">
         <div>
-          <div className={`text-3xl font-bold ${currentScore.USA > currentScore.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
+          <div className={`text-3xl font-bold ${currentScore.USA > currentScore.EUROPE ? 'text-usa-500' : 'text-gray-500'}`}>
             {currentScore.USA}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
         </div>
         <div>
-          <div className={`text-3xl font-bold ${currentScore.EUROPE > currentScore.USA ? 'text-green-500' : 'text-gray-500'}`}>
+          <div className={`text-3xl font-bold ${currentScore.EUROPE > currentScore.USA ? 'text-europe-500' : 'text-gray-500'}`}>
             {currentScore.EUROPE}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
@@ -33,13 +33,13 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
         </h3>
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className={`text-2xl font-semibold ${projectedScore.USA > projectedScore.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${projectedScore.USA > projectedScore.EUROPE ? 'text-usa-500' : 'text-gray-500'}`}>
               {projectedScore.USA}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div>
-            <div className={`text-2xl font-semibold ${projectedScore.EUROPE > projectedScore.USA ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${projectedScore.EUROPE > projectedScore.USA ? 'text-europe-500' : 'text-gray-500'}`}>
               {projectedScore.EUROPE}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>
@@ -53,7 +53,7 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
         </h3>
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className={`text-2xl font-semibold ${totalStrokes.USA < totalStrokes.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${totalStrokes.USA < totalStrokes.EUROPE ? 'text-usa-500' : 'text-gray-500'}`}>
               {totalStrokes.USA}
               {useHandicaps && (
                 <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({rawStrokes.USA})</span>
@@ -62,7 +62,7 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
             <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div>
-            <div className={`text-2xl font-semibold ${totalStrokes.EUROPE < totalStrokes.USA ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${totalStrokes.EUROPE < totalStrokes.USA ? 'text-europe-500' : 'text-gray-500'}`}>
               {totalStrokes.EUROPE}
               {useHandicaps && (
                 <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({rawStrokes.EUROPE})</span>
@@ -79,13 +79,13 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
         </h3>
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className={`text-2xl font-semibold ${totalHoles.USA > totalHoles.EUROPE ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${totalHoles.USA > totalHoles.EUROPE ? 'text-usa-500' : 'text-gray-500'}`}>
               {totalHoles.USA}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
           </div>
           <div>
-            <div className={`text-2xl font-semibold ${totalHoles.EUROPE > totalHoles.USA ? 'text-green-500' : 'text-gray-500'}`}>
+            <div className={`text-2xl font-semibold ${totalHoles.EUROPE > totalHoles.USA ? 'text-europe-500' : 'text-gray-500'}`}>
               {totalHoles.EUROPE}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>

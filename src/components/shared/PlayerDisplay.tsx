@@ -19,6 +19,9 @@ export default function PlayerDisplay({
   linkedUserName
 }: PlayerDisplayProps) {
   const textColor = team === 'USA' ? 'text-usa-500' : 'text-europe-500';
+  const badgeClasses = team === 'USA' 
+    ? 'bg-usa-100 dark:bg-usa-900/30 text-usa-800 dark:text-usa-200' 
+    : 'bg-europe-100 dark:bg-europe-900/30 text-europe-800 dark:text-europe-200';
   
   return (
     <div className={`text-center ${compact ? 'w-[120px] sm:w-[140px]' : 'w-[140px] sm:w-[180px]'}`}>
@@ -33,7 +36,7 @@ export default function PlayerDisplay({
           <div className={`font-medium ${textColor} flex items-center justify-center flex-wrap gap-1`}>
             <span className="truncate">{player.name}</span>
             {isCurrentUser && (
-              <span className="text-xs bg-europe-100 dark:bg-europe-800 text-europe-800 dark:text-europe-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+              <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${badgeClasses}`}>
                 You
               </span>
             )}

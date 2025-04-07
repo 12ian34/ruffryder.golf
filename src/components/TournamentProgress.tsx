@@ -10,7 +10,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { format, isValid, parseISO } from 'date-fns';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TournamentProgressDisplay } from '../types/tournament';
 
 ChartJS.register(
@@ -30,76 +30,96 @@ interface TournamentProgressProps {
 
 export default function TournamentProgress({ progress, totalGames }: TournamentProgressProps) {
   const chartRef = useRef<ChartJS | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  // Cleanup chart instance on unmount
   useEffect(() => {
+    setIsReady(true);
     return () => {
       if (chartRef.current) {
         chartRef.current.destroy();
       }
+      setIsReady(false);
     };
   }, []);
 
-  if (!progress || progress.length === 0) {
+  if (!progress || progress.length === 0 || !isReady) {
     return null;
   }
 
-  const formatDate = (dateStr: string | Date) => {
+  const formatDate = (dateStr: string | Date, showDateOnly = false) => {
     if (typeof dateStr === 'string') {
       const date = parseISO(dateStr);
-      return isValid(date) ? format(date, 'MMM d, yyyy h:mm a') : '';
+      if (!isValid(date)) return '';
+      if (showDateOnly) {
+        return format(date, 'MMM do');
+      }
+      return format(date, 'HH:mm');
     }
-    return isValid(dateStr) ? format(dateStr, 'MMM d, yyyy h:mm a') : '';
+    if (!isValid(dateStr)) return '';
+    return showDateOnly ? format(dateStr, 'MMM do') : format(dateStr, 'HH:mm');
   };
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 0
+    },
+    layout: {
+      padding: {
+        top: 10,
+        right: 10,
+        bottom: 25,
+        left: 10
+      }
+    },
     plugins: {
       legend: {
         position: 'top' as const,
+        align: 'center' as const,
         labels: {
-          usePointStyle: true,
-          boxWidth: 6,
+          usePointStyle: false,
+          boxWidth: 12,
           padding: 15,
-          color: '#6B7280',
+          color: '#9CA3AF',
           font: {
-            size: 12
+            size: 11,
+            family: 'system-ui'
           }
         }
       },
       tooltip: {
         mode: 'index' as const,
         intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(17, 24, 39, 0.95)',
         titleColor: '#fff',
         bodyColor: '#fff',
-        padding: 12,
+        padding: 10,
+        cornerRadius: 8,
         titleFont: {
-          size: 14,
-          weight: 'bold' as const
+          size: 13,
+          weight: 'bold' as const,
+          family: 'system-ui'
         },
         bodyFont: {
-          size: 13
+          size: 12,
+          family: 'system-ui'
         },
         callbacks: {
           title: (context: any) => {
             const index = context[0].dataIndex;
-            return formatDate(progress[index].timestamp);
+            const date = progress[index].timestamp;
+            return format(date, 'MMM d, HH:mm');
           },
           label: (context: any) => {
-            const team = context.dataset.label;
+            const team = context.dataset.label.split(' ')[0];
             const score = context.raw;
-            return `${team}: ${score} points`;
+            return `${team}: ${score}`;
           },
           afterBody: (context: any) => {
             const index = context[0].dataIndex;
             const currentProgress = progress[index];
-            const projectedScore = `USA: ${currentProgress.projectedScore?.USA || currentProgress.score.USA} - EUROPE: ${currentProgress.projectedScore?.EUROPE || currentProgress.score.EUROPE}`;
-            return [
-              `Games completed: ${currentProgress.completedGames} of ${totalGames}`,
-              `Projected score: ${projectedScore}`
-            ];
+            return [`${currentProgress.completedGames} of ${totalGames} games completed`];
           }
         }
       }
@@ -108,34 +128,71 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
       x: {
         type: 'category' as const,
         grid: {
-          display: false
+          display: false,
+          drawBorder: false
         },
         ticks: {
           callback: (_value: any, index: number) => {
-            if (index === 0 || index === progress.length - 1) {
-              return formatDate(progress[index].timestamp);
+            const currentDate = progress[index].timestamp;
+            const interval = window.innerWidth <= 768 ? 
+              Math.ceil(progress.length / 3) : 
+              Math.ceil(progress.length / 6);
+            
+            // Determine if this tick should be visible
+            const isVisible = index === 0 || 
+                            index === progress.length - 1 || 
+                            index % interval === 0;
+            
+            if (!isVisible) return '';
+
+            // Find the previous visible label's index
+            let prevVisibleIndex = index - 1;
+            while (prevVisibleIndex > 0) {
+              if (prevVisibleIndex === 0 || 
+                  prevVisibleIndex === progress.length - 1 || 
+                  prevVisibleIndex % interval === 0) {
+                break;
+              }
+              prevVisibleIndex--;
             }
-            return '';
+
+            // Check if date has changed since last visible label
+            const showDate = prevVisibleIndex < 0 || (
+              currentDate.getDate() !== progress[prevVisibleIndex].timestamp.getDate() || 
+              currentDate.getMonth() !== progress[prevVisibleIndex].timestamp.getMonth() || 
+              currentDate.getFullYear() !== progress[prevVisibleIndex].timestamp.getFullYear()
+            );
+
+            return showDate ? 
+              [formatDate(currentDate, true), formatDate(currentDate)] : 
+              formatDate(currentDate);
           },
-          color: '#6B7280',
+          color: '#9CA3AF',
           font: {
-            size: 11
+            size: 10,
+            family: 'system-ui'
           },
-          maxRotation: 45,
-          minRotation: 45
+          maxRotation: 0,
+          minRotation: 0,
+          padding: 8,
+          autoSkip: false
         }
       },
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(107, 114, 128, 0.1)',
+          color: 'rgba(243, 244, 246, 0.06)',
+          drawBorder: false
         },
         ticks: {
           stepSize: 1,
-          color: '#6B7280',
+          color: '#9CA3AF',
           font: {
-            size: 11
-          }
+            size: 10,
+            family: 'system-ui'
+          },
+          padding: 8,
+          maxTicksLimit: 5
         }
       }
     },
@@ -150,53 +207,64 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
     labels: progress.map((p) => formatDate(p.timestamp)),
     datasets: [
       {
-        label: 'USA (Projected)',
+        label: 'USA',
         data: progress.map(p => p.projectedScore?.USA || p.score.USA),
-        borderColor: 'rgba(239, 68, 68, 0.9)', // More opaque red
-        backgroundColor: 'rgba(239, 68, 68, 0.9)',
-        tension: 0.3,
-        pointRadius: 7,
-        pointHoverRadius: 9,
-        borderWidth: 4,
-        borderDash: [],
+        borderColor: 'rgba(251, 191, 36, 0.9)',
+        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+        tension: 0.4,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        pointStyle: 'circle',
+        pointBackgroundColor: 'rgba(251, 191, 36, 0.9)',
+        pointBorderColor: 'rgba(251, 191, 36, 0.9)',
+        pointBorderWidth: 1,
+        borderWidth: 2,
+        fill: true,
         order: 1
       },
       {
-        label: 'EUROPE (Projected)',
+        label: 'EUROPE',
         data: progress.map(p => p.projectedScore?.EUROPE || p.score.EUROPE),
-        borderColor: 'rgba(59, 130, 246, 0.9)', // More opaque blue
-        backgroundColor: 'rgba(59, 130, 246, 0.9)',
-        tension: 0.3,
-        pointRadius: 7,
-        pointHoverRadius: 9,
-        borderWidth: 4,
-        borderDash: [],
+        borderColor: 'rgba(167, 139, 250, 0.9)',
+        backgroundColor: 'rgba(167, 139, 250, 0.1)',
+        tension: 0.4,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        pointStyle: 'circle',
+        pointBackgroundColor: 'rgba(167, 139, 250, 0.9)',
+        pointBorderColor: 'rgba(167, 139, 250, 0.9)',
+        pointBorderWidth: 1,
+        borderWidth: 2,
+        fill: true,
         order: 0
       }
     ]
   };
 
+  const completedGames = progress[progress.length - 1]?.completedGames || 0;
+
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 text-center">
-        Tournament Projected Score
-      </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 text-center -mt-1 mb-2">
-        Shows projected final scores as holes are completed
-      </p>
-      <div className="h-[200px]">
-        <Line 
-          options={options} 
-          data={data}
-          ref={(ref) => {
-            if (ref) {
-              chartRef.current = ref;
-            }
-          }}
-        />
+    <div className="bg-white dark:bg-gray-900 rounded-lg">
+      <div className="h-[250px] relative">
+        {isReady && (
+          <Line 
+            options={options} 
+            data={data}
+            ref={(ref) => {
+              if (ref) {
+                chartRef.current = ref;
+              }
+            }}
+          />
+        )}
       </div>
-      <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        Games completed: {progress[progress.length - 1]?.completedGames || 0} of {totalGames}
+      <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          Live Score Projection
+        </div>
+        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          {completedGames}/{totalGames} Games
+        </div>
       </div>
     </div>
   );

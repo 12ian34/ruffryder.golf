@@ -9,28 +9,28 @@ module.exports = {
     extend: {
       colors: {
         usa: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#dc2626',  // Main USA color (WCAG AA compliant)
-          600: '#b91c1c',
-          700: '#991b1b',
-          800: '#7f1d1d',
-          900: '#450a0a',
+          50: '#fefce8',
+          100: '#fef9c3',
+          200: '#fef08a',
+          300: '#fde047',
+          400: '#facc15',
+          500: '#fbbf24',  // Main USA color (amber)
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
         },
         europe: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#2563eb',  // Main Europe color (WCAG AA compliant)
-          600: '#1d4ed8',
-          700: '#1e40af',
-          800: '#1e3a8a',
-          900: '#172554',
+          50: '#faf5ff',
+          100: '#f3e8ff',
+          200: '#e9d5ff',
+          300: '#d8b4fe',
+          400: '#c084fc',
+          500: '#a78bfa',  // Main Europe color (purple)
+          600: '#9333ea',
+          700: '#7e22ce',
+          800: '#6b21a8',
+          900: '#581c87',
         },
       },
       typography: {
@@ -39,9 +39,9 @@ module.exports = {
             maxWidth: 'none',
             color: 'inherit',
             a: {
-              color: '#2563eb',
+              color: '#a78bfa',
               '&:hover': {
-                color: '#1d4ed8',
+                color: '#9333ea',
               },
             },
             h1: {

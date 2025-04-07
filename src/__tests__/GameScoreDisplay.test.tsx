@@ -145,33 +145,37 @@ describe('GameScoreDisplay', () => {
     it('should show green color for winning team in stroke play', () => {
       const winningGame = {
         ...mockGame,
+        isStarted: true,
         strokePlayScore: {
-          USA: 70,
+          USA: 72,
           EUROPE: 75,
-          adjustedUSA: 70,
+          adjustedUSA: 72,
           adjustedEUROPE: 75
         }
       };
+
       const { container } = render(<GameScoreDisplay game={winningGame} useHandicaps={false} />);
-      
-      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveClass('text-green-500');
-      expect(container.querySelector('[data-testid="stroke-play-europe"]')).not.toHaveClass('text-green-500');
+
+      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveClass('text-usa-500');
+      expect(container.querySelector('[data-testid="stroke-play-europe"]')).not.toHaveClass('text-usa-500');
     });
 
     it('should show green color for winning team in match play', () => {
       const winningGame = {
         ...mockGame,
+        isStarted: true,
         matchPlayScore: {
           USA: 3,
-          EUROPE: 1,
+          EUROPE: 2,
           adjustedUSA: 3,
-          adjustedEUROPE: 1
+          adjustedEUROPE: 2
         }
       };
+
       const { container } = render(<GameScoreDisplay game={winningGame} useHandicaps={false} />);
-      
-      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveClass('text-green-500');
-      expect(container.querySelector('[data-testid="match-play-europe"]')).not.toHaveClass('text-green-500');
+
+      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveClass('text-usa-500');
+      expect(container.querySelector('[data-testid="match-play-europe"]')).not.toHaveClass('text-usa-500');
     });
   });
 }); 
