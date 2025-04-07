@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
@@ -37,6 +38,8 @@ export default function GameCard({
     handicapStrokes: initialGame.handicapStrokes || 0,
     higherHandicapTeam: initialGame.higherHandicapTeam || 'USA'
   });
+  const navigate = useNavigate();
+  const location = useLocation();
   const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
 
   const isPlayerInGame = linkedPlayerId && (
@@ -98,6 +101,13 @@ export default function GameCard({
     setShowScoreModal(true);
   }, []);
 
+  const handleEnterScores = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/score-entry/${initialGame.tournamentId}/${initialGame.id}`, {
+      state: { from: location.pathname }
+    });
+  }, [navigate, initialGame.tournamentId, initialGame.id, location.pathname]);
+
   // Combine game data with handicap data
   const gameWithHandicaps = {
     ...initialGame,
@@ -137,10 +147,7 @@ export default function GameCard({
               
               {initialGame.isStarted && !initialGame.isComplete && onEnterScores && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEnterScores();
-                  }}
+                  onClick={handleEnterScores}
                   className="w-full px-4 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
                 >
                   Enter Scores

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Game, GameStatus, TournamentSettings } from '../types/game';
 import GameCard from './GameCard';
-import ScoreEntry from './ScoreEntry';
 import GameCompletionModal from './GameCompletionModal';
 import StatusFilter from './filters/StatusFilter';
 
@@ -28,7 +27,6 @@ export function GameList({
   showControls = true,
   linkedPlayerId
 }: GameListProps) {
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
   const [modalKey, setModalKey] = useState(0);
   const [activeStatus, setActiveStatus] = useState<GameStatus>('all');
@@ -75,7 +73,7 @@ export function GameList({
               game={game}
               isAdmin={isAdmin}
               onStatusChange={(isAdmin || isPlayerInGame) ? handleGameStatusChange : undefined}
-              onEnterScores={() => setSelectedGame(game)}
+              onEnterScores={() => {}}
               showControls={!!shouldShowControls}
               useHandicaps={effectiveUseHandicaps}
               tournamentSettings={tournamentSettings}
@@ -90,21 +88,6 @@ export function GameList({
           </div>
         )}
       </div>
-      {selectedGame && (
-        <ScoreEntry
-          gameId={selectedGame.id}
-          tournamentId={selectedGame.tournamentId}
-          useHandicaps={effectiveUseHandicaps}
-          onClose={() => {
-            setSelectedGame(null);
-            setModalKey(prev => prev + 1);
-          }}
-          onSave={() => {
-            setSelectedGame(null);
-            setModalKey(prev => prev + 1);
-          }}
-        />
-      )}
       {gameToComplete && (
         <GameCompletionModal
           key={modalKey}

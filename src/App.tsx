@@ -12,6 +12,7 @@ import NewBlogPost from './pages/NewBlogPost';
 import EditBlogPost from './pages/EditBlogPost';
 import About from './pages/About';
 import PasswordResetComplete from './pages/PasswordResetComplete';
+import ScoreEntryPage from './pages/ScoreEntryPage';
 import { clearLocalStorage } from './utils/storage';
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/blog/edit/:postId" element={<EditBlogPost />} />
             <Route path="/blog/:postId" element={<BlogPost />} />
             <Route path="/about" element={<About />} />
+            <Route path="/score-entry/:tournamentId/:gameId" element={<ScoreEntryPage />} />
           </Routes>
         </Router>
         <Toaster 
