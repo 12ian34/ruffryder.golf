@@ -46,7 +46,7 @@ export default function GameScoreDisplay({ game, compact = false, useHandicaps }
 
   const status = {
     label: isComplete ? 'Complete' : isInProgress ? 'In Progress' : 'Not Started',
-    bgColor: isComplete ? 'bg-usa-500 dark:bg-usa-400' : isInProgress ? 'bg-europe-500 dark:bg-europe-400' : 'bg-gray-800 dark:bg-gray-700',
+    bgColor: isComplete ? 'bg-success-500 dark:bg-success-600' : isInProgress ? 'bg-europe-500 dark:bg-europe-400' : 'bg-gray-800 dark:bg-gray-700',
     textColor: isComplete ? 'text-white' : isInProgress ? 'text-white' : 'text-white',
     icon: isComplete ? '✓' : isInProgress ? '⏳' : '⏸'
   };

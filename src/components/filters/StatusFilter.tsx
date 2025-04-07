@@ -22,8 +22,8 @@ export default function StatusFilter({ activeStatus, onStatusChange }: StatusFil
         onClick={() => onStatusChange('complete')}
         className={`whitespace-nowrap px-2.5 py-1 rounded-full text-sm font-medium transition-colors ${
           activeStatus === 'complete'
-            ? 'bg-usa-100 text-usa-800 dark:bg-usa-900 dark:text-usa-200'
-            : 'text-usa-600 hover:bg-usa-50 dark:text-usa-400 dark:hover:bg-usa-900/50'
+            ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200'
+            : 'text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-900/50'
         }`}
       >
         Complete

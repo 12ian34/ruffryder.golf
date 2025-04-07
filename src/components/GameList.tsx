@@ -34,12 +34,33 @@ export function GameList({
   // Always use tournament settings' useHandicaps value if available
   const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
 
-  const filteredGames = games.filter(game => {
-    if (activeStatus === 'all') return true;
-    if (activeStatus === 'not_started') return !game.isStarted;
-    if (activeStatus === 'in_progress') return game.isStarted && !game.isComplete;
-    return game.isComplete;
-  });
+  const filteredGames = games
+    .filter(game => {
+      if (activeStatus === 'all') return true;
+      if (activeStatus === 'not_started') return !game.isStarted;
+      if (activeStatus === 'in_progress') return game.isStarted && !game.isComplete;
+      return game.isComplete;
+    })
+    .sort((a, b) => {
+      // Check if user is a player in either game
+      const isUserInGameA = linkedPlayerId && (a.usaPlayerId === linkedPlayerId || a.europePlayerId === linkedPlayerId);
+      const isUserInGameB = linkedPlayerId && (b.usaPlayerId === linkedPlayerId || b.europePlayerId === linkedPlayerId);
+      
+      // First priority: In-progress games the user is in
+      if (a.isStarted && !a.isComplete && isUserInGameA && !(b.isStarted && !b.isComplete && isUserInGameB)) {
+        return -1;
+      }
+      if (b.isStarted && !b.isComplete && isUserInGameB && !(a.isStarted && !a.isComplete && isUserInGameA)) {
+        return 1;
+      }
+      
+      // Second priority: All other in-progress and not-started games
+      if (a.isComplete && !b.isComplete) return 1;
+      if (!a.isComplete && b.isComplete) return -1;
+      
+      // If both games have the same priority, maintain original order
+      return 0;
+    });
 
   const handleGameStatusChange = async (game: Game, newStatus: GameStatus) => {
     try {
