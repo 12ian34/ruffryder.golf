@@ -18,6 +18,36 @@ export default function ScoreEntryPage() {
   // Get the previous location from state or default to the current path
   const previousLocation = location.state?.from || `/score-entry/${tournamentId}/${gameId}`;
 
+  const scrollToFirstIncompleteHole = () => {
+    // Wait for the next tick to ensure DOM is updated
+    setTimeout(() => {
+      const scoreInputs = document.querySelectorAll('input[type="text"]');
+      for (const input of scoreInputs) {
+        const value = (input as HTMLInputElement).value;
+        if (!value) {
+          // Find the scrollable container
+          const scrollContainer = document.querySelector('.overflow-y-auto');
+          if (scrollContainer) {
+            // Get the input's position relative to the scroll container
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const inputRect = input.getBoundingClientRect();
+            const relativeTop = inputRect.top - containerRect.top;
+            
+            // Scroll the container
+            scrollContainer.scrollTo({
+              top: scrollContainer.scrollTop + relativeTop - containerRect.height / 2,
+              behavior: 'smooth'
+            });
+            
+            // Focus the input
+            (input as HTMLInputElement).focus();
+          }
+          break;
+        }
+      }
+    }, 100); // Increased timeout to ensure modal is fully rendered
+  };
+
   const fetchGame = async () => {
     if (!gameId || !tournamentId) {
       setError('Game ID or Tournament ID not provided');
@@ -34,6 +64,9 @@ export default function ScoreEntryPage() {
 
       const gameData = gameDoc.data() as Game;
       setGame(gameData);
+      
+      // Scroll to first incomplete hole after game data is loaded
+      scrollToFirstIncompleteHole();
     } catch (err: any) {
       setError(err.message || 'Failed to load game data');
     } finally {
@@ -106,6 +139,8 @@ export default function ScoreEntryPage() {
               setIsLoading(true);
               await fetchGame();
               setIsLoading(false);
+              // Scroll to first incomplete hole after saving
+              scrollToFirstIncompleteHole();
             }}
             useHandicaps={game.useHandicaps}
           />
