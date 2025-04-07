@@ -70,11 +70,11 @@ describe('Score Entry Tests', () => {
     ...baseGame,
     handicapStrokes: 10,
     higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
-    holes: baseGame.holes.map((hole, index) => {
-      const getsStroke = (index % 18) < 10; // First 10 holes get strokes
+    holes: baseGame.holes.map((hole) => {
+      // Each hole gets 1 stroke if its stroke index is less than or equal to handicap strokes
+      const getsStroke = hole.strokeIndex <= 10;
       return {
         ...hole,
-        strokeIndex: (index % 18) + 1,
         // Apply handicap adjustments if scores exist
         usaPlayerAdjustedScore: 
           hole.usaPlayerScore !== null 
@@ -95,25 +95,26 @@ describe('Score Entry Tests', () => {
     ...baseGame,
     handicapStrokes: 30,
     higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
-    holes: baseGame.holes.map((hole, index) => {
-      const strokesForHole = 1 + ((index % 18) < 12 ? 1 : 0); // 12 holes get 2 strokes, 6 get 1 stroke
+    holes: baseGame.holes.map((hole) => {
+      // For 30 strokes: each hole gets 1 stroke, plus extra stroke for first 12 stroke indexes
+      const getsExtraStroke = hole.strokeIndex <= 12;
+      const totalStrokes = 1 + (getsExtraStroke ? 1 : 0); // 1 base stroke + 1 extra if applicable
       return {
         ...hole,
-        strokeIndex: (index % 18) + 1,
         // Apply handicap adjustments if scores exist
         usaPlayerAdjustedScore: 
           hole.usaPlayerScore !== null 
-            ? Math.max(1, (hole.usaPlayerScore as number) - strokesForHole) 
+            ? Math.max(1, (hole.usaPlayerScore as number) - totalStrokes)
             : null,
         europePlayerAdjustedScore: hole.europePlayerScore,
         // With this high handicap, most holes become ties or USA wins after adjustment
         usaPlayerMatchPlayAdjustedScore: 
           hole.usaPlayerScore !== null && hole.europePlayerScore !== null
-            ? ((hole.usaPlayerScore as number) - strokesForHole <= (hole.europePlayerScore as number) ? 1 : 0)
+            ? ((hole.usaPlayerScore as number) - totalStrokes <= (hole.europePlayerScore as number) ? 1 : 0)
             : hole.usaPlayerMatchPlayScore,
         europePlayerMatchPlayAdjustedScore:
           hole.usaPlayerScore !== null && hole.europePlayerScore !== null
-            ? ((hole.usaPlayerScore as number) - strokesForHole >= (hole.europePlayerScore as number) ? 1 : 0)
+            ? ((hole.usaPlayerScore as number) - totalStrokes >= (hole.europePlayerScore as number) ? 1 : 0)
             : hole.europePlayerMatchPlayScore,
       };
     }),
@@ -124,25 +125,26 @@ describe('Score Entry Tests', () => {
     ...baseGame,
     handicapStrokes: 30,
     higherHandicapTeam: 'EUROPE' as 'USA' | 'EUROPE',
-    holes: baseGame.holes.map((hole, index) => {
-      const strokesForHole = 1 + ((index % 18) < 12 ? 1 : 0); // 12 holes get 2 strokes, 6 get 1 stroke
+    holes: baseGame.holes.map((hole) => {
+      // For 30 strokes: each hole gets 1 stroke, plus extra stroke for first 12 stroke indexes
+      const getsExtraStroke = hole.strokeIndex <= 12;
+      const totalStrokes = 1 + (getsExtraStroke ? 1 : 0); // 1 base stroke + 1 extra if applicable
       return {
         ...hole,
-        strokeIndex: (index % 18) + 1,
         // Apply handicap adjustments if scores exist
         usaPlayerAdjustedScore: hole.usaPlayerScore,
         europePlayerAdjustedScore: 
           hole.europePlayerScore !== null 
-            ? Math.max(1, (hole.europePlayerScore as number) - strokesForHole) 
+            ? Math.max(1, (hole.europePlayerScore as number) - totalStrokes)
             : null,
         // With this high handicap, most holes become ties or EUROPE wins after adjustment
         usaPlayerMatchPlayAdjustedScore: 
           hole.usaPlayerScore !== null && hole.europePlayerScore !== null
-            ? ((hole.europePlayerScore as number) - strokesForHole >= (hole.usaPlayerScore as number) ? 1 : 0)
+            ? ((hole.europePlayerScore as number) - totalStrokes >= (hole.usaPlayerScore as number) ? 1 : 0)
             : hole.usaPlayerMatchPlayScore,
         europePlayerMatchPlayAdjustedScore:
           hole.usaPlayerScore !== null && hole.europePlayerScore !== null
-            ? ((hole.europePlayerScore as number) - strokesForHole <= (hole.usaPlayerScore as number) ? 1 : 0)
+            ? ((hole.europePlayerScore as number) - totalStrokes <= (hole.usaPlayerScore as number) ? 1 : 0)
             : hole.europePlayerMatchPlayScore,
       };
     }),
@@ -265,26 +267,26 @@ describe('Score Entry Tests', () => {
         return hole;
       }),
       strokePlayScore: {
-        USA: 72,
-        EUROPE: 75,
-        adjustedUSA: 72,
-        adjustedEUROPE: 72, // Equal after adjustments
+        USA: 90, // 5 * 18 - USA loses stroke play
+        EUROPE: 72, // 4 * 18 - EUROPE wins stroke play
+        adjustedUSA: 90,
+        adjustedEUROPE: 72,
       },
       matchPlayScore: {
-        USA: 3,
+        USA: 18, // Won all holes - USA wins match play
         EUROPE: 0,
-        adjustedUSA: 0,
-        adjustedEUROPE: 0, // Tied after adjustments
+        adjustedUSA: 18,
+        adjustedEUROPE: 0,
       }
     };
 
     const result = calculateGamePoints(gameWithHandicap);
     
-    // Raw scores: USA wins both stroke play and match play
-    expect(result.raw.USA).toBe(2);
-    expect(result.raw.EUROPE).toBe(0);
+    // Raw scores: EUROPE wins stroke play, USA wins match play
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
     
-    // Adjusted scores: Tied in both stroke play and match play (half point each)
+    // Adjusted scores: Same as raw scores - EUROPE wins stroke play, USA wins match play
     expect(result.adjusted.USA).toBe(1);
     expect(result.adjusted.EUROPE).toBe(1);
   });
@@ -435,7 +437,7 @@ describe('Score Entry Tests', () => {
         adjustedEUROPE: 45,
       },
       matchPlayScore: {
-        USA: 9, // USA won all 9 holes played
+        USA: 9, // USA won all holes played
         EUROPE: 0,
         adjustedUSA: 9,
         adjustedEUROPE: 0,
@@ -628,7 +630,7 @@ describe('Score Entry Tests', () => {
       strokePlayScore: {
         USA: 108, // 6 strokes per hole
         EUROPE: 72, // 4 strokes per hole
-        adjustedUSA: 72, // After 30 stroke handicap
+        adjustedUSA: 78, // After 30 stroke handicap
         adjustedEUROPE: 72,
       },
       matchPlayScore: {
@@ -645,9 +647,9 @@ describe('Score Entry Tests', () => {
     expect(result.raw.USA).toBe(0);
     expect(result.raw.EUROPE).toBe(2);
     
-    // Adjusted scores: Stroke play is tied (0.5 each) and match play is tied (0.5 each)
-    expect(result.adjusted.USA).toBe(1);
-    expect(result.adjusted.EUROPE).toBe(1);
+    // Adjusted scores: EUROPE wins stroke play (72 vs 78) and match play is tied (0-0)
+    expect(result.adjusted.USA).toBe(0.5);
+    expect(result.adjusted.EUROPE).toBe(1.5);
   });
 
   it('should handle extreme score differences with medium handicap', () => {
@@ -684,9 +686,9 @@ describe('Score Entry Tests', () => {
     // Even with 10 strokes, the extreme difference means Europe still wins both categories
     expect(result.raw.USA).toBe(0);
     expect(result.raw.EUROPE).toBe(2);
-    // But the adjusted scores are closer
-    expect(result.adjusted.USA).toBe(0);
-    expect(result.adjusted.EUROPE).toBe(2);
+    // With 10 strokes distributed by stroke index, USA gets 0.5 points for tied holes
+    expect(result.adjusted.USA).toBe(0.5);
+    expect(result.adjusted.EUROPE).toBe(1.5);
   });
 
   it('should handle extreme score differences with high handicap', () => {
@@ -738,7 +740,7 @@ describe('Score Entry Tests', () => {
     expect(result.raw.USA).toBe(0);
     expect(result.raw.EUROPE).toBe(2);
     
-    // Adjusted scores: EUROPE still wins stroke play but match play is now tied
+    // Adjusted scores: EUROPE wins stroke play (54 vs 78) and match play is tied (9-9)
     expect(result.adjusted.USA).toBe(0.5);
     expect(result.adjusted.EUROPE).toBe(1.5);
   });
@@ -882,20 +884,22 @@ describe('Score Entry Tests', () => {
       handicapStrokes: 30,
       higherHandicapTeam: 'EUROPE' as 'USA' | 'EUROPE',
       holes: mockGame.holes.map((hole) => {
-        // Every hole gets at least 1 handicap stroke, some get 2
+        // For 30 strokes: each hole gets 1 stroke, plus extra stroke for first 12 stroke indexes
+        const getsExtraStroke = hole.strokeIndex <= 12;
+        const totalStrokes = 1 + (getsExtraStroke ? 1 : 0); // 1 base stroke + 1 extra if applicable
         return {
           ...hole,
-          usaPlayerScore: 4,
-          europePlayerScore: 6,
-          // After handicap adjustment, EUROPE's scores are much better
-          usaPlayerAdjustedScore: 4,
-          europePlayerAdjustedScore: 4, // With 30 strokes, each hole gets at least 1, some get 2
-          // Raw match play - USA wins each hole
-          usaPlayerMatchPlayScore: 1,
-          europePlayerMatchPlayScore: 0,
-          // After handicap adjustment, all holes are tied
-          usaPlayerMatchPlayAdjustedScore: 0,
-          europePlayerMatchPlayAdjustedScore: 0,
+          // Apply handicap adjustments if scores exist
+          usaPlayerAdjustedScore: hole.usaPlayerScore,
+          europePlayerAdjustedScore: 
+            hole.europePlayerScore !== null 
+              ? Math.max(1, (hole.europePlayerScore as number) - totalStrokes)
+              : null,
+          // Adjust match play scores based on handicap
+          usaPlayerMatchPlayAdjustedScore: 
+            getsExtraStroke ? Math.max(hole.usaPlayerMatchPlayScore, hole.europePlayerMatchPlayScore) : hole.usaPlayerMatchPlayScore,
+          europePlayerMatchPlayAdjustedScore:
+            getsExtraStroke ? Math.max(hole.usaPlayerMatchPlayScore, hole.europePlayerMatchPlayScore) : hole.europePlayerMatchPlayScore
         };
       }),
       strokePlayScore: {
@@ -918,7 +922,7 @@ describe('Score Entry Tests', () => {
     expect(result.raw.USA).toBe(2);
     expect(result.raw.EUROPE).toBe(0);
     
-    // Adjusted scores: Stroke play is tied (0.5 each) and match play is tied (0.5 each)
+    // Adjusted scores: Both stroke play (72-72) and match play (0-0) are tied
     expect(result.adjusted.USA).toBe(1);
     expect(result.adjusted.EUROPE).toBe(1);
   });
@@ -972,7 +976,7 @@ describe('Score Entry Tests', () => {
     expect(result.raw.USA).toBe(2);
     expect(result.raw.EUROPE).toBe(0);
     
-    // Adjusted scores: USA still wins stroke play but match play is now tied
+    // Adjusted scores: USA wins stroke play (54 vs 78) and match play is tied
     expect(result.adjusted.USA).toBe(1.5);
     expect(result.adjusted.EUROPE).toBe(0.5);
   });
@@ -1212,5 +1216,654 @@ describe('Score Entry Tests', () => {
     expect(result.raw.EUROPE).toBe(1);
     expect(result.adjusted.USA).toBe(1);
     expect(result.adjusted.EUROPE).toBe(1);
+  });
+
+  it('should handle alternating wins in match play', () => {
+    const alternatingWinsGame = {
+      ...mockGame,
+      holes: mockGame.holes.map((hole, index) => ({
+        ...hole,
+        usaPlayerScore: index % 2 === 0 ? 4 : 5,
+        europePlayerScore: index % 2 === 0 ? 5 : 4,
+        usaPlayerAdjustedScore: index % 2 === 0 ? 4 : 5,
+        europePlayerAdjustedScore: index % 2 === 0 ? 5 : 4,
+        usaPlayerMatchPlayScore: index % 2 === 0 ? 1 : 0,
+        europePlayerMatchPlayScore: index % 2 === 0 ? 0 : 1,
+        usaPlayerMatchPlayAdjustedScore: index % 2 === 0 ? 1 : 0,
+        europePlayerMatchPlayAdjustedScore: index % 2 === 0 ? 0 : 1,
+      })),
+      strokePlayScore: {
+        USA: 81, // 9 holes at 4, 9 holes at 5
+        EUROPE: 81, // 9 holes at 5, 9 holes at 4
+        adjustedUSA: 81,
+        adjustedEUROPE: 81,
+      },
+      matchPlayScore: {
+        USA: 9, // Won 9 holes
+        EUROPE: 9, // Won 9 holes
+        adjustedUSA: 9,
+        adjustedEUROPE: 9,
+      }
+    };
+
+    const result = calculateGamePoints(alternatingWinsGame);
+    
+    // Both teams win exactly half the holes
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    expect(result.adjusted.USA).toBe(1);
+    expect(result.adjusted.EUROPE).toBe(1);
+  });
+
+  it('should handle one team winning all holes in match play but losing stroke play', () => {
+    const mixedResultsGame = {
+      ...mockGame,
+      holes: mockGame.holes.map(hole => ({
+        ...hole,
+        usaPlayerScore: 4,
+        europePlayerScore: 5,
+        usaPlayerAdjustedScore: 4,
+        europePlayerAdjustedScore: 5,
+        usaPlayerMatchPlayScore: 1,
+        europePlayerMatchPlayScore: 0,
+        usaPlayerMatchPlayAdjustedScore: 1,
+        europePlayerMatchPlayAdjustedScore: 0,
+      })),
+      strokePlayScore: {
+        USA: 90, // 5 * 18 - USA loses stroke play
+        EUROPE: 72, // 4 * 18 - EUROPE wins stroke play
+        adjustedUSA: 90,
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 18, // Won all holes - USA wins match play
+        EUROPE: 0,
+        adjustedUSA: 18,
+        adjustedEUROPE: 0,
+      }
+    };
+
+    const result = calculateGamePoints(mixedResultsGame);
+    
+    // USA wins match play but loses stroke play
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    expect(result.adjusted.USA).toBe(1);
+    expect(result.adjusted.EUROPE).toBe(1);
+  });
+
+  it('should handle handicap strokes affecting only some holes', () => {
+    const partialHandicapGame = {
+      ...mockGame,
+      handicapStrokes: 5,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: mockGame.holes.map((hole, index) => {
+        const getsStroke = index < 5; // Only first 5 holes get strokes
+        return {
+          ...hole,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: getsStroke ? 4 : 5,
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : 0,
+          europePlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : 1,
+        };
+      }),
+      strokePlayScore: {
+        USA: 90, // 5 * 18
+        EUROPE: 72, // 4 * 18
+        adjustedUSA: 85, // 5 strokes deducted
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18,
+        adjustedUSA: 2.5, // 5 holes tied, 13 lost
+        adjustedEUROPE: 15.5,
+      }
+    };
+
+    const result = calculateGamePoints(partialHandicapGame);
+    
+    // Raw scores: EUROPE wins both
+    expect(result.raw.USA).toBe(0);
+    expect(result.raw.EUROPE).toBe(2);
+    
+    // Adjusted scores: EUROPE still wins stroke play but match play is closer
+    expect(result.adjusted.USA).toBe(0);
+    expect(result.adjusted.EUROPE).toBe(2);
+  });
+
+  it('should handle handicap strokes with decimal scores', () => {
+    const decimalHandicapGame = {
+      ...mockGame,
+      handicapStrokes: 7.5,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: mockGame.holes.map((hole, index) => {
+        const getsStroke = index < 7; // First 7 holes get full strokes
+        const getsHalfStroke = index === 7; // 8th hole gets half stroke
+        return {
+          ...hole,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: getsStroke ? 4 : (getsHalfStroke ? 4.5 : 5),
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : (getsHalfStroke ? 0.5 : 0),
+          europePlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : (getsHalfStroke ? 0.5 : 1),
+        };
+      }),
+      strokePlayScore: {
+        USA: 90, // 5 * 18
+        EUROPE: 72, // 4 * 18
+        adjustedUSA: 82.5, // 7.5 strokes deducted
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18,
+        adjustedUSA: 3.5, // 7 holes tied, 1 half-tied, 10 lost
+        adjustedEUROPE: 14.5,
+      }
+    };
+
+    const result = calculateGamePoints(decimalHandicapGame);
+    
+    // Raw scores: EUROPE wins both
+    expect(result.raw.USA).toBe(0);
+    expect(result.raw.EUROPE).toBe(2);
+    
+    // Adjusted scores: EUROPE still wins both but match play is closer
+    expect(result.adjusted.USA).toBe(0);
+    expect(result.adjusted.EUROPE).toBe(2);
+  });
+
+  it('should handle handicap strokes with very small differences', () => {
+    const smallHandicapGame = {
+      ...mockGame,
+      handicapStrokes: 1,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: mockGame.holes.map((hole, index) => {
+        const getsStroke = index === 0; // Only first hole gets stroke
+        return {
+          ...hole,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: getsStroke ? 4 : 5,
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : 0,
+          europePlayerMatchPlayAdjustedScore: getsStroke ? 0.5 : 1,
+        };
+      }),
+      strokePlayScore: {
+        USA: 90, // 5 * 18
+        EUROPE: 72, // 4 * 18
+        adjustedUSA: 89, // 1 stroke deducted
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18,
+        adjustedUSA: 0.5, // 1 hole tied, 17 lost
+        adjustedEUROPE: 17.5,
+      }
+    };
+
+    const result = calculateGamePoints(smallHandicapGame);
+    
+    // Raw scores: EUROPE wins both
+    expect(result.raw.USA).toBe(0);
+    expect(result.raw.EUROPE).toBe(2);
+    
+    // Adjusted scores: EUROPE still wins both but match play has one tied hole
+    expect(result.adjusted.USA).toBe(0);
+    expect(result.adjusted.EUROPE).toBe(2);
+  });
+
+  it('should handle handicap strokes with very large differences', () => {
+    const largeHandicapGame = {
+      ...mockGame,
+      handicapStrokes: 36,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: mockGame.holes.map(hole => ({
+        ...hole,
+        usaPlayerScore: 5,
+        europePlayerScore: 4,
+        usaPlayerAdjustedScore: 3, // 2 strokes per hole
+        europePlayerAdjustedScore: 4,
+        usaPlayerMatchPlayScore: 0,
+        europePlayerMatchPlayScore: 1,
+        usaPlayerMatchPlayAdjustedScore: 1, // USA wins after adjustment
+        europePlayerMatchPlayAdjustedScore: 0,
+      })),
+      strokePlayScore: {
+        USA: 90, // 5 * 18
+        EUROPE: 72, // 4 * 18
+        adjustedUSA: 54, // 36 strokes deducted
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18,
+        adjustedUSA: 18, // USA wins all holes after adjustment
+        adjustedEUROPE: 0,
+      }
+    };
+
+    const result = calculateGamePoints(largeHandicapGame);
+    
+    // Raw scores: EUROPE wins both
+    expect(result.raw.USA).toBe(0);
+    expect(result.raw.EUROPE).toBe(2);
+    
+    // Adjusted scores: USA wins both after handicap
+    expect(result.adjusted.USA).toBe(2);
+    expect(result.adjusted.EUROPE).toBe(0);
+  });
+
+  it('should handle handicap strokes with equal scores', () => {
+    const equalScoresHandicapGame = {
+      ...mockGame,
+      handicapStrokes: 10,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: mockGame.holes.map((hole, index) => {
+        const getsStroke = index < 10; // First 10 holes get strokes
+        return {
+          ...hole,
+          usaPlayerScore: 4,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: getsStroke ? 3 : 4,
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0.5,
+          europePlayerMatchPlayScore: 0.5,
+          usaPlayerMatchPlayAdjustedScore: getsStroke ? 1 : 0.5,
+          europePlayerMatchPlayAdjustedScore: getsStroke ? 0 : 0.5,
+        };
+      }),
+      strokePlayScore: {
+        USA: 72, // 4 * 18
+        EUROPE: 72, // 4 * 18
+        adjustedUSA: 62, // 10 strokes deducted
+        adjustedEUROPE: 72,
+      },
+      matchPlayScore: {
+        USA: 9, // All holes tied
+        EUROPE: 9,
+        adjustedUSA: 14, // USA wins first 10 holes, ties remaining
+        adjustedEUROPE: 4,
+      }
+    };
+
+    const result = calculateGamePoints(equalScoresHandicapGame);
+    
+    // Raw scores: Tied in both categories
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    
+    // Adjusted scores: USA wins both after handicap
+    expect(result.adjusted.USA).toBe(2);
+    expect(result.adjusted.EUROPE).toBe(0);
+  });
+
+  it('should handle handicap changing both stroke play and match play outcomes', () => {
+    const baseGame = {
+      ...mockGame,
+      holes: mockGame.holes.map(hole => ({
+        ...hole,
+        usaPlayerScore: 6, // High score
+        europePlayerScore: 3, // Low score
+        usaPlayerMatchPlayScore: 0,
+        europePlayerMatchPlayScore: 1,
+      })),
+      strokePlayScore: {
+        USA: 108, // 6 * 18
+        EUROPE: 54, // 3 * 18
+        adjustedUSA: 0, // Will be updated
+        adjustedEUROPE: 0, // Will be updated
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18, // Europe wins all holes
+        adjustedUSA: 0, // Will be updated
+        adjustedEUROPE: 0, // Will be updated
+      }
+    };
+    
+    // Create high handicap version and update scores
+    let highHandicapGame = createHighHandicapGame(baseGame);
+    highHandicapGame = {
+      ...highHandicapGame,
+      strokePlayScore: {
+        USA: 108,
+        EUROPE: 54,
+        adjustedUSA: 78, // 108 - 30 strokes
+        adjustedEUROPE: 54,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 18,
+        adjustedUSA: 9, // USA now wins half the holes after handicap
+        adjustedEUROPE: 9, // Tied on the other half
+      }
+    };
+
+    const result = calculateGamePoints(highHandicapGame);
+    
+    // Raw scores: EUROPE wins both categories
+    expect(result.raw.USA).toBe(0);
+    expect(result.raw.EUROPE).toBe(2);
+    
+    // Adjusted scores: EUROPE wins stroke play (54 vs 78) and match play is tied (9-9)
+    expect(result.adjusted.USA).toBe(0.5);
+    expect(result.adjusted.EUROPE).toBe(1.5);
+  });
+
+  it('should handle handicap creating a tie in match play', () => {
+    const baseGame = {
+      ...mockGame,
+      holes: mockGame.holes.map(hole => ({
+        ...hole,
+        usaPlayerScore: 3, // Low score
+        europePlayerScore: 6, // High score
+        usaPlayerMatchPlayScore: 1,
+        europePlayerMatchPlayScore: 0,
+      })),
+      strokePlayScore: {
+        USA: 54, // 3 * 18
+        EUROPE: 108, // 6 * 18
+        adjustedUSA: 0, // Will be updated
+        adjustedEUROPE: 0, // Will be updated
+      },
+      matchPlayScore: {
+        USA: 18, // USA wins all holes
+        EUROPE: 0,
+        adjustedUSA: 0, // Will be updated
+        adjustedEUROPE: 0, // Will be updated
+      }
+    };
+    
+    // Create high handicap version for EUROPE and update scores
+    let highHandicapEuropeGame = createHighHandicapEuropeGame(baseGame);
+    highHandicapEuropeGame = {
+      ...highHandicapEuropeGame,
+      strokePlayScore: {
+        USA: 54,
+        EUROPE: 108,
+        adjustedUSA: 54,
+        adjustedEUROPE: 78, // 108 - 30 strokes
+      },
+      matchPlayScore: {
+        USA: 18,
+        EUROPE: 0,
+        adjustedUSA: 9, // Tied on half the holes after handicap
+        adjustedEUROPE: 9, // EUROPE now wins half the holes after handicap
+      }
+    };
+
+    const result = calculateGamePoints(highHandicapEuropeGame);
+    
+    // Raw scores: USA wins both categories
+    expect(result.raw.USA).toBe(2);
+    expect(result.raw.EUROPE).toBe(0);
+    
+    // Adjusted scores: USA wins stroke play (54 vs 78) and match play is tied (9-9)
+    expect(result.adjusted.USA).toBe(1.5);
+    expect(result.adjusted.EUROPE).toBe(0.5);
+  });
+
+  describe('Hole-by-Hole Score Entry', () => {
+    it('should correctly track and display stroke-by-stroke progression', async () => {
+      const gameWithProgressiveScores = {
+        ...mockGame,
+        holes: [
+          {
+            holeNumber: 1,
+            strokeIndex: 1,
+            parScore: 4,
+            usaPlayerScore: 4,
+            europePlayerScore: 5,
+            usaPlayerAdjustedScore: 4,
+            europePlayerAdjustedScore: 5,
+            usaPlayerMatchPlayScore: 1,
+            europePlayerMatchPlayScore: 0,
+            usaPlayerMatchPlayAdjustedScore: 1,
+            europePlayerMatchPlayAdjustedScore: 0,
+          },
+          {
+            holeNumber: 2,
+            strokeIndex: 2,
+            parScore: 4,
+            usaPlayerScore: 5,
+            europePlayerScore: 4,
+            usaPlayerAdjustedScore: 5,
+            europePlayerAdjustedScore: 4,
+            usaPlayerMatchPlayScore: 0,
+            europePlayerMatchPlayScore: 1,
+            usaPlayerMatchPlayAdjustedScore: 0,
+            europePlayerMatchPlayAdjustedScore: 1,
+          }
+        ]
+      };
+
+      // Update the game with progressive scores
+      const updatedGame = updateAggregateScores(gameWithProgressiveScores);
+
+      // Verify stroke play progression
+      expect(updatedGame.strokePlayScore.USA).toBe(9); // 4 + 5
+      expect(updatedGame.strokePlayScore.EUROPE).toBe(9); // 5 + 4
+      expect(updatedGame.strokePlayScore.adjustedUSA).toBe(9);
+      expect(updatedGame.strokePlayScore.adjustedEUROPE).toBe(9);
+
+      // Verify match play progression
+      expect(updatedGame.matchPlayScore.USA).toBe(1); // Won first hole
+      expect(updatedGame.matchPlayScore.EUROPE).toBe(1); // Won second hole
+      expect(updatedGame.matchPlayScore.adjustedUSA).toBe(1);
+      expect(updatedGame.matchPlayScore.adjustedEUROPE).toBe(1);
+
+      // Verify individual hole scores
+      expect(updatedGame.holes[0].usaPlayerScore).toBe(4);
+      expect(updatedGame.holes[0].europePlayerScore).toBe(5);
+      expect(updatedGame.holes[1].usaPlayerScore).toBe(5);
+      expect(updatedGame.holes[1].europePlayerScore).toBe(4);
+    });
+
+    it('should correctly calculate strokes when USA is higher handicap team with 10 strokes', () => {
+      const gameWithUSAHandicap = {
+        ...mockGame,
+        handicapStrokes: 10,
+        higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+        holes: [
+          {
+            holeNumber: 1,
+            strokeIndex: 1,
+            parScore: 4,
+            usaPlayerScore: 5,
+            europePlayerScore: 4,
+            usaPlayerAdjustedScore: 4, // Gets 1 stroke on hole 1
+            europePlayerAdjustedScore: 4,
+            usaPlayerMatchPlayScore: 0,
+            europePlayerMatchPlayScore: 1,
+            usaPlayerMatchPlayAdjustedScore: 0.5, // Tied after adjustment
+            europePlayerMatchPlayAdjustedScore: 0.5,
+          },
+          {
+            holeNumber: 2,
+            strokeIndex: 2,
+            parScore: 4,
+            usaPlayerScore: 5,
+            europePlayerScore: 4,
+            usaPlayerAdjustedScore: 4, // Gets 1 stroke on hole 2
+            europePlayerAdjustedScore: 4,
+            usaPlayerMatchPlayScore: 0,
+            europePlayerMatchPlayScore: 1,
+            usaPlayerMatchPlayAdjustedScore: 0.5, // Tied after adjustment
+            europePlayerMatchPlayAdjustedScore: 0.5,
+          }
+        ]
+      };
+
+      const updatedGame = updateAggregateScores(gameWithUSAHandicap);
+
+      // Verify stroke play scores
+      expect(updatedGame.strokePlayScore.USA).toBe(10);
+      expect(updatedGame.strokePlayScore.EUROPE).toBe(8);
+      expect(updatedGame.strokePlayScore.adjustedUSA).toBe(8);
+      expect(updatedGame.strokePlayScore.adjustedEUROPE).toBe(8);
+
+      // Verify match play scores
+      expect(updatedGame.matchPlayScore.USA).toBe(0);
+      expect(updatedGame.matchPlayScore.EUROPE).toBe(2);
+      expect(updatedGame.matchPlayScore.adjustedUSA).toBe(1);
+      expect(updatedGame.matchPlayScore.adjustedEUROPE).toBe(1);
+
+      // Verify individual hole adjustments
+      expect(updatedGame.holes[0].usaPlayerAdjustedScore).toBe(4);
+      expect(updatedGame.holes[0].europePlayerAdjustedScore).toBe(4);
+      expect(updatedGame.holes[1].usaPlayerAdjustedScore).toBe(4);
+      expect(updatedGame.holes[1].europePlayerAdjustedScore).toBe(4);
+    });
+
+    it('should correctly calculate strokes when EUROPE is higher handicap team with 36+ strokes', () => {
+      const gameWithEuropeHandicap = {
+        ...mockGame,
+        handicapStrokes: 40,
+        higherHandicapTeam: 'EUROPE' as 'USA' | 'EUROPE',
+        holes: [
+          {
+            holeNumber: 1,
+            strokeIndex: 1,
+            parScore: 4,
+            usaPlayerScore: 4,
+            europePlayerScore: 6,
+            usaPlayerAdjustedScore: 4,
+            europePlayerAdjustedScore: 3, // Gets 3 strokes on hole 1 (2 base + 1 extra)
+            usaPlayerMatchPlayScore: 1,
+            europePlayerMatchPlayScore: 0,
+            usaPlayerMatchPlayAdjustedScore: 0, // Loses after adjustment
+            europePlayerMatchPlayAdjustedScore: 1,
+          },
+          {
+            holeNumber: 2,
+            strokeIndex: 2,
+            parScore: 4,
+            usaPlayerScore: 4,
+            europePlayerScore: 6,
+            usaPlayerAdjustedScore: 4,
+            europePlayerAdjustedScore: 3, // Gets 3 strokes on hole 2 (2 base + 1 extra)
+            usaPlayerMatchPlayScore: 1,
+            europePlayerMatchPlayScore: 0,
+            usaPlayerMatchPlayAdjustedScore: 0, // Loses after adjustment
+            europePlayerMatchPlayAdjustedScore: 1,
+          }
+        ]
+      };
+
+      const updatedGame = updateAggregateScores(gameWithEuropeHandicap);
+
+      // Verify stroke play scores
+      expect(updatedGame.strokePlayScore.USA).toBe(8);
+      expect(updatedGame.strokePlayScore.EUROPE).toBe(12);
+      expect(updatedGame.strokePlayScore.adjustedUSA).toBe(8);
+      expect(updatedGame.strokePlayScore.adjustedEUROPE).toBe(6);
+
+      // Verify match play scores
+      expect(updatedGame.matchPlayScore.USA).toBe(2);
+      expect(updatedGame.matchPlayScore.EUROPE).toBe(0);
+      expect(updatedGame.matchPlayScore.adjustedUSA).toBe(0);
+      expect(updatedGame.matchPlayScore.adjustedEUROPE).toBe(2);
+
+      // Verify individual hole adjustments
+      expect(updatedGame.holes[0].europePlayerAdjustedScore).toBe(3);
+      expect(updatedGame.holes[0].usaPlayerAdjustedScore).toBe(4);
+      expect(updatedGame.holes[1].europePlayerAdjustedScore).toBe(3);
+      expect(updatedGame.holes[1].usaPlayerAdjustedScore).toBe(4);
+    });
+  });
+
+  it('should correctly calculate extra strokes based on stroke index and hole number', () => {
+    const gameWithExtraStrokes = {
+      ...mockGame,
+      handicapStrokes: 20,
+      higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+      holes: [
+        {
+          holeNumber: 1,
+          strokeIndex: 1,
+          parScore: 4,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: 3, // Gets 2 strokes (1 base + 1 extra)
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: 1, // Wins after adjustment
+          europePlayerMatchPlayAdjustedScore: 0,
+        },
+        {
+          holeNumber: 2,
+          strokeIndex: 2,
+          parScore: 4,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: 3, // Gets 2 strokes (1 base + 1 extra)
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: 1, // Wins after adjustment
+          europePlayerMatchPlayAdjustedScore: 0,
+        },
+        {
+          holeNumber: 3,
+          strokeIndex: 3,
+          parScore: 4,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: 3, // Gets 2 strokes (1 base + 1 extra)
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: 1, // Wins after adjustment
+          europePlayerMatchPlayAdjustedScore: 0,
+        },
+        {
+          holeNumber: 4,
+          strokeIndex: 4,
+          parScore: 4,
+          usaPlayerScore: 5,
+          europePlayerScore: 4,
+          usaPlayerAdjustedScore: 4, // Gets only 1 stroke (no extra)
+          europePlayerAdjustedScore: 4,
+          usaPlayerMatchPlayScore: 0,
+          europePlayerMatchPlayScore: 1,
+          usaPlayerMatchPlayAdjustedScore: 0.5, // Tied after adjustment
+          europePlayerMatchPlayAdjustedScore: 0.5,
+        }
+      ]
+    };
+
+    const updatedGame = updateAggregateScores(gameWithExtraStrokes);
+
+    // Verify stroke play scores
+    expect(updatedGame.strokePlayScore.USA).toBe(20);
+    expect(updatedGame.strokePlayScore.EUROPE).toBe(16);
+    expect(updatedGame.strokePlayScore.adjustedUSA).toBe(13);
+    expect(updatedGame.strokePlayScore.adjustedEUROPE).toBe(16);
+
+    // Verify match play scores
+    expect(updatedGame.matchPlayScore.USA).toBe(0);
+    expect(updatedGame.matchPlayScore.EUROPE).toBe(4);
+    expect(updatedGame.matchPlayScore.adjustedUSA).toBe(3.5);
+    expect(updatedGame.matchPlayScore.adjustedEUROPE).toBe(0.5);
+
+    // Verify individual hole adjustments
+    expect(updatedGame.holes[0].usaPlayerAdjustedScore).toBe(3); // 2 strokes
+    expect(updatedGame.holes[1].usaPlayerAdjustedScore).toBe(3); // 2 strokes
+    expect(updatedGame.holes[2].usaPlayerAdjustedScore).toBe(3); // 2 strokes
+    expect(updatedGame.holes[3].usaPlayerAdjustedScore).toBe(4); // 1 stroke
   });
 }); 

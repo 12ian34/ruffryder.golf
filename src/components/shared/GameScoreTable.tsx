@@ -48,6 +48,37 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
     };
   };
 
+  // Calculate handicap strokes for a hole
+  const getHandicapStrokes = (strokeIndex: number) => {
+    if (!useHandicaps || !game.europePlayerHandicap || !game.usaPlayerHandicap) {
+      return 0;
+    }
+    
+    // Calculate handicap difference and determine which team gets strokes
+    const handicapDiff = game.europePlayerHandicap - game.usaPlayerHandicap;
+    
+    // Calculate total strokes based on absolute difference
+    const totalStrokes = Math.abs(handicapDiff);
+    
+    // Calculate base strokes for this hole (integer division)
+    const baseStrokes = Math.floor(totalStrokes / 18);
+    
+    // Calculate extra stroke for low index holes
+    const extraStrokeHoles = totalStrokes % 18;
+    const getsExtraStroke = strokeIndex <= extraStrokeHoles;
+    
+    // Total strokes for this hole
+    return baseStrokes + (getsExtraStroke ? 1 : 0);
+  };
+
+  // Get team that receives strokes (the team playing against higher handicap)
+  const getTeamGettingStrokes = () => {
+    if (!game.europePlayerHandicap || !game.usaPlayerHandicap) return 'USA';
+    const handicapDiff = game.europePlayerHandicap - game.usaPlayerHandicap;
+    // Team getting strokes is opposite of the higher handicap team
+    return handicapDiff > 0 ? 'USA' : 'EUROPE';
+  };
+
   return (
     <div className="space-y-6" data-attr="game-score-table">
       {/* Player Names and Handicaps */}
@@ -74,7 +105,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
 
       {useHandicaps && game.handicapStrokes > 0 && (
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
-          {game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName} gets {game.handicapStrokes} strokes
+          {game.higherHandicapTeam === 'USA' ? game.usaPlayerName : game.europePlayerName} gets {game.handicapStrokes} strokes
         </div>
       )}
 
@@ -93,25 +124,37 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
               const usaScores = getHoleScore(hole, 'USA');
               const europeScores = getHoleScore(hole, 'EUROPE');
               const holeDistance = distances[index] || null;
+              const handicapStrokes = getHandicapStrokes(hole.strokeIndex);
+              const teamGettingStrokes = getTeamGettingStrokes();
+              const strokeColor = teamGettingStrokes === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
               return (
-                <tr key={hole.holeNumber} data-attr={`game-score-hole-${hole.holeNumber}`}>
+                <tr key={hole.holeNumber} data-attr={`game-score-hole-${hole.holeNumber}`} className="dark:bg-gray-800">
                   <td className="px-4 py-2">
-                    <span className="text-sm text-gray-900 dark:text-white">{hole.holeNumber}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400"> (SI: {hole.strokeIndex})</span>
-                    {isLoadingDistances && (
-                      <span className="text-sm text-gray-400 dark:text-gray-500 ml-1">Loading...</span>
-                    )}
-                    {!isLoadingDistances && holeDistance && (
-                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">- {holeDistance}yd</span>
-                    )}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900 dark:text-white">{hole.holeNumber}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">(SI: {hole.strokeIndex})</span>
+                        {useHandicaps && handicapStrokes > 0 && (
+                          <span className={`text-xs font-medium ${strokeColor}`}>
+                            {teamGettingStrokes} (+{handicapStrokes})
+                          </span>
+                        )}
+                      </div>
+                      {!isLoadingDistances && holeDistance && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{holeDistance}yd</span>
+                      )}
+                      {isLoadingDistances && (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">Loading...</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2 text-center">
                     <div className="flex flex-col items-center">
                       <span className="text-sm text-gray-900 dark:text-white">
                         {useHandicaps ? (usaScores.adjusted ?? '-') : (usaScores.raw ?? '-')}
                       </span>
-                      {useHandicaps && usaScores.raw !== null && (
+                      {useHandicaps && usaScores.raw !== null && usaScores.raw !== usaScores.adjusted && (
                         <span className="text-xs text-gray-500">({usaScores.raw})</span>
                       )}
                     </div>
@@ -121,7 +164,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                       <span className="text-sm text-gray-900 dark:text-white">
                         {useHandicaps ? (europeScores.adjusted ?? '-') : (europeScores.raw ?? '-')}
                       </span>
-                      {useHandicaps && europeScores.raw !== null && (
+                      {useHandicaps && europeScores.raw !== null && europeScores.raw !== europeScores.adjusted && (
                         <span className="text-xs text-gray-500">({europeScores.raw})</span>
                       )}
                     </div>

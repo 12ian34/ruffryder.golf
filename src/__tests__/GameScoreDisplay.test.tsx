@@ -178,4 +178,122 @@ describe('GameScoreDisplay', () => {
       expect(container.querySelector('[data-testid="match-play-europe"]')).not.toHaveClass('text-usa-500');
     });
   });
+
+  describe('Hole-by-Hole Display', () => {
+    it('should correctly display stroke-by-stroke progression', () => {
+      const gameWithHoleScores = {
+        ...mockGame,
+        holes: [
+          {
+            holeNumber: 1,
+            strokeIndex: 1,
+            parScore: 4,
+            usaPlayerScore: 4,
+            europePlayerScore: 5,
+            usaPlayerAdjustedScore: 4,
+            europePlayerAdjustedScore: 5,
+            usaPlayerMatchPlayScore: 1,
+            europePlayerMatchPlayScore: 0,
+            usaPlayerMatchPlayAdjustedScore: 1,
+            europePlayerMatchPlayAdjustedScore: 0,
+          },
+          {
+            holeNumber: 2,
+            strokeIndex: 2,
+            parScore: 4,
+            usaPlayerScore: 5,
+            europePlayerScore: 4,
+            usaPlayerAdjustedScore: 5,
+            europePlayerAdjustedScore: 4,
+            usaPlayerMatchPlayScore: 0,
+            europePlayerMatchPlayScore: 1,
+            usaPlayerMatchPlayAdjustedScore: 0,
+            europePlayerMatchPlayAdjustedScore: 1,
+          }
+        ],
+        strokePlayScore: {
+          USA: 9,
+          EUROPE: 9,
+          adjustedUSA: 9,
+          adjustedEUROPE: 9
+        },
+        matchPlayScore: {
+          USA: 1,
+          EUROPE: 1,
+          adjustedUSA: 1,
+          adjustedEUROPE: 1
+        }
+      };
+
+      const { container } = render(<GameScoreDisplay game={gameWithHoleScores} useHandicaps={false} />);
+      
+      // Verify stroke play progression
+      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveTextContent('9');
+      expect(container.querySelector('[data-testid="stroke-play-europe"]')).toHaveTextContent('9');
+      
+      // Verify match play progression
+      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveTextContent('1');
+      expect(container.querySelector('[data-testid="match-play-europe"]')).toHaveTextContent('1');
+    });
+
+    it('should correctly display strokes when USA is higher handicap team with 10 strokes', () => {
+      const gameWithUSAHandicap = {
+        ...mockGame,
+        handicapStrokes: 10,
+        higherHandicapTeam: 'USA' as 'USA' | 'EUROPE',
+        strokePlayScore: {
+          USA: 10,
+          EUROPE: 8,
+          adjustedUSA: 8,
+          adjustedEUROPE: 8
+        },
+        matchPlayScore: {
+          USA: 0,
+          EUROPE: 2,
+          adjustedUSA: 1,
+          adjustedEUROPE: 1
+        }
+      };
+
+      const { container } = render(<GameScoreDisplay game={gameWithUSAHandicap} useHandicaps={true} />);
+      
+      // Verify stroke play scores show adjustment
+      expect(container.querySelector('[data-testid="stroke-play-usa"]')).toHaveTextContent('8');
+      expect(container.querySelector('[data-testid="stroke-play-usa-original"]')).toHaveTextContent('(10)');
+      
+      // Verify match play scores show adjustment
+      expect(container.querySelector('[data-testid="match-play-usa"]')).toHaveTextContent('1');
+      expect(container.querySelector('[data-testid="match-play-europe-original"]')).toHaveTextContent('(2)');
+    });
+
+    it('should correctly display strokes when EUROPE is higher handicap team with 36+ strokes', () => {
+      const gameWithEuropeHandicap = {
+        ...mockGame,
+        handicapStrokes: 40,
+        higherHandicapTeam: 'EUROPE' as 'USA' | 'EUROPE',
+        strokePlayScore: {
+          USA: 8,
+          EUROPE: 12,
+          adjustedUSA: 8,
+          adjustedEUROPE: 6
+        },
+        matchPlayScore: {
+          USA: 2,
+          EUROPE: 0,
+          adjustedUSA: 0,
+          adjustedEUROPE: 2
+        }
+      };
+
+      const { container } = render(<GameScoreDisplay game={gameWithEuropeHandicap} useHandicaps={true} />);
+      
+      // Verify stroke play scores show adjustment
+      expect(container.querySelector('[data-testid="stroke-play-europe"]')).toHaveTextContent('6');
+      expect(container.querySelector('[data-testid="stroke-play-europe-original"]')).toHaveTextContent('(12)');
+      
+      // Verify match play scores show adjustment
+      expect(container.querySelector('[data-testid="match-play-europe"]')).toHaveTextContent('2');
+      expect(container.querySelector('[data-testid="match-play-usa-original"]')).toHaveTextContent('(2)');
+    });
+  });
 }); 

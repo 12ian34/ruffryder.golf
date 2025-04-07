@@ -228,7 +228,16 @@ export default function TournamentManagement() {
   };
 
   const handleCreateMatchup = async () => {
-    if (!selectedTournament || !selectedUsaPlayer || !selectedEuropePlayer) return;
+    if (!selectedTournament || !selectedUsaPlayer || !selectedEuropePlayer) {
+      toast.error('Please select both players for the matchup');
+      return;
+    }
+
+    // Validate that the same player isn't selected for both teams
+    if (selectedUsaPlayer === selectedEuropePlayer) {
+      toast.error('Cannot select the same player for both teams');
+      return;
+    }
 
     setIsLoading(true);
     try {

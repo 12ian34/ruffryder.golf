@@ -8,6 +8,17 @@ export function calculateGamePoints(game: Game): {
     raw: { USA: 0, EUROPE: 0 },
     adjusted: { USA: 0, EUROPE: 0 }
   };
+
+  // Track who won each category
+  const rawWins = {
+    strokePlay: '',
+    matchPlay: ''
+  };
+
+  const adjustedWins = {
+    strokePlay: '',
+    matchPlay: ''
+  };
   
   const points = {
     raw: { USA: 0, EUROPE: 0 },
@@ -28,60 +39,104 @@ export function calculateGamePoints(game: Game): {
   // For stroke play, lower score wins
   if (strokePlayUSA !== 0 || strokePlayEUROPE !== 0) {
     if (strokePlayUSA < strokePlayEUROPE) {
-      points.raw.USA += 1;
+      rawWins.strokePlay = 'USA';
     } else if (strokePlayUSA > strokePlayEUROPE) {
-      points.raw.EUROPE += 1;
+      rawWins.strokePlay = 'EUROPE';
     } else {
-      points.raw.USA += 0.5;
-      points.raw.EUROPE += 0.5;
+      rawWins.strokePlay = 'TIE';
     }
+  } else {
+    rawWins.strokePlay = 'TIE';
   }
 
   // For match play, higher score wins
   if (matchPlayUSA !== 0 || matchPlayEUROPE !== 0) {
     if (matchPlayUSA > matchPlayEUROPE) {
-      points.raw.USA += 1;
+      rawWins.matchPlay = 'USA';
     } else if (matchPlayUSA < matchPlayEUROPE) {
-      points.raw.EUROPE += 1;
+      rawWins.matchPlay = 'EUROPE';
     } else {
-      points.raw.USA += 0.5;
-      points.raw.EUROPE += 0.5;
+      rawWins.matchPlay = 'TIE';
     }
+  } else {
+    rawWins.matchPlay = 'TIE';
   }
 
   // Adjusted points calculation
   // For stroke play, lower score wins
   if (strokePlayAdjustedUSA !== 0 || strokePlayAdjustedEUROPE !== 0) {
     if (strokePlayAdjustedUSA < strokePlayAdjustedEUROPE) {
-      points.adjusted.USA += 1;
+      adjustedWins.strokePlay = 'USA';
     } else if (strokePlayAdjustedUSA > strokePlayAdjustedEUROPE) {
-      points.adjusted.EUROPE += 1;
+      adjustedWins.strokePlay = 'EUROPE';
     } else {
-      points.adjusted.USA += 0.5;
-      points.adjusted.EUROPE += 0.5;
+      adjustedWins.strokePlay = 'TIE';
     }
+  } else {
+    adjustedWins.strokePlay = 'TIE';
   }
 
   // For match play, higher score wins
   if (matchPlayAdjustedUSA !== 0 || matchPlayAdjustedEUROPE !== 0) {
     if (matchPlayAdjustedUSA > matchPlayAdjustedEUROPE) {
-      points.adjusted.USA += 1;
+      adjustedWins.matchPlay = 'USA';
     } else if (matchPlayAdjustedUSA < matchPlayAdjustedEUROPE) {
-      points.adjusted.EUROPE += 1;
+      adjustedWins.matchPlay = 'EUROPE';
     } else {
-      points.adjusted.USA += 0.5;
-      points.adjusted.EUROPE += 0.5;
+      adjustedWins.matchPlay = 'TIE';
+    }
+  } else {
+    adjustedWins.matchPlay = 'TIE';
+  }
+
+  // Calculate raw points based on category wins
+  if (rawWins.strokePlay === 'TIE' && rawWins.matchPlay === 'TIE') {
+    // Both categories tied
+    points.raw.USA = 1;
+    points.raw.EUROPE = 1;
+  } else if (rawWins.strokePlay === 'TIE' || rawWins.matchPlay === 'TIE') {
+    // One category tied, other won by someone
+    const winner = rawWins.strokePlay !== 'TIE' ? rawWins.strokePlay : rawWins.matchPlay;
+    points.raw[winner as 'USA' | 'EUROPE'] = 1.5;
+    points.raw[winner === 'USA' ? 'EUROPE' : 'USA'] = 0.5;
+  } else if (rawWins.strokePlay !== rawWins.matchPlay) {
+    // Each team won one category
+    points.raw.USA = 1;
+    points.raw.EUROPE = 1;
+  } else {
+    // Same team won both categories
+    if (rawWins.strokePlay === 'USA') {
+      points.raw.USA = 2;
+      points.raw.EUROPE = 0;
+    } else if (rawWins.strokePlay === 'EUROPE') {
+      points.raw.USA = 0;
+      points.raw.EUROPE = 2;
     }
   }
 
-  // If both categories are tied, normalize to 1 point total per team
-  if (points.raw.USA === points.raw.EUROPE) {
-    points.raw.USA = 1;
-    points.raw.EUROPE = 1;
-  }
-  if (points.adjusted.USA === points.adjusted.EUROPE) {
+  // Calculate adjusted points based on category wins
+  if (adjustedWins.strokePlay === 'TIE' && adjustedWins.matchPlay === 'TIE') {
+    // Both categories tied
     points.adjusted.USA = 1;
     points.adjusted.EUROPE = 1;
+  } else if (adjustedWins.strokePlay === 'TIE' || adjustedWins.matchPlay === 'TIE') {
+    // One category tied, other won by someone
+    const winner = adjustedWins.strokePlay !== 'TIE' ? adjustedWins.strokePlay : adjustedWins.matchPlay;
+    points.adjusted[winner as 'USA' | 'EUROPE'] = 1.5;
+    points.adjusted[winner === 'USA' ? 'EUROPE' : 'USA'] = 0.5;
+  } else if (adjustedWins.strokePlay !== adjustedWins.matchPlay) {
+    // Each team won one category
+    points.adjusted.USA = 1;
+    points.adjusted.EUROPE = 1;
+  } else {
+    // Same team won both categories
+    if (adjustedWins.strokePlay === 'USA') {
+      points.adjusted.USA = 2;
+      points.adjusted.EUROPE = 0;
+    } else if (adjustedWins.strokePlay === 'EUROPE') {
+      points.adjusted.USA = 0;
+      points.adjusted.EUROPE = 2;
+    }
   }
 
   return points;

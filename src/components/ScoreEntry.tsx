@@ -5,6 +5,7 @@ import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 import { useHoleDistances } from '../hooks/useHoleDistances';
+import HandicapDisplay from './shared/HandicapDisplay';
 
 interface ScoreEntryProps {
   gameId: string;
@@ -22,6 +23,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
   const [error, setError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<number | null>(null);
   const { distances, isLoading: isLoadingDistances, error: distancesError } = useHoleDistances();
+  const [invalidScores, setInvalidScores] = useState<{[key: string]: boolean}>({});
 
   // Add escape key handler
   useEffect(() => {
@@ -121,22 +123,57 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
   }, [gameId, tournamentId]);
 
   const handleScoreChange = (holeIndex: number, team: 'USA' | 'EUROPE', value: string) => {
-    // Validate input
-    if (value !== '') {
-      const numValue = parseInt(value);
-      if (isNaN(numValue) || numValue < 1 || numValue > 20) {
-        setError('Score must be between 1 and 20');
-        return;
-      }
-    }
-
+    // Always update the display value first
     const newScores = [...scores];
     newScores[holeIndex] = {
       ...newScores[holeIndex],
-      [team]: value === '' ? '' : parseInt(value)
+      [team]: value
     };
-    
     setScores(newScores);
+
+    // If the value is empty, clear validation state
+    if (value === '') {
+      setInvalidScores(prev => ({
+        ...prev,
+        [`${holeIndex}-${team}`]: false
+      }));
+      setError(null);
+      return;
+    }
+
+    // Check for non-numeric input
+    if (!/^\d+$/.test(value)) {
+      setInvalidScores(prev => ({
+        ...prev,
+        [`${holeIndex}-${team}`]: true
+      }));
+      setError('Only numbers are allowed');
+      return;
+    }
+
+    const numValue = parseInt(value);
+    
+    // Validate the numeric value
+    if (numValue < 1 || numValue > 8) {
+      setInvalidScores(prev => ({
+        ...prev,
+        [`${holeIndex}-${team}`]: true
+      }));
+      setError('Score must be between 1 and 8');
+      return;
+    }
+
+    // Valid score, update with the parsed number
+    newScores[holeIndex] = {
+      ...newScores[holeIndex],
+      [team]: numValue
+    };
+    setScores(newScores);
+    setInvalidScores(prev => ({
+      ...prev,
+      [`${holeIndex}-${team}`]: false
+    }));
+    setError(null);
   };
 
   const handleClearHole = (index: number) => {
@@ -151,6 +188,18 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
 
   const handleScoreSubmit = async () => {
     if (!game) return;
+
+    // Check for any invalid scores
+    const hasInvalidScores = scores.some((score) => {
+      const usaInvalid = typeof score.USA === 'string' && (!/^\d+$/.test(score.USA) || parseInt(score.USA) < 1 || parseInt(score.USA) > 8);
+      const europeInvalid = typeof score.EUROPE === 'string' && (!/^\d+$/.test(score.EUROPE) || parseInt(score.EUROPE) < 1 || parseInt(score.EUROPE) > 8);
+      return (score.USA !== '' && usaInvalid) || (score.EUROPE !== '' && europeInvalid);
+    });
+
+    if (hasInvalidScores) {
+      setError('Please correct invalid scores (must be between 1 and 8) before saving');
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -176,12 +225,14 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           // Calculate extra stroke for low index holes
           const extraStrokeHoles = game.handicapStrokes % 18;
           // A hole gets an extra stroke if its stroke index is less than or equal to the remainder
-          const getsExtraStroke = hole.strokeIndex <= extraStrokeHoles;
+          // and the hole index is within the range of holes that should get extra strokes
+          const getsExtraStroke = strokeIndices[index] <= extraStrokeHoles && 
+                                index < extraStrokeHoles;
           
           // Total strokes for this hole
           const strokesForHole = baseStrokes + (getsExtraStroke ? 1 : 0);
 
-          // Always calculate adjusted scores based on handicap strokes
+          // Apply handicap strokes by adding to the lower handicap team's score
           if (game.higherHandicapTeam === 'USA') {
             usaAdjustedScore = usaScore;
             europeAdjustedScore = europeScore + strokesForHole;
@@ -223,9 +274,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
       });
 
       // Check if all holes have scores
-      const isComplete = updatedHoles.every(
-        hole => hole.usaPlayerScore !== null && hole.europePlayerScore !== null
-      );
+      const isComplete = game.isComplete;
 
       // Calculate totals
       const totals = updatedHoles.reduce((acc, hole) => {
@@ -343,11 +392,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
     );
   }
 
-  if (error || !game) {
+  if (!game) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
-          <p className="text-red-500">{error || 'Game not found'}</p>
+          <p className="text-red-500">Game not found</p>
           <button
             onClick={onClose}
             className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
@@ -402,6 +451,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
             </div>
           </div>
+          {useHandicaps && game && (
+            <div className="mt-2">
+              <HandicapDisplay game={game} useHandicaps={useHandicaps} />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -409,8 +463,10 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             {game.holes.map((hole, index) => {
               // Calculate if this hole gets a stroke
               const strokesForHole = Math.floor(game.handicapStrokes / 18) + 
-                (hole.strokeIndex <= (game.handicapStrokes % 18) ? 1 : 0);
-              const showStrokeIndicator = game.higherHandicapTeam !== 'USA' && strokesForHole > 0;
+                (strokeIndices[index] <= (game.handicapStrokes % 18) ? 1 : 0);
+              const showStrokeIndicator = useHandicaps && strokesForHole > 0;
+              const teamGettingStrokes = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+              const strokeColor = teamGettingStrokes === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
               return (
                 <div key={hole.holeNumber} className="grid grid-cols-[60px_1fr_32px] gap-2 items-center">
@@ -430,22 +486,52 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         {distances[index]}yd
                       </div>
                     ) : null}
-                    {useHandicaps && showStrokeIndicator && (
-                      <div className="text-xs text-europe-500">+{strokesForHole} stroke{strokesForHole > 1 ? 's' : ''}</div>
+                    {showStrokeIndicator && (
+                      <div className={`text-xs font-medium ${strokeColor}`}>
+                        {teamGettingStrokes} (+{strokesForHole})
+                      </div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        min="1"
-                        max="20"
                         value={scores[index].USA}
                         onChange={(e) => handleScoreChange(index, 'USA', e.target.value)}
-                        className="w-full h-12 pl-3 pr-10 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-center text-lg appearance-none"
+                        className={`w-full h-12 pl-3 pr-10 py-2 rounded-lg border ${
+                          invalidScores[`${index}-USA`] 
+                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+                            : 'dark:bg-gray-700 dark:border-gray-600'
+                        } dark:text-white text-center text-lg appearance-none`}
                         placeholder="USA"
+                        tabIndex={index * 2 + 1}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            const nextInput = document.querySelector(`[tabindex="${index * 2 + 2}"]`) as HTMLElement;
+                            nextInput?.focus();
+                          } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            if (index > 0) {
+                              const prevInput = document.querySelector(`[tabindex="${index * 2}"]`) as HTMLElement;
+                              prevInput?.focus();
+                            }
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            if (index > 0) {
+                              const prevInput = document.querySelector(`[tabindex="${(index - 1) * 2 + 1}"]`) as HTMLElement;
+                              prevInput?.focus();
+                            }
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            if (index < scores.length - 1) {
+                              const nextInput = document.querySelector(`[tabindex="${(index + 1) * 2 + 1}"]`) as HTMLElement;
+                              nextInput?.focus();
+                            }
+                          }
+                        }}
                       />
                       <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y dark:divide-gray-600">
                         <button
@@ -455,7 +541,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                             e.preventDefault();
                             const currentValue = scores[index].USA;
                             const newValue = typeof currentValue === 'number' ? 
-                              (currentValue < 20 ? currentValue + 1 : currentValue) : 1;
+                              (currentValue < 8 ? currentValue + 1 : currentValue) : 1;
                             handleScoreChange(index, 'USA', newValue.toString());
                           }}
                           aria-label={`Increment USA score for hole ${hole.holeNumber}`}
@@ -492,15 +578,43 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     </div>
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        min="1"
-                        max="20"
                         value={scores[index].EUROPE}
                         onChange={(e) => handleScoreChange(index, 'EUROPE', e.target.value)}
-                        className="w-full h-12 pl-3 pr-10 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-center text-lg appearance-none"
+                        className={`w-full h-12 pl-3 pr-10 py-2 rounded-lg border ${
+                          invalidScores[`${index}-EUROPE`] 
+                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+                            : 'dark:bg-gray-700 dark:border-gray-600'
+                        } dark:text-white text-center text-lg appearance-none`}
                         placeholder="EUR"
+                        tabIndex={index * 2 + 2}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            if (index < scores.length - 1) {
+                              const nextInput = document.querySelector(`[tabindex="${(index + 1) * 2 + 1}"]`) as HTMLElement;
+                              nextInput?.focus();
+                            }
+                          } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            const prevInput = document.querySelector(`[tabindex="${index * 2 + 1}"]`) as HTMLElement;
+                            prevInput?.focus();
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            if (index > 0) {
+                              const prevInput = document.querySelector(`[tabindex="${(index - 1) * 2 + 2}"]`) as HTMLElement;
+                              prevInput?.focus();
+                            }
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            if (index < scores.length - 1) {
+                              const nextInput = document.querySelector(`[tabindex="${(index + 1) * 2 + 2}"]`) as HTMLElement;
+                              nextInput?.focus();
+                            }
+                          }
+                        }}
                       />
                       <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y dark:divide-gray-600">
                         <button
@@ -510,7 +624,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                             e.preventDefault();
                             const currentValue = scores[index].EUROPE;
                             const newValue = typeof currentValue === 'number' ? 
-                              (currentValue < 20 ? currentValue + 1 : currentValue) : 1;
+                              (currentValue < 8 ? currentValue + 1 : currentValue) : 1;
                             handleScoreChange(index, 'EUROPE', newValue.toString());
                           }}
                           aria-label={`Increment EUROPE score for hole ${hole.holeNumber}`}
@@ -610,7 +724,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           {/* Score Totals */}
           {scores.length > 0 && (
             <div className="mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Score Totals</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Score Totals (Unadjusted)</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -656,6 +770,18 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
         </div>
 
         <div className="sticky bottom-0 bg-white dark:bg-gray-800 px-6 py-4 border-t dark:border-gray-700">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium text-red-800 dark:text-red-200">
+                  {error}
+                </span>
+              </div>
+            </div>
+          )}
           {distancesError && (
             <div className="text-sm text-red-500 mb-2">
               Error loading hole distances: {distancesError}

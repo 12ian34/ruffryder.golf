@@ -3,6 +3,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
+import { calculateGamePoints } from '../utils/gamePoints';
 
 interface GameCompletionModalProps {
   game: Game;
@@ -82,14 +83,21 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
     EUROPE: game.matchPlayScore.EUROPE
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full p-6">
-        <h3 className="text-lg font-semibold mb-4 dark:text-gray-100">
-          Complete Game
-        </h3>
+  // Calculate points that will be added
+  const points = calculateGamePoints(game);
 
-        <div className="space-y-4">
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full max-h-[95vh] flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold dark:text-gray-100">
+            Complete Game
+          </h3>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {!isOnline && (
             <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded">
               <p className="font-medium">Offline Mode</p>
@@ -107,35 +115,74 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
               </p>
             </div>
           ) : (
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-300">
                 Are you sure you want to mark this game as complete? This will finalize the scores and update the tournament standings.
               </p>
 
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h4 className="font-medium mb-2 dark:text-white">Final Scores:</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Stroke Play</div>
-                    <div className="font-medium dark:text-white">
-                      {strokePlayScores.USA} - {strokePlayScores.EUROPE}
-                      {useHandicaps && (
-                        <div className="text-xs text-gray-400">
-                          ({game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE})
-                        </div>
-                      )}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg overflow-hidden">
+                {/* Final Scores Section */}
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Final Scores</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white dark:bg-gray-700 rounded-lg p-2">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Stroke Play</div>
+                      <div className="font-medium text-lg dark:text-white">
+                        {strokePlayScores.USA} - {strokePlayScores.EUROPE}
+                        {useHandicaps && (
+                          <div className="text-xs text-gray-400">
+                            Raw: {game.strokePlayScore.USA} - {game.strokePlayScore.EUROPE}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-700 rounded-lg p-2">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Match Play</div>
+                      <div className="font-medium text-lg dark:text-white">
+                        {matchPlayScores.USA} - {matchPlayScores.EUROPE}
+                        {useHandicaps && (
+                          <div className="text-xs text-gray-400">
+                            Raw: {game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Match Play</div>
-                    <div className="font-medium dark:text-white">
-                      {matchPlayScores.USA} - {matchPlayScores.EUROPE}
-                      {useHandicaps && (
-                        <div className="text-xs text-gray-400">
-                          ({game.matchPlayScore.USA} - {game.matchPlayScore.EUROPE})
+                </div>
+
+                {/* Points Section */}
+                <div className="p-3">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Tournament Points</h4>
+                  <div className="space-y-3">
+                    <div className="bg-white dark:bg-gray-700 rounded-lg p-2">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Raw Points</div>
+                      <div className="grid grid-cols-2 gap-6 mt-1">
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
+                          <div className="text-2xl font-semibold text-usa-500">{points.raw.USA}</div>
                         </div>
-                      )}
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>
+                          <div className="text-2xl font-semibold text-europe-500">{points.raw.EUROPE}</div>
+                        </div>
+                      </div>
                     </div>
+
+                    {useHandicaps && (
+                      <div className="bg-white dark:bg-gray-700 rounded-lg p-2">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">Adjusted Points</div>
+                        <div className="grid grid-cols-2 gap-6 mt-1">
+                          <div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">USA</div>
+                            <div className="text-2xl font-semibold text-usa-500">{points.adjusted.USA}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">EUROPE</div>
+                            <div className="text-2xl font-semibold text-europe-500">{points.adjusted.EUROPE}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -147,7 +194,10 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
               {error}
             </div>
           )}
+        </div>
 
+        {/* Footer */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800">
           <div className="flex justify-end space-x-4">
             <button
               onClick={onClose}

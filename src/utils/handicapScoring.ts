@@ -33,7 +33,7 @@ export function calculateHandicapAdjustedScores(
   // Calculate extra stroke for low index holes
   const extraStrokeHoles = game.handicapStrokes % 18;
   const getsExtraStroke = hole.strokeIndex <= extraStrokeHoles;
-  
+    
   // Total strokes for this hole
   const strokesForHole = baseStrokes + (getsExtraStroke ? 1 : 0);
 
@@ -62,6 +62,9 @@ export function calculateHandicapAdjustedScores(
   } else if (result.europeAdjustedScore < result.usaAdjustedScore) {
     result.usaMatchPlayAdjustedScore = 0;
     result.europeMatchPlayAdjustedScore = 1;
+  } else {
+    result.usaMatchPlayAdjustedScore = 0;
+    result.europeMatchPlayAdjustedScore = 0;
   }
 
   return result;

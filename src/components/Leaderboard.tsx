@@ -176,16 +176,18 @@ export default function Leaderboard() {
       {tournament.progress && tournament.progress.length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
           <TournamentProgress 
-            progress={tournament.progress.map(p => ({
-              timestamp: new Date(p.timestamp),
-              score: tournament.useHandicaps 
-                ? p.score.adjusted
-                : p.score.raw,
-              projectedScore: tournament.useHandicaps
-                ? p.projectedScore?.adjusted
-                : p.projectedScore?.raw,
-              completedGames: p.completedGames
-            }))}
+            progress={tournament.progress
+              .filter(p => p && p.score)
+              .map(p => ({
+                timestamp: new Date(p.timestamp),
+                score: tournament.useHandicaps 
+                  ? p.score.adjusted
+                  : p.score.raw,
+                projectedScore: tournament.useHandicaps
+                  ? p.projectedScore?.adjusted
+                  : p.projectedScore?.raw,
+                completedGames: p.completedGames
+              }))}
             totalGames={games.length}
           />
         </div>

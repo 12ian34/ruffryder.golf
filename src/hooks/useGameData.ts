@@ -178,6 +178,15 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
 
   const sortGames = useCallback((games: Game[]): Game[] => {
     return [...games].sort((a, b) => {
+      // First check if either game has the linked player
+      const isPlayerInGameA = linkedPlayerId && a.playerIds?.includes(linkedPlayerId);
+      const isPlayerInGameB = linkedPlayerId && b.playerIds?.includes(linkedPlayerId);
+      
+      if (isPlayerInGameA !== isPlayerInGameB) {
+        return isPlayerInGameA ? -1 : 1;
+      }
+      
+      // If both games have the same player status, use the original sorting logic
       if (a.isComplete !== b.isComplete) {
         return a.isComplete ? 1 : -1;
       }
@@ -186,7 +195,7 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       }
       return a.usaPlayerName.localeCompare(b.usaPlayerName);
     });
-  }, []);
+  }, [linkedPlayerId]);
 
   const handleGameStatusChange = useCallback(async (game: Game, newStatus: GameStatus) => {
     if (!tournamentId || !tournamentSettings?.id) {

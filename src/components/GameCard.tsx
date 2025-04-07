@@ -90,10 +90,6 @@ export default function GameCard({
     handleStatusChange('in_progress');
   }, [handleStatusChange]);
 
-  const handleCompleteGame = useCallback(() => {
-    handleStatusChange('complete');
-  }, [handleStatusChange]);
-
   const handleCloseModal = useCallback(() => {
     setShowScoreModal(false);
   }, []);
@@ -116,7 +112,12 @@ export default function GameCard({
         } ${
           showSpecialStyling ? 'ring-1 ring-europe-500 dark:ring-europe-400' : ''
         } cursor-pointer hover:shadow-md transition-shadow duration-200`}
-        onClick={handleViewScores}
+        onClick={(e) => {
+          // Only open score modal if clicking on the card itself, not buttons
+          if (!(e.target instanceof HTMLButtonElement)) {
+            handleViewScores();
+          }
+        }}
       >
         <div className="space-y-4">
           <PlayerPair game={gameWithHandicaps} currentUserId={linkedPlayerId} compact={compact} />
@@ -149,12 +150,19 @@ export default function GameCard({
               {onStatusChange && initialGame.isStarted && (
                 <div className="space-y-2">
                   {initialGame.isComplete ? (
-                    <button
-                      onClick={handleCompleteGame}
-                      className="w-full px-4 py-2 border border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-500/20 transition-colors duration-200 text-sm font-medium"
-                    >
-                      Mark as Complete
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Are you sure you want to mark this game as in progress? This will reset its completion status and remove its points from the tournament total.')) {
+                            handleStatusChange('in_progress');
+                          }
+                        }}
+                        className="w-full px-4 py-2 border border-europe-500 bg-europe-500/10 text-europe-700 dark:text-europe-300 rounded-lg hover:bg-europe-500/20 transition-colors duration-200 text-sm font-medium"
+                      >
+                        Mark as In Progress
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button

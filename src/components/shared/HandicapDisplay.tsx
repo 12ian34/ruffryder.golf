@@ -22,7 +22,7 @@ export default function HandicapDisplay({ game, compact = false, useHandicaps }:
 
   return (
     <div className={`text-center text-sm text-gray-500 dark:text-gray-400 ${compact ? 'text-xs' : ''}`}>
-      {playerGettingStrokes} gets {game.handicapStrokes} stroke{game.handicapStrokes !== 1 ? 's' : ''} added
+      {playerGettingStrokes} gets {game.handicapStrokes} stroke{game.handicapStrokes !== 1 ? 's' : ''} added (playing against higher handicap)
     </div>
   );
 }
