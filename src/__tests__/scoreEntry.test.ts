@@ -1109,4 +1109,108 @@ describe('Score Entry Tests', () => {
     expect(result.adjusted.USA).toBe(0);
     expect(result.adjusted.EUROPE).toBe(2);
   });
+
+  it('should handle zero scores in both categories', () => {
+    const zeroScoresGame = {
+      ...mockGame,
+      strokePlayScore: {
+        USA: 0,
+        EUROPE: 0,
+        adjustedUSA: 0,
+        adjustedEUROPE: 0,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 0,
+        adjustedUSA: 0,
+        adjustedEUROPE: 0,
+      }
+    };
+
+    const result = calculateGamePoints(zeroScoresGame);
+    
+    // Both categories are tied at 0, so each team gets 1 point
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    expect(result.adjusted.USA).toBe(1);
+    expect(result.adjusted.EUROPE).toBe(1);
+  });
+
+  it('should handle decimal scores correctly', () => {
+    const decimalScoresGame = {
+      ...mockGame,
+      strokePlayScore: {
+        USA: 72.5,
+        EUROPE: 72.5,
+        adjustedUSA: 72.5,
+        adjustedEUROPE: 72.5,
+      },
+      matchPlayScore: {
+        USA: 4.5,
+        EUROPE: 4.5,
+        adjustedUSA: 4.5,
+        adjustedEUROPE: 4.5,
+      }
+    };
+
+    const result = calculateGamePoints(decimalScoresGame);
+    
+    // Both categories are tied, so each team gets 1 point
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    expect(result.adjusted.USA).toBe(1);
+    expect(result.adjusted.EUROPE).toBe(1);
+  });
+
+  it('should handle very large scores correctly', () => {
+    const largeScoresGame = {
+      ...mockGame,
+      strokePlayScore: {
+        USA: 999,
+        EUROPE: 1000,
+        adjustedUSA: 999,
+        adjustedEUROPE: 1000,
+      },
+      matchPlayScore: {
+        USA: 18,
+        EUROPE: 0,
+        adjustedUSA: 18,
+        adjustedEUROPE: 0,
+      }
+    };
+
+    const result = calculateGamePoints(largeScoresGame);
+    
+    // USA wins both categories
+    expect(result.raw.USA).toBe(2);
+    expect(result.raw.EUROPE).toBe(0);
+    expect(result.adjusted.USA).toBe(2);
+    expect(result.adjusted.EUROPE).toBe(0);
+  });
+
+  it('should handle mixed null and zero scores', () => {
+    const mixedScoresGame = {
+      ...mockGame,
+      strokePlayScore: {
+        USA: 0,
+        EUROPE: 0,
+        adjustedUSA: 0,
+        adjustedEUROPE: 0,
+      },
+      matchPlayScore: {
+        USA: 0,
+        EUROPE: 0,
+        adjustedUSA: 0,
+        adjustedEUROPE: 0,
+      }
+    };
+
+    const result = calculateGamePoints(mixedScoresGame);
+    
+    // Both categories are tied at 0
+    expect(result.raw.USA).toBe(1);
+    expect(result.raw.EUROPE).toBe(1);
+    expect(result.adjusted.USA).toBe(1);
+    expect(result.adjusted.EUROPE).toBe(1);
+  });
 }); 

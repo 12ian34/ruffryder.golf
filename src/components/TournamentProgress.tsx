@@ -94,7 +94,12 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
           },
           afterBody: (context: any) => {
             const index = context[0].dataIndex;
-            return [`Games completed: ${progress[index].completedGames} of ${totalGames}`];
+            const currentProgress = progress[index];
+            const projectedScore = `USA: ${currentProgress.projectedScore?.USA || currentProgress.score.USA} - EUROPE: ${currentProgress.projectedScore?.EUROPE || currentProgress.score.EUROPE}`;
+            return [
+              `Games completed: ${currentProgress.completedGames} of ${totalGames}`,
+              `Projected score: ${projectedScore}`
+            ];
           }
         }
       }
@@ -145,28 +150,28 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
     labels: progress.map((p) => formatDate(p.timestamp)),
     datasets: [
       {
-        label: 'USA',
-        data: progress.map(p => p.score.USA),
-        borderColor: 'rgba(239, 68, 68, 0.8)', // Slightly transparent red
-        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        label: 'USA (Projected)',
+        data: progress.map(p => p.projectedScore?.USA || p.score.USA),
+        borderColor: 'rgba(239, 68, 68, 0.9)', // More opaque red
+        backgroundColor: 'rgba(239, 68, 68, 0.9)',
         tension: 0.3,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 3,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        borderWidth: 4,
         borderDash: [],
-        order: 2 // Higher order means it's drawn later (on top)
+        order: 1
       },
       {
-        label: 'EUROPE',
-        data: progress.map(p => p.score.EUROPE),
-        borderColor: 'rgba(59, 130, 246, 0.8)', // Slightly transparent blue
-        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        label: 'EUROPE (Projected)',
+        data: progress.map(p => p.projectedScore?.EUROPE || p.score.EUROPE),
+        borderColor: 'rgba(59, 130, 246, 0.9)', // More opaque blue
+        backgroundColor: 'rgba(59, 130, 246, 0.9)',
         tension: 0.3,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        borderWidth: 3,
-        borderDash: [5, 5], // Add dashed line style
-        order: 1 // Lower order means it's drawn first (underneath)
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        borderWidth: 4,
+        borderDash: [],
+        order: 0
       }
     ]
   };
@@ -174,8 +179,11 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 text-center">
-        Tournament Progress
+        Tournament Projected Score
       </h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400 text-center -mt-1 mb-2">
+        Shows projected final scores as holes are completed
+      </p>
       <div className="h-[200px]">
         <Line 
           options={options} 

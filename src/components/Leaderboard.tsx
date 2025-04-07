@@ -181,6 +181,9 @@ export default function Leaderboard() {
               score: tournament.useHandicaps 
                 ? p.score.adjusted
                 : p.score.raw,
+              projectedScore: tournament.useHandicaps
+                ? p.projectedScore?.adjusted
+                : p.projectedScore?.raw,
               completedGames: p.completedGames
             }))}
             totalGames={games.length}

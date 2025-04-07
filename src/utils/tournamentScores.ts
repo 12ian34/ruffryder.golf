@@ -66,14 +66,26 @@ export async function updateTournamentScores(tournamentId: string) {
         adjusted: totalPoints.adjusted,
         raw: totalPoints.raw
       },
+      projectedScore: {
+        adjusted: projectedPoints.adjusted,
+        raw: projectedPoints.raw
+      },
       completedGames: games.filter(g => g.isComplete).length
     };
 
-    // Only update if there are changes
+    // Only update if there are changes or if any game has scores
     const currentTotalScore = tournamentData.totalScore || initialScores;
     const currentProjectedScore = tournamentData.projectedScore || initialScores;
 
+    // Check if any games have scores entered
+    const hasScores = games.some(game => 
+      game.isStarted && game.holes.some(hole => 
+        hole.usaPlayerScore !== null && hole.europePlayerScore !== null
+      )
+    );
+
     const hasChanges = 
+      hasScores ||
       currentTotalScore.raw.USA !== totalPoints.raw.USA ||
       currentTotalScore.raw.EUROPE !== totalPoints.raw.EUROPE ||
       currentTotalScore.adjusted.USA !== totalPoints.adjusted.USA ||

@@ -22,12 +22,26 @@ export interface TournamentProgress {
       EUROPE: number;
     };
   };
+  projectedScore: {
+    adjusted: {
+      USA: number;
+      EUROPE: number;
+    };
+    raw: {
+      USA: number;
+      EUROPE: number;
+    };
+  };
   completedGames: number;
 }
 
 export interface TournamentProgressDisplay {
   timestamp: Date;
   score: {
+    USA: number;
+    EUROPE: number;
+  };
+  projectedScore: {
     USA: number;
     EUROPE: number;
   };
