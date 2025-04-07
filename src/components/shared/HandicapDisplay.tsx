@@ -7,8 +7,6 @@ interface HandicapDisplayProps {
 }
 
 export default function HandicapDisplay({ game, compact = false, useHandicaps }: HandicapDisplayProps) {
-
-  // Don't show anything if handicaps are disabled or if required data is missing
   if (!useHandicaps || 
       !game?.handicapStrokes || 
       game.handicapStrokes <= 0 || 
@@ -18,11 +16,14 @@ export default function HandicapDisplay({ game, compact = false, useHandicaps }:
     return null;
   }
 
-  const playerGettingStrokes = game.higherHandicapTeam === 'USA' ? game.europePlayerName : game.usaPlayerName;
+  // The player getting strokes added to their score is the OPPONENT of the higher handicap player
+  const teamGettingStrokesAdded = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+  const playerGettingStrokesAdded = teamGettingStrokesAdded === 'USA' ? game.usaPlayerName : game.europePlayerName;
+  const teamColor = teamGettingStrokesAdded === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
   return (
-    <div className={`text-center text-sm text-gray-500 dark:text-gray-400 ${compact ? 'text-xs' : ''}`}>
-      {playerGettingStrokes} gets {game.handicapStrokes} stroke{game.handicapStrokes !== 1 ? 's' : ''} added (playing against higher handicap)
+    <div className={`text-center text-sm font-medium ${compact ? 'text-xs' : ''}`}>
+      <span className={teamColor}>{playerGettingStrokesAdded}</span> gets {game.handicapStrokes} stroke{game.handicapStrokes !== 1 ? 's' : ''} added to their score
     </div>
   );
 }

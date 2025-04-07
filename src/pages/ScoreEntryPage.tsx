@@ -14,38 +14,61 @@ export default function ScoreEntryPage() {
   const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [useHandicaps, setUseHandicaps] = useState(false);
 
   // Get the previous location from state or default to the current path
   const previousLocation = location.state?.from || `/score-entry/${tournamentId}/${gameId}`;
 
   const scrollToFirstIncompleteHole = () => {
-    // Wait for the next tick to ensure DOM is updated
+    // Use a longer timeout to ensure the DOM is fully rendered before trying to find and scroll
     setTimeout(() => {
-      const scoreInputs = document.querySelectorAll('input[type="text"]');
-      for (const input of scoreInputs) {
-        const value = (input as HTMLInputElement).value;
-        if (!value) {
-          // Find the scrollable container
-          const scrollContainer = document.querySelector('.overflow-y-auto');
-          if (scrollContainer) {
-            // Get the input's position relative to the scroll container
-            const containerRect = scrollContainer.getBoundingClientRect();
-            const inputRect = input.getBoundingClientRect();
-            const relativeTop = inputRect.top - containerRect.top;
-            
-            // Scroll the container
-            scrollContainer.scrollTo({
-              top: scrollContainer.scrollTop + relativeTop - containerRect.height / 2,
-              behavior: 'smooth'
-            });
-            
-            // Focus the input
-            (input as HTMLInputElement).focus();
-          }
-          break;
+      // Use requestAnimationFrame to ensure browser has completed a paint cycle
+      requestAnimationFrame(() => {
+        const holeRows = document.querySelectorAll('[data-hole-index]');
+        
+        if (holeRows.length === 0) {
+          console.log('No hole rows found, trying again...');
+          // Try again after a short delay if hole rows aren't found
+          setTimeout(scrollToFirstIncompleteHole, 100);
+          return;
         }
-      }
-    }, 100); // Increased timeout to ensure modal is fully rendered
+        
+        for (let i = 0; i < holeRows.length; i++) {
+          const holeIndex = parseInt(holeRows[i].getAttribute('data-hole-index') || '0');
+          // Find both inputs for this hole
+          const usaInput = document.querySelector(`input[tabindex="${holeIndex * 2 + 1}"]`) as HTMLInputElement;
+          const europeInput = document.querySelector(`input[tabindex="${holeIndex * 2 + 2}"]`) as HTMLInputElement;
+          
+          // Check if either input is empty
+          if (usaInput && !usaInput.value || europeInput && !europeInput.value) {
+            // Find the scrollable container
+            const scrollContainer = document.querySelector('.overflow-y-auto');
+            if (scrollContainer) {
+              // Get the container's position
+              const containerRect = scrollContainer.getBoundingClientRect();
+              // Get the hole row's position
+              const rowRect = holeRows[i].getBoundingClientRect();
+              const relativeTop = rowRect.top - containerRect.top;
+              
+              // Scroll the container
+              scrollContainer.scrollTo({
+                top: scrollContainer.scrollTop + relativeTop - containerRect.height / 3,
+                behavior: 'smooth'
+              });
+              
+              // Focus the first empty input
+              if (usaInput && !usaInput.value) {
+                usaInput.focus();
+              } else if (europeInput && !europeInput.value) {
+                europeInput.focus();
+              }
+              
+              break;
+            }
+          }
+        }
+      });
+    }, 300); // Increased timeout to ensure modal is fully rendered
   };
 
   const fetchGame = async () => {
@@ -56,17 +79,28 @@ export default function ScoreEntryPage() {
     }
 
     try {
-      const gameDoc = await getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId));
+      // Get both game and tournament settings
+      const [gameDoc, tournamentDoc] = await Promise.all([
+        getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId)),
+        getDoc(doc(db, 'tournaments', tournamentId))
+      ]);
       
       if (!gameDoc.exists()) {
         throw new Error('Game not found');
       }
 
       const gameData = gameDoc.data() as Game;
-      setGame(gameData);
+      const tournamentData = tournamentDoc.data();
       
-      // Scroll to first incomplete hole after game data is loaded
-      scrollToFirstIncompleteHole();
+      // Use tournament settings if game settings are not explicitly set
+      const effectiveUseHandicaps = gameData.useHandicaps !== undefined 
+        ? gameData.useHandicaps 
+        : tournamentData?.useHandicaps || false;
+      
+      setGame(gameData);
+      setUseHandicaps(effectiveUseHandicaps);
+      
+      // We'll handle scrolling in useEffect after the state update has completed
     } catch (err: any) {
       setError(err.message || 'Failed to load game data');
     } finally {
@@ -82,6 +116,18 @@ export default function ScoreEntryPage() {
 
     fetchGame();
   }, [currentUser, gameId, tournamentId, navigate]);
+  
+  // New effect to scroll to first incomplete hole after game is loaded
+  useEffect(() => {
+    if (game && !isLoading) {
+      // Wait for the DOM to update after the game state is set
+      const timer = setTimeout(() => {
+        scrollToFirstIncompleteHole();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [game, isLoading]);
 
   if (isLoading) {
     return (
@@ -135,14 +181,14 @@ export default function ScoreEntryPage() {
             tournamentId={tournamentId!}
             onClose={() => navigate(previousLocation)}
             onSave={async () => {
-              // After saving, refresh the game data
+              // Refresh the game data
               setIsLoading(true);
               await fetchGame();
               setIsLoading(false);
               // Scroll to first incomplete hole after saving
               scrollToFirstIncompleteHole();
             }}
-            useHandicaps={game.useHandicaps}
+            useHandicaps={useHandicaps}
           />
         </div>
       </div>

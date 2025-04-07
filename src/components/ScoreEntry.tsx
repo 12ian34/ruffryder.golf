@@ -69,8 +69,14 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
         const tournamentData = tournamentDoc.data();
         const indices = strokeIndicesDoc.data()?.indices || [];
 
+        // Get the effective useHandicaps value from either the prop, game data, or tournament data
+        const effectiveUseHandicaps = useHandicaps || 
+          gameData.useHandicaps || 
+          tournamentData?.useHandicaps || 
+          false;
+
         // Update game data with tournament settings if needed
-        if (tournamentData?.useHandicaps && (!gameData.handicapStrokes || gameData.handicapStrokes === 0)) {
+        if (effectiveUseHandicaps && (!gameData.handicapStrokes || gameData.handicapStrokes === 0)) {
           const [usaPlayerDoc, europePlayerDoc] = await Promise.all([
             getDoc(doc(db, 'players', gameData.usaPlayerId)),
             getDoc(doc(db, 'players', gameData.europePlayerId))
@@ -85,9 +91,13 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           gameData.handicapStrokes = handicapDiff;
           gameData.higherHandicapTeam = higherHandicapTeam;
           
+          // Set useHandicaps to true on the game since we're calculating handicaps
+          gameData.useHandicaps = true;
+
           await updateDoc(doc(db, 'tournaments', tournamentId, 'games', gameId), {
             handicapStrokes: handicapDiff,
-            higherHandicapTeam: higherHandicapTeam
+            higherHandicapTeam: higherHandicapTeam,
+            useHandicaps: true
           });
         }
 
@@ -227,12 +237,12 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           // A hole gets an extra stroke if its stroke index is less than or equal to the remainder
           // and the hole index is within the range of holes that should get extra strokes
           const getsExtraStroke = strokeIndices[index] <= extraStrokeHoles && 
-                                index < extraStrokeHoles;
+                                extraStrokeHoles > 0;
           
           // Total strokes for this hole
           const strokesForHole = baseStrokes + (getsExtraStroke ? 1 : 0);
 
-          // Apply handicap strokes by adding to the lower handicap team's score
+          // Add handicap strokes to the opponent of the higher handicap team (worse player)
           if (game.higherHandicapTeam === 'USA') {
             usaAdjustedScore = usaScore;
             europeAdjustedScore = europeScore + strokesForHole;
@@ -451,7 +461,16 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
             </div>
           </div>
-          {useHandicaps && game && (
+
+          {useHandicaps && game.handicapStrokes > 0 && (
+            <div className="mt-2 text-center">
+              <div className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-900/20 rounded-md text-sm text-purple-700 dark:text-purple-300 font-medium">
+                Handicap scoring is active
+              </div>
+            </div>
+          )}
+          
+          {game && (
             <div className="mt-2">
               <HandicapDisplay game={game} useHandicaps={useHandicaps} />
             </div>
@@ -459,24 +478,24 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-4">
+          <div className="space-y-3">
             {game.holes.map((hole, index) => {
               // Calculate if this hole gets a stroke
               const strokesForHole = Math.floor(game.handicapStrokes / 18) + 
-                (strokeIndices[index] <= (game.handicapStrokes % 18) ? 1 : 0);
-              const showStrokeIndicator = useHandicaps && strokesForHole > 0;
-              const teamGettingStrokes = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
-              const strokeColor = teamGettingStrokes === 'USA' ? 'text-usa-500' : 'text-europe-500';
+                (strokeIndices[index] <= (game.handicapStrokes % 18) && (game.handicapStrokes % 18) > 0 ? 1 : 0);
+              const showStrokeIndicator = useHandicaps && strokesForHole > 0; // Only show if handicaps are enabled
+              const teamWithStrokesAdded = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+              const strokeColor = teamWithStrokesAdded === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
               return (
-                <div key={hole.holeNumber} className="grid grid-cols-[50px_1fr_28px] sm:grid-cols-[60px_1fr_32px] gap-1 sm:gap-2 items-center">
+                <div key={hole.holeNumber} 
+                  className="grid grid-cols-[50px_1fr_28px] sm:grid-cols-[60px_1fr_32px] gap-2 sm:gap-3 items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  data-hole-index={index}>
                   <div className="text-sm">
                     <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
-                    {useHandicaps && (
-                      <div className="text-gray-500 dark:text-gray-400">
-                        SI: {strokeIndices[index] ?? '-'}
-                      </div>
-                    )}
+                    <div className="text-gray-500 dark:text-gray-400">
+                      SI: {strokeIndices[index] ?? '-'}
+                    </div>
                     {isLoadingDistances ? (
                       <div className="text-gray-400 dark:text-gray-500">
                         Loading...
@@ -486,13 +505,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         {distances[index]}yd
                       </div>
                     ) : null}
-                    {showStrokeIndicator && (
-                      <div className={`text-xs font-medium ${strokeColor}`}>
-                        {teamGettingStrokes} (+{strokesForHole})
-                      </div>
-                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="relative">
                       <input
                         type="text"
@@ -659,6 +673,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         </button>
                       </div>
                     </div>
+                    {showStrokeIndicator && (
+                      <div className={`col-span-2 text-xs text-center mt-1 ${strokeColor} font-medium`}>
+                        {teamWithStrokesAdded} (+{strokesForHole})
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-center">
                     {(scores[index].USA !== '' || scores[index].EUROPE !== '') && (
@@ -755,14 +774,162 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                   </div>
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Difference:</span>
-                    <span className={`text-sm font-medium ${getTotals().totalUSA < getTotals().totalEurope ? 'text-usa-500' : (getTotals().totalUSA > getTotals().totalEurope ? 'text-europe-500' : 'text-gray-500')}`}>
-                      {getTotals().totalUSA < getTotals().totalEurope 
-                        ? `USA ahead by ${getTotals().totalEurope - getTotals().totalUSA}` 
-                        : (getTotals().totalUSA > getTotals().totalEurope 
-                          ? `Europe ahead by ${getTotals().totalUSA - getTotals().totalEurope}` 
+                    <span className={`text-sm font-medium ${getTotals().totalUSA > getTotals().totalEurope ? 'text-europe-500' : (getTotals().totalUSA < getTotals().totalEurope ? 'text-usa-500' : 'text-gray-500')}`}>
+                      {getTotals().totalUSA > getTotals().totalEurope 
+                        ? `Europe ahead by ${getTotals().totalUSA - getTotals().totalEurope}` 
+                        : (getTotals().totalUSA < getTotals().totalEurope 
+                          ? `USA ahead by ${getTotals().totalEurope - getTotals().totalUSA}` 
                           : 'Tied')}
                     </span>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Adjusted Score Totals (only shown when handicaps are on) */}
+          {useHandicaps && game.handicapStrokes > 0 && scores.length > 0 && (
+            <div className="mt-4 sm:mt-6 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 sm:p-4 border border-purple-100 dark:border-purple-800/20">
+              <h3 className="text-base sm:text-lg font-medium text-purple-700 dark:text-purple-300 mb-2 sm:mb-3">Score Totals (Adjusted with Handicap)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  {(() => {
+                    // Calculate adjusted totals
+                    const totals = { ...getTotals() };
+                    const teamWithStrokesAdded = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+                    
+                    // Calculate strokes per hole
+                    const baseStrokes = Math.floor(game.handicapStrokes / 18);
+                    const extraStrokeHoles = game.handicapStrokes % 18;
+                    
+                    // Calculate strokes for front 9 and back 9
+                    let front9Strokes = 0;
+                    let back9Strokes = 0;
+                    
+                    for (let i = 0; i < 9; i++) {
+                      // Only add strokes for holes that have scores entered
+                      if (scores[i].USA !== '' && scores[i].EUROPE !== '') {
+                        const holeIndex = i;
+                        const getsExtraStroke = strokeIndices[holeIndex] <= extraStrokeHoles && extraStrokeHoles > 0;
+                        front9Strokes += baseStrokes + (getsExtraStroke ? 1 : 0);
+                      }
+                    }
+                    
+                    for (let i = 9; i < 18; i++) {
+                      // Only add strokes for holes that have scores entered
+                      if (i < scores.length && scores[i].USA !== '' && scores[i].EUROPE !== '') {
+                        const holeIndex = i;
+                        const getsExtraStroke = strokeIndices[holeIndex] <= extraStrokeHoles && extraStrokeHoles > 0;
+                        back9Strokes += baseStrokes + (getsExtraStroke ? 1 : 0);
+                      }
+                    }
+                    
+                    // Apply handicap strokes to the right team
+                    if (teamWithStrokesAdded === 'USA') {
+                      totals.front9USA += front9Strokes;
+                      totals.back9USA += back9Strokes;
+                      totals.totalUSA += (front9Strokes + back9Strokes);
+                    } else {
+                      totals.front9Europe += front9Strokes;
+                      totals.back9Europe += back9Strokes;
+                      totals.totalEurope += (front9Strokes + back9Strokes);
+                    }
+                    
+                    return (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-usa-500">{totals.front9USA}</span>
+                            <span className="text-xs text-gray-400">|</span>
+                            <span className="text-sm font-medium text-europe-500">{totals.front9Europe}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Back 9:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-usa-500">{totals.back9USA}</span>
+                            <span className="text-xs text-gray-400">|</span>
+                            <span className="text-sm font-medium text-europe-500">{totals.back9Europe}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center sm:hidden border-b border-purple-200 dark:border-purple-700/30 pb-2">
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-usa-500">{totals.totalUSA}</span>
+                            <span className="text-xs text-gray-400">|</span>
+                            <span className="text-sm font-medium text-europe-500">{totals.totalEurope}</span>
+                          </div>
+                        </div>
+                        <div className="hidden sm:block">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {teamWithStrokesAdded === 'USA' 
+                              ? `+${front9Strokes + back9Strokes} strokes added to USA` 
+                              : `+${front9Strokes + back9Strokes} strokes added to Europe`}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="space-y-2">
+                  {(() => {
+                    // Calculate adjusted totals
+                    const totals = { ...getTotals() };
+                    const teamWithStrokesAdded = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+                    
+                    // Calculate total handicap strokes for completed holes
+                    let totalHandicapStrokes = 0;
+                    for (let i = 0; i < scores.length; i++) {
+                      if (scores[i].USA !== '' && scores[i].EUROPE !== '') {
+                        const baseStrokes = Math.floor(game.handicapStrokes / 18);
+                        const extraStrokeHoles = game.handicapStrokes % 18;
+                        const getsExtraStroke = strokeIndices[i] <= extraStrokeHoles && extraStrokeHoles > 0;
+                        totalHandicapStrokes += baseStrokes + (getsExtraStroke ? 1 : 0);
+                      }
+                    }
+                    
+                    // Apply handicap strokes to the right team
+                    if (teamWithStrokesAdded === 'USA') {
+                      totals.totalUSA += totalHandicapStrokes;
+                    } else {
+                      totals.totalEurope += totalHandicapStrokes;
+                    }
+                    
+                    // Determine which team is ahead in stroke play with handicap
+                    // In golf, lower score is better
+                    const isUsaAhead = totals.totalUSA < totals.totalEurope;
+                    const isEuropeAhead = totals.totalUSA > totals.totalEurope;
+                    const scoreDifference = Math.abs(totals.totalUSA - totals.totalEurope);
+                    
+                    return (
+                      <>
+                        <div className="hidden sm:flex justify-between items-center border-b border-purple-200 dark:border-purple-700/30 pb-2">
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-usa-500">{totals.totalUSA}</span>
+                            <span className="text-xs text-gray-400">|</span>
+                            <span className="text-sm font-medium text-europe-500">{totals.totalEurope}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Difference:</span>
+                          <span className={`text-sm font-medium ${isEuropeAhead ? 'text-europe-500' : (isUsaAhead ? 'text-usa-500' : 'text-gray-500')}`}>
+                            {isEuropeAhead
+                              ? `Europe ahead by ${scoreDifference}` 
+                              : (isUsaAhead
+                                ? `USA ahead by ${scoreDifference}` 
+                                : 'Tied')}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:hidden">
+                          {teamWithStrokesAdded === 'USA' 
+                            ? `+${totalHandicapStrokes} strokes added to USA` 
+                            : `+${totalHandicapStrokes} strokes added to Europe`}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
