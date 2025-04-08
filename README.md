@@ -6,7 +6,17 @@ web app for live tracking and score keeping for an annual golf tournament with f
 
 ## Screens
 
+![IMG_6300](https://github.com/user-attachments/assets/832dc24a-2895-49d5-8527-c85095d8a03a)
 
+![IMG_6302](https://github.com/user-attachments/assets/6ca3dee1-ae31-4570-9cec-d92c54c1de08)
+
+![IMG_6310](https://github.com/user-attachments/assets/77deee04-0fad-492d-8d1a-245cbb72750b)
+
+![IMG_6309](https://github.com/user-attachments/assets/28b31057-a833-40cb-b1f4-f1b5ef5c785b)
+
+![IMG_6306](https://github.com/user-attachments/assets/ca4cb5e9-cae3-410d-a368-1262f862a2bf)
+
+![IMG_6304](https://github.com/user-attachments/assets/e615ddd6-f3db-45b0-9a11-f35be65c694e)
 
 ## Features
 
