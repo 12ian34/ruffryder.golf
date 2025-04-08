@@ -307,7 +307,7 @@ describe('TournamentProgress', () => {
       pointHoverRadius: 4,
       pointRadius: 1,
       pointStyle: "circle",
-      tension: 0.1,
+      tension: 0.4,
     });
     
     // Check EUROPE dataset
@@ -320,7 +320,7 @@ describe('TournamentProgress', () => {
       pointHoverRadius: 4,
       pointRadius: 1,
       pointStyle: "circle",
-      tension: 0.1,
+      tension: 0.4,
     });
   });
 }); 

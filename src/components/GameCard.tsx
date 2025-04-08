@@ -56,6 +56,18 @@ export default function GameCard({
     return 'border-gray-600 dark:border-gray-500';
   };
 
+  // Calculate number of completed holes
+  const getCompletedHoles = () => {
+    if (!initialGame.isStarted) return 0;
+    return initialGame.holes.filter(hole => 
+      hole.usaPlayerScore !== null && hole.europePlayerScore !== null
+    ).length;
+  };
+
+  const completedHoles = getCompletedHoles();
+  const totalHoles = initialGame.holes.length;
+  const completionPercentage = Math.round((completedHoles / totalHoles) * 100);
+
   // Fetch handicap data when game or tournament settings change
   useEffect(() => {
     const fetchHandicapData = async () => {
@@ -131,6 +143,42 @@ export default function GameCard({
       >
         <div className="space-y-4">
           <PlayerPair game={gameWithHandicaps} currentUserId={linkedPlayerId} compact={compact} />
+          
+          {/* Hole progress indicator */}
+          {initialGame.isStarted && (
+            <div className="relative mt-3 mb-1">
+              <div className="flex justify-between text-xs mb-1 text-gray-400">
+                <span>{completedHoles} of {totalHoles} holes completed</span>
+                <span>{completionPercentage}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${
+                    initialGame.isComplete 
+                      ? 'bg-emerald-500 dark:bg-emerald-600' 
+                      : 'bg-gradient-to-r from-europe-500 to-europe-600'
+                  } transition-all duration-500 ease-out`}
+                  style={{ width: `${completionPercentage}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between mt-1">
+                {Array.from({ length: 18 }, (_, i) => i + 1).map(holeNum => {
+                  const isCompleted = initialGame.holes.find(h => h.holeNumber === holeNum)?.usaPlayerScore !== null;
+                  return (
+                    <div 
+                      key={holeNum} 
+                      className={`w-2 h-2 rounded-full ${
+                        isCompleted 
+                          ? (initialGame.isComplete ? 'bg-emerald-500' : 'bg-europe-500') 
+                          : 'bg-gray-700'
+                      }`} 
+                      title={`Hole ${holeNum}`}
+                    ></div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           <GameScoreDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
 

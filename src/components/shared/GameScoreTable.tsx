@@ -1,5 +1,6 @@
 import type { Game } from '../../types/game';
 import { useHoleDistances } from '../../hooks/useHoleDistances';
+import { ScoreTiles } from './GameScoreUtils';
 
 interface GameScoreTableProps {
   game: Game;
@@ -108,6 +109,9 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
           {game.higherHandicapTeam === 'USA' ? game.usaPlayerName : game.europePlayerName} gets {game.handicapStrokes} strokes
         </div>
       )}
+
+      {/* Score Tiles */}
+      <ScoreTiles game={game} useHandicaps={useHandicaps} className="mb-6" testIdPrefix="table-" />
 
       {/* Score Table */}
       <div className="overflow-x-auto rounded-lg shadow-md border-2 border-gray-700/50 dark:border-gray-800/40" data-attr="game-score-table-container">
@@ -229,73 +233,6 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
             
           </tbody>
         </table>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-4" data-attr="game-score-totals">
-        <div className="bg-gradient-to-br from-purple-900/80 to-purple-950 dark:from-purple-900/60 dark:to-black rounded-xl shadow-md p-4 border-2 border-purple-600/50 dark:border-purple-700/60 hover:shadow-lg transition-all hover:border-purple-500 dark:hover:border-purple-500/70" data-attr="game-score-stroke-play">
-          <h3 className="text-lg font-medium text-white mb-2 flex items-center">
-            <span className="text-sm mr-2">🏌️‍♂️</span>
-            Stroke Play
-          </h3>
-          <div className="flex justify-between">
-            <span className="text-gray-300 dark:text-gray-400">USA:</span>
-            <span className="font-medium text-white">
-              {totals.usaAdjusted}
-              {useHandicaps && totals.usaAdjusted !== totals.usaRaw && (
-                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.usaRaw})</span>
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-300 dark:text-gray-400">EUROPE:</span>
-            <span className="font-medium text-white">
-              {totals.europeAdjusted}
-              {useHandicaps && totals.europeAdjusted !== totals.europeRaw && (
-                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.europeRaw})</span>
-              )}
-            </span>
-          </div>
-          <div className="mt-2 pt-2 border-t border-purple-700/30 dark:border-purple-800/30">
-            <div className="flex justify-between">
-              <span className="text-gray-300 dark:text-gray-400">Front 9:</span>
-              <div className="flex gap-4">
-                <span className="text-xs text-usa-400 font-medium">{totals.front9UsaAdjusted}</span>
-                <span className="text-xs text-europe-400 font-medium">{totals.front9EuropeAdjusted}</span>
-              </div>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-300 dark:text-gray-400">Back 9:</span>
-              <div className="flex gap-4">
-                <span className="text-xs text-usa-400 font-medium">{totals.back9UsaAdjusted}</span>
-                <span className="text-xs text-europe-400 font-medium">{totals.back9EuropeAdjusted}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-indigo-900/80 to-indigo-950 dark:from-indigo-900/60 dark:to-black rounded-xl shadow-md p-4 border-2 border-indigo-600/50 dark:border-indigo-700/60 hover:shadow-lg transition-all hover:border-indigo-500 dark:hover:border-indigo-500/70" data-attr="game-score-match-play">
-          <h3 className="text-lg font-medium text-white mb-2 flex items-center">
-            <span className="text-sm mr-2">🏆</span>
-            Match Play
-          </h3>
-          <div className="flex justify-between">
-            <span className="text-gray-300 dark:text-gray-400">USA:</span>
-            <span className="font-medium text-white">
-              {totals.usaMatchPlayAdjusted}
-              {useHandicaps && totals.usaMatchPlayAdjusted !== totals.usaMatchPlayRaw && (
-                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.usaMatchPlayRaw})</span>
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-300 dark:text-gray-400">EUROPE:</span>
-            <span className="font-medium text-white">
-              {totals.europeMatchPlayAdjusted}
-              {useHandicaps && totals.europeMatchPlayAdjusted !== totals.europeMatchPlayRaw && (
-                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.europeMatchPlayRaw})</span>
-              )}
-            </span>
-          </div>
-        </div>
       </div>
 
       {distancesError && (

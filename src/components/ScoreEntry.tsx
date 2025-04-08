@@ -419,8 +419,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black rounded-lg shadow-xl border border-gray-700 dark:border-gray-800 w-full max-w-full sm:max-w-xl relative flex flex-col max-h-[95vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black rounded-lg shadow-xl border border-gray-700 dark:border-gray-800 w-full max-w-full sm:max-w-xl relative flex flex-col max-h-[95vh] my-4 sm:my-6 overflow-hidden">
         <style>
           {`
             /* Hide default number input spinners */
@@ -477,7 +477,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-2 bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black text-gray-200">
+        <div className="flex-1 overflow-y-auto px-6 py-2 pb-20 sm:pb-2 bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black text-gray-200">
           <div className="space-y-3">
             {game.holes.map((hole, index) => {
               // Calculate if this hole gets a stroke
@@ -924,9 +924,9 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-gradient-to-r from-gray-900/90 to-gray-950/90 dark:from-gray-950/90 dark:to-black/90 backdrop-blur-md px-6 py-4 border-t border-gray-700/50 dark:border-gray-800/50">
+        <div className="sticky bottom-0 bg-gradient-to-r from-gray-900/90 to-gray-950/90 dark:from-gray-950/90 dark:to-black/90 backdrop-blur-md px-6 py-3 sm:py-4 border-t border-gray-700/50 dark:border-gray-800/50">
           {error && (
-            <div className="mb-4 p-3 bg-red-900/30 border border-red-800/50 rounded-lg">
+            <div className="mb-2 sm:mb-4 p-3 bg-red-900/30 border border-red-800/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <svg className="w-5 h-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
