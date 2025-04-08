@@ -17,9 +17,6 @@ web app for live tracking and score keeping for an annual golf tournament with f
   </tr>
 </table>
 
-<div align="center">
-
-</div
   
 ## Features
 
