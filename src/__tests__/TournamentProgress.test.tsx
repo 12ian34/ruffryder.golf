@@ -226,10 +226,10 @@ describe('TournamentProgress', () => {
     
     // Check layout padding
     expect(optionsObj.layout.padding).toEqual({
-      top: 10,
-      right: 10,
-      bottom: 25,
-      left: 10
+      top: 5,
+      right: 5,
+      bottom: 5,
+      left: 5,
     });
     
     // Check legend configuration
@@ -302,13 +302,12 @@ describe('TournamentProgress', () => {
     expect(usaDataset).toMatchObject({
       label: 'USA',
       borderColor: expect.stringMatching(/^rgba\(\d+, \d+, \d+, 0.9\)$/),
-      backgroundColor: expect.stringMatching(/^rgba\(\d+, \d+, \d+, 0.1\)$/),
-      tension: 0.4,
-      pointRadius: 2,
-      pointHoverRadius: 4,
-      pointStyle: 'circle',
       borderWidth: 2,
-      fill: true
+      fill: true,
+      pointHoverRadius: 4,
+      pointRadius: 1,
+      pointStyle: "circle",
+      tension: 0.1,
     });
     
     // Check EUROPE dataset
@@ -316,13 +315,12 @@ describe('TournamentProgress', () => {
     expect(europeDataset).toMatchObject({
       label: 'EUROPE',
       borderColor: expect.stringMatching(/^rgba\(\d+, \d+, \d+, 0.9\)$/),
-      backgroundColor: expect.stringMatching(/^rgba\(\d+, \d+, \d+, 0.1\)$/),
-      tension: 0.4,
-      pointRadius: 2,
-      pointHoverRadius: 4,
-      pointStyle: 'circle',
       borderWidth: 2,
-      fill: true
+      fill: true,
+      pointHoverRadius: 4,
+      pointRadius: 1,
+      pointStyle: "circle",
+      tension: 0.1,
     });
   });
 }); 

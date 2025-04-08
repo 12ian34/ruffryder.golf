@@ -63,14 +63,14 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
     responsive: true,
     maintainAspectRatio: false,
     animation: {
-      duration: 0
+      duration: 500
     },
     layout: {
       padding: {
-        top: 10,
-        right: 10,
-        bottom: 25,
-        left: 10
+        top: 5,
+        right: 5,
+        bottom: 5,
+        left: 5
       }
     },
     plugins: {
@@ -78,24 +78,24 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         position: 'top' as const,
         align: 'center' as const,
         labels: {
-          usePointStyle: false,
-          boxWidth: 12,
-          padding: 15,
+          padding: 20,
           color: '#9CA3AF',
           font: {
             size: 11,
             family: 'system-ui'
-          }
+          },
+          usePointStyle: true,
+          pointStyle: 'line',
         }
       },
       tooltip: {
         mode: 'index' as const,
         intersect: false,
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+        backgroundColor: 'rgba(5, 5, 5, 0.75)',
         titleColor: '#fff',
         bodyColor: '#fff',
         padding: 10,
-        cornerRadius: 8,
+        cornerRadius: 15,
         titleFont: {
           size: 13,
           weight: 'bold' as const,
@@ -211,8 +211,8 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         data: progress.map(p => p.projectedScore?.USA || p.score.USA),
         borderColor: 'rgba(251, 191, 36, 0.9)',
         backgroundColor: 'rgba(251, 191, 36, 0.1)',
-        tension: 0.4,
-        pointRadius: 2,
+        tension: 0.1,
+        pointRadius: 1,
         pointHoverRadius: 4,
         pointStyle: 'circle',
         pointBackgroundColor: 'rgba(251, 191, 36, 0.9)',
@@ -227,8 +227,8 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
         data: progress.map(p => p.projectedScore?.EUROPE || p.score.EUROPE),
         borderColor: 'rgba(167, 139, 250, 0.9)',
         backgroundColor: 'rgba(167, 139, 250, 0.1)',
-        tension: 0.4,
-        pointRadius: 2,
+        tension: 0.1,
+        pointRadius: 1,
         pointHoverRadius: 4,
         pointStyle: 'circle',
         pointBackgroundColor: 'rgba(167, 139, 250, 0.9)',
@@ -244,8 +244,8 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
   const completedGames = progress[progress.length - 1]?.completedGames || 0;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg">
-      <div className="h-[250px] relative">
+    <div>
+      <div className="h-[300px] relative">
         {isReady && (
           <Line 
             options={options} 
@@ -258,11 +258,11 @@ export default function TournamentProgress({ progress, totalGames }: TournamentP
           />
         )}
       </div>
-      <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-          Live Score Projection
+      <div className="px-4 py-2 border-t border-gray-700/50 flex items-center justify-between mt-4">
+        <div className="text-xs font-medium text-gray-400">
+          Live score
         </div>
-        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <div className="text-xs font-medium text-gray-400">
           {completedGames}/{totalGames} Games
         </div>
       </div>

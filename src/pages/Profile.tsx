@@ -107,16 +107,30 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-12">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950 py-6">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold dark:text-white">Profile Settings</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
             <button
               onClick={() => navigate('/dashboard')}
               className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
             >
               Back to Dashboard
+            </button>
+          </div>
+
+          <div className="flex justify-end mb-4">
+            <button
+              type="submit"
+              disabled={isSaving || !hasChanges}
+              className="px-6 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              onClick={handleProfileUpdate}
+            >
+              {isSaving && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
 
@@ -126,14 +140,16 @@ export default function Profile() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Avatar
               </label>
-              <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg dark:border-gray-700">
+              <div className="flex flex-wrap justify-center gap-1 max-h-48 overflow-y-auto p-0 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
                 {availableEmojis.map((emoji, index) => (
                   <button
                     key={`emoji-${index}`}
                     type="button"
                     onClick={() => setPendingEmoji(emoji === pendingEmoji ? null : emoji)}
-                    className={`text-2xl p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                      pendingEmoji === emoji ? 'bg-purple-100 dark:bg-purple-900' : ''
+                    className={`text-4xl p-2 rounded-lg transition-all duration-250 ${
+                      pendingEmoji === emoji 
+                        ? 'bg-purple-300 dark:bg-purple-500 ring-2 ring-purple-500 dark:ring-purple-900' 
+                        : 'hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     disabled={isSaving}
                   >
@@ -155,7 +171,7 @@ export default function Profile() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 shadow-md focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent"
                 required
                 disabled={isSaving}
               />
@@ -169,7 +185,7 @@ export default function Profile() {
               <input
                 type="email"
                 value={userData.email}
-                className="w-full px-4 py-2 rounded-lg border bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-850 text-gray-900 dark:text-gray-100 shadow-md focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent"
                 disabled
               />
             </div>
@@ -179,13 +195,13 @@ export default function Profile() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Linked Player
               </label>
-              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300 rounded-lg">
+              <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-700">
                 {userData?.linkedPlayerId ? (
                   <div className="flex items-center space-x-2">
                     <span>{userData.linkedPlayerId}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">ask admin to link you</span>
+                  <span className="text-gray-500 dark:text-gray-400">ask ian/tommy to link you</span>
                 )}
               </div>
             </div>
@@ -196,7 +212,7 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Role
                 </label>
-                <div className="px-4 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-200 rounded-lg">
+                <div className="px-4 py-2 bg-purple-50 dark:bg-purple-900/50 text-purple-700 dark:text-purple-200 rounded-lg border border-purple-200 dark:border-purple-800">
                   Administrator
                 </div>
               </div>
@@ -224,7 +240,7 @@ export default function Profile() {
               </button>
             </div>
           </form>
-        </div>
+
       </div>
     </div>
   );

@@ -38,8 +38,7 @@ export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameMan
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Games</h2>
+    <div className="space-y-1 py-2">
       <GameList
         games={games}
         onGameStatusChange={handleGameStatusChange}

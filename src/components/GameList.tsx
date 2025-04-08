@@ -104,7 +104,7 @@ export function GameList({
         })}
         
         {filteredGames.length === 0 && (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-3 text-gray-500 dark:text-gray-400">
             No games found
           </div>
         )}

@@ -27,15 +27,15 @@ export function calculateHandicapAdjustedScores(
     return result;
   }
 
-  // Calculate base strokes for this hole (integer division)
-  const baseStrokes = Math.floor(game.handicapStrokes / 18);
+  // Calculate how many complete 18-hole cycles of strokes to apply
+  const fullCycles = Math.floor(game.handicapStrokes / 18);
   
-  // Calculate extra stroke for low index holes
-  const extraStrokeHoles = game.handicapStrokes % 18;
-  const getsExtraStroke = hole.strokeIndex <= extraStrokeHoles;
-    
-  // Total strokes for this hole
-  const strokesForHole = baseStrokes + (getsExtraStroke ? 1 : 0);
+  // Calculate remaining strokes after full cycles
+  const remainingStrokes = game.handicapStrokes % 18;
+  
+  // Apply a stroke for each full cycle
+  // Plus an additional stroke if this hole's index is low enough for remaining strokes
+  const strokesForHole = fullCycles + (hole.strokeIndex <= remainingStrokes ? 1 : 0);
 
   // Apply strokes based on which team gets them
   if (game.higherHandicapTeam === 'USA') {

@@ -419,8 +419,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-full sm:max-w-xl relative flex flex-col max-h-[95vh]">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black rounded-lg shadow-xl border border-gray-700 dark:border-gray-800 w-full max-w-full sm:max-w-xl relative flex flex-col max-h-[95vh] overflow-hidden">
         <style>
           {`
             /* Hide default number input spinners */
@@ -434,12 +434,12 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             }
           `}
         </style>
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 px-6 py-4 border-b dark:border-gray-700">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold dark:text-white">Enter Scores</h2>
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-gray-900/90 to-gray-950/90 dark:from-gray-950/90 dark:to-black/90 backdrop-blur-md px-6 py-2 border-b border-gray-700/50 dark:border-gray-800/50">
+          <div className="flex justify-between items-center mb-0">
+            <h2 className="text-xl font-semibold text-white">Enter scores</h2>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 p-2"
+              className="text-gray-400 hover:text-white dark:text-gray-400 p-2 transition-colors duration-200"
               aria-label="Close score entry"
             >
               ×
@@ -451,20 +451,20 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               <div className="font-medium text-usa-500 text-lg">
                 {game.usaPlayerName}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">USA</div>
+              <div className="text-sm text-gray-400 dark:text-gray-400">USA</div>
             </div>
-            <div className="text-2xl text-gray-400 dark:text-gray-600">vs</div>
+            <div className="text-2xl text-gray-500 dark:text-gray-600">vs</div>
             <div className="w-[40%] text-center">
               <div className="font-medium text-europe-500 text-lg">
                 {game.europePlayerName}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">EUROPE</div>
+              <div className="text-sm text-gray-400 dark:text-gray-400">EUROPE</div>
             </div>
           </div>
 
           {useHandicaps && game.handicapStrokes > 0 && (
             <div className="mt-2 text-center">
-              <div className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-900/20 rounded-md text-sm text-purple-700 dark:text-purple-300 font-medium">
+              <div className="inline-block px-3 py-1 bg-purple-900/30 dark:bg-purple-900/20 rounded-md text-sm text-purple-300 dark:text-purple-300 font-medium">
                 Handicap scoring is active
               </div>
             </div>
@@ -477,7 +477,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-2 bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black text-gray-200">
           <div className="space-y-3">
             {game.holes.map((hole, index) => {
               // Calculate if this hole gets a stroke
@@ -489,25 +489,25 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
 
               return (
                 <div key={hole.holeNumber} 
-                  className="grid grid-cols-[50px_1fr_28px] sm:grid-cols-[60px_1fr_32px] gap-2 sm:gap-3 items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                  className="grid grid-cols-[50px_1fr_28px] sm:grid-cols-[60px_1fr_32px] gap-2 sm:gap-3 items-center py-1 border-b border-gray-800/50 dark:border-gray-800/30 last:border-0"
                   data-hole-index={index}>
                   <div className="text-sm">
-                    <div className="font-medium dark:text-white">Hole {hole.holeNumber}</div>
-                    <div className="text-gray-500 dark:text-gray-400">
+                    <div className="font-medium text-gray-200">Hole {hole.holeNumber}</div>
+                    <div className="text-gray-400">
                       SI: {strokeIndices[index] ?? '-'}
                     </div>
                     {isLoadingDistances ? (
-                      <div className="text-gray-400 dark:text-gray-500">
+                      <div className="text-gray-500">
                         Loading...
                       </div>
                     ) : distances[index] ? (
-                      <div className="text-gray-500 dark:text-gray-400">
+                      <div className="text-gray-400">
                         {distances[index]}yd
                       </div>
                     ) : null}
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="relative">
+                    <div className="relative group">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -516,9 +516,9 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         onChange={(e) => handleScoreChange(index, 'USA', e.target.value)}
                         className={`w-full h-10 sm:h-12 pl-2 sm:pl-3 pr-10 py-1 sm:py-2 rounded-lg border ${
                           invalidScores[`${index}-USA`] 
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-                            : 'dark:bg-gray-700 dark:border-gray-600'
-                        } dark:text-white text-center text-base sm:text-lg appearance-none`}
+                            ? 'border-red-500 bg-red-900/20' 
+                            : 'bg-gray-800/50 border-gray-700 focus:border-usa-500/70 group-hover:border-gray-600'
+                        } text-white text-center text-base sm:text-lg appearance-none transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-usa-500/50`}
                         placeholder="USA"
                         tabIndex={index * 2 + 1}
                         onKeyDown={(e) => {
@@ -547,10 +547,10 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                           }
                         }}
                       />
-                      <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y dark:divide-gray-600">
+                      <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y divide-gray-700/70">
                         <button
                           type="button"
-                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-usa-500 dark:text-gray-500 dark:hover:text-usa-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-usa-50 dark:active:bg-usa-900/20"
+                          className="flex-1 flex items-center justify-center text-gray-500 hover:text-usa-400 border-l border-gray-700/70 transition-all duration-150 group-hover:border-gray-600 active:bg-usa-900/20 rounded-tr-lg"
                           onClick={(e) => {
                             e.preventDefault();
                             const currentValue = scores[index].USA;
@@ -570,7 +570,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         </button>
                         <button
                           type="button"
-                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-red-50 dark:active:bg-red-900/20"
+                          className="flex-1 flex items-center justify-center text-gray-500 hover:text-red-400 border-l border-gray-700/70 transition-all duration-150 group-hover:border-gray-600 active:bg-red-900/20 rounded-br-lg"
                           onClick={(e) => {
                             e.preventDefault();
                             const currentValue = scores[index].USA;
@@ -590,7 +590,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         </button>
                       </div>
                     </div>
-                    <div className="relative">
+                    <div className="relative group">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -599,9 +599,9 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         onChange={(e) => handleScoreChange(index, 'EUROPE', e.target.value)}
                         className={`w-full h-10 sm:h-12 pl-2 sm:pl-3 pr-10 py-1 sm:py-2 rounded-lg border ${
                           invalidScores[`${index}-EUROPE`] 
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-                            : 'dark:bg-gray-700 dark:border-gray-600'
-                        } dark:text-white text-center text-base sm:text-lg appearance-none`}
+                            ? 'border-red-500 bg-red-900/20' 
+                            : 'bg-gray-800/50 border-gray-700 focus:border-europe-500/70 group-hover:border-gray-600'
+                        } text-white text-center text-base sm:text-lg appearance-none transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-europe-500/50`}
                         placeholder="EUR"
                         tabIndex={index * 2 + 2}
                         onKeyDown={(e) => {
@@ -630,10 +630,10 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                           }
                         }}
                       />
-                      <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y dark:divide-gray-600">
+                      <div className="absolute right-0 inset-y-0 w-10 flex flex-col divide-y divide-gray-700/70">
                         <button
                           type="button"
-                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-green-500 dark:text-gray-500 dark:hover:text-green-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-green-50 dark:active:bg-green-900/20"
+                          className="flex-1 flex items-center justify-center text-gray-500 hover:text-europe-400 border-l border-gray-700/70 transition-all duration-150 group-hover:border-gray-600 active:bg-europe-900/20 rounded-tr-lg"
                           onClick={(e) => {
                             e.preventDefault();
                             const currentValue = scores[index].EUROPE;
@@ -653,7 +653,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         </button>
                         <button
                           type="button"
-                          className="flex-1 flex items-center justify-center text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 border-l dark:border-gray-600 transition-all duration-150 group active:bg-red-50 dark:active:bg-red-900/20"
+                          className="flex-1 flex items-center justify-center text-gray-500 hover:text-red-400 border-l border-gray-700/70 transition-all duration-150 group-hover:border-gray-600 active:bg-red-900/20 rounded-br-lg"
                           onClick={(e) => {
                             e.preventDefault();
                             const currentValue = scores[index].EUROPE;
@@ -674,65 +674,53 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                       </div>
                     </div>
                     {showStrokeIndicator && (
-                      <div className={`col-span-2 text-xs text-center mt-1 ${strokeColor} font-medium`}>
+                      <div className={`col-span-2 text-xs text-center ${strokeColor} font-medium`}>
                         {teamWithStrokesAdded} (+{strokesForHole})
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-center">
-                    {(scores[index].USA !== '' || scores[index].EUROPE !== '') && (
-                      <div className="relative">
-                        {showClearConfirm === index ? (
-                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 transition-all duration-200 animate-fade-in">
-                            <button
-                              onClick={() => handleClearHole(index)}
-                              className="p-1.5 text-white bg-europe-500 rounded-md hover:bg-europe-600 transition-colors duration-150 group"
-                              title="Confirm clear"
-                              aria-label={`Confirm clear scores for hole ${hole.holeNumber}`}
-                            >
-                              <svg 
-                                className="w-4 h-4 transform group-hover:scale-105 transition-transform" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => setShowClearConfirm(null)}
-                              className="p-1.5 text-white bg-gray-400 hover:bg-gray-500 rounded-md transition-colors duration-150 group"
-                              title="Cancel clear"
-                              aria-label={`Cancel clear scores for hole ${hole.holeNumber}`}
-                            >
-                              <svg 
-                                className="w-4 h-4 transform group-hover:scale-105 transition-transform" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setShowClearConfirm(index)}
-                            className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-all duration-150 group rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                            title="Clear hole scores"
-                            aria-label={`Clear scores for hole ${hole.holeNumber}`}
-                          >
-                            <svg 
-                              className="w-5 h-5 transform group-hover:scale-110 group-active:scale-95 transition-transform duration-150" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
+                  
+                  {/* Clear hole button */}
+                  <div className="flex items-center justify-center relative">
+                    {showClearConfirm === index ? (
+                      <div className="flex gap-1.5 items-center animate-fade-in absolute top-0 left-1/2 -translate-x-1/2 z-10 bg-gray-800/90 backdrop-blur-sm p-1 rounded-md shadow-lg border border-gray-700/50">
+                        <button
+                          onClick={() => handleClearHole(index)}
+                          className="p-1.5 text-white bg-gradient-to-br from-red-600 to-red-700 rounded-md shadow-sm hover:shadow-md transition-all duration-150 group transform hover:scale-105 active:scale-95"
+                          title="Confirm clear"
+                          aria-label={`Confirm clear scores for hole ${hole.holeNumber}`}
+                        >
+                          <svg className="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setShowClearConfirm(null)}
+                          className="p-1.5 text-white bg-gradient-to-br from-gray-600 to-gray-700 rounded-md shadow-sm hover:shadow-md transition-all duration-150 group transform hover:scale-105 active:scale-95"
+                          title="Cancel clear"
+                          aria-label={`Cancel clear scores for hole ${hole.holeNumber}`}
+                        >
+                          <svg className="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowClearConfirm(index)}
+                        className="p-2 text-gray-500 hover:text-red-400 transition-all duration-200 group rounded-lg hover:bg-red-900/20 backdrop-blur-sm transform hover:scale-105 active:scale-95"
+                        title="Clear hole scores"
+                        aria-label={`Clear scores for hole ${hole.holeNumber}`}
+                      >
+                        <svg 
+                          className="w-5 h-5 transform group-hover:scale-110 group-active:scale-95 transition-transform duration-150" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -742,39 +730,39 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           
           {/* Score Totals */}
           {scores.length > 0 && (
-            <div className="mt-6 sm:mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2 sm:mb-3">Score Totals (Unadjusted)</h3>
+            <div className="mt-6 sm:mt-8 bg-gray-800/60 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-gray-700/50">
+              <h3 className="text-base sm:text-lg font-medium text-white mb-2 sm:mb-3">Score Totals (Unadjusted)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
+                    <span className="text-sm font-medium text-gray-400">Front 9:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-usa-500">{getTotals().front9USA}</span>
-                      <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-europe-500">{getTotals().front9Europe}</span>
+                      <span className="text-sm font-medium text-usa-400">{getTotals().front9USA}</span>
+                      <span className="text-xs text-gray-600">|</span>
+                      <span className="text-sm font-medium text-europe-400">{getTotals().front9Europe}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Back 9:</span>
+                    <span className="text-sm font-medium text-gray-400">Back 9:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-usa-500">{getTotals().back9USA}</span>
-                      <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-europe-500">{getTotals().back9Europe}</span>
+                      <span className="text-sm font-medium text-usa-400">{getTotals().back9USA}</span>
+                      <span className="text-xs text-gray-600">|</span>
+                      <span className="text-sm font-medium text-europe-400">{getTotals().back9Europe}</span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-600 pb-2">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                  <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
+                    <span className="text-sm font-medium text-gray-400">Total:</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-usa-500">{getTotals().totalUSA}</span>
-                      <span className="text-xs text-gray-400">|</span>
-                      <span className="text-sm font-medium text-europe-500">{getTotals().totalEurope}</span>
+                      <span className="text-sm font-medium text-usa-400">{getTotals().totalUSA}</span>
+                      <span className="text-xs text-gray-600">|</span>
+                      <span className="text-sm font-medium text-europe-400">{getTotals().totalEurope}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center pt-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Difference:</span>
-                    <span className={`text-sm font-medium ${getTotals().totalUSA > getTotals().totalEurope ? 'text-europe-500' : (getTotals().totalUSA < getTotals().totalEurope ? 'text-usa-500' : 'text-gray-500')}`}>
+                    <span className="text-sm font-medium text-gray-300">Difference:</span>
+                    <span className={`text-sm font-medium ${getTotals().totalUSA > getTotals().totalEurope ? 'text-europe-400' : (getTotals().totalUSA < getTotals().totalEurope ? 'text-usa-400' : 'text-gray-500')}`}>
                       {getTotals().totalUSA > getTotals().totalEurope 
                         ? `Europe ahead by ${getTotals().totalUSA - getTotals().totalEurope}` 
                         : (getTotals().totalUSA < getTotals().totalEurope 
@@ -789,8 +777,8 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           
           {/* Adjusted Score Totals (only shown when handicaps are on) */}
           {useHandicaps && game.handicapStrokes > 0 && scores.length > 0 && (
-            <div className="mt-4 sm:mt-6 bg-purple-50 dark:bg-purple-900/10 rounded-lg p-3 sm:p-4 border border-purple-100 dark:border-purple-800/20">
-              <h3 className="text-base sm:text-lg font-medium text-purple-700 dark:text-purple-300 mb-2 sm:mb-3">Score Totals (Adjusted with Handicap)</h3>
+            <div className="mt-4 sm:mt-6 bg-purple-900/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-purple-800/30">
+              <h3 className="text-base sm:text-lg font-medium text-purple-300 mb-2 sm:mb-3">Score Totals (Adjusted with Handicap)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   {(() => {
@@ -838,31 +826,31 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     return (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Front 9:</span>
+                          <span className="text-sm font-medium text-gray-400">Front 9:</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-usa-500">{totals.front9USA}</span>
-                            <span className="text-xs text-gray-400">|</span>
-                            <span className="text-sm font-medium text-europe-500">{totals.front9Europe}</span>
+                            <span className="text-sm font-medium text-usa-400">{totals.front9USA}</span>
+                            <span className="text-xs text-gray-600">|</span>
+                            <span className="text-sm font-medium text-europe-400">{totals.front9Europe}</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Back 9:</span>
+                          <span className="text-sm font-medium text-gray-400">Back 9:</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-usa-500">{totals.back9USA}</span>
-                            <span className="text-xs text-gray-400">|</span>
-                            <span className="text-sm font-medium text-europe-500">{totals.back9Europe}</span>
+                            <span className="text-sm font-medium text-usa-400">{totals.back9USA}</span>
+                            <span className="text-xs text-gray-600">|</span>
+                            <span className="text-sm font-medium text-europe-400">{totals.back9Europe}</span>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center sm:hidden border-b border-purple-200 dark:border-purple-700/30 pb-2">
-                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                        <div className="flex justify-between items-center sm:hidden border-b border-purple-800/30 pb-2">
+                          <span className="text-sm font-medium text-gray-400">Total:</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-usa-500">{totals.totalUSA}</span>
-                            <span className="text-xs text-gray-400">|</span>
-                            <span className="text-sm font-medium text-europe-500">{totals.totalEurope}</span>
+                            <span className="text-sm font-medium text-usa-400">{totals.totalUSA}</span>
+                            <span className="text-xs text-gray-600">|</span>
+                            <span className="text-sm font-medium text-europe-400">{totals.totalEurope}</span>
                           </div>
                         </div>
                         <div className="hidden sm:block">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <div className="text-xs text-gray-500 mt-1">
                             {teamWithStrokesAdded === 'USA' 
                               ? `+${front9Strokes + back9Strokes} strokes added to USA` 
                               : `+${front9Strokes + back9Strokes} strokes added to Europe`}
@@ -904,17 +892,17 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                     
                     return (
                       <>
-                        <div className="hidden sm:flex justify-between items-center border-b border-purple-200 dark:border-purple-700/30 pb-2">
-                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total:</span>
+                        <div className="hidden sm:flex justify-between items-center border-b border-purple-800/30 pb-2">
+                          <span className="text-sm font-medium text-gray-400">Total:</span>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-usa-500">{totals.totalUSA}</span>
-                            <span className="text-xs text-gray-400">|</span>
-                            <span className="text-sm font-medium text-europe-500">{totals.totalEurope}</span>
+                            <span className="text-sm font-medium text-usa-400">{totals.totalUSA}</span>
+                            <span className="text-xs text-gray-600">|</span>
+                            <span className="text-sm font-medium text-europe-400">{totals.totalEurope}</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center pt-1">
-                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Difference:</span>
-                          <span className={`text-sm font-medium ${isEuropeAhead ? 'text-europe-500' : (isUsaAhead ? 'text-usa-500' : 'text-gray-500')}`}>
+                          <span className="text-sm font-medium text-purple-300">Difference:</span>
+                          <span className={`text-sm font-medium ${isEuropeAhead ? 'text-europe-400' : (isUsaAhead ? 'text-usa-400' : 'text-gray-500')}`}>
                             {isEuropeAhead
                               ? `Europe ahead by ${scoreDifference}` 
                               : (isUsaAhead
@@ -922,7 +910,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                                 : 'Tied')}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:hidden">
+                        <div className="text-xs text-gray-500 mt-1 sm:hidden">
                           {teamWithStrokesAdded === 'USA' 
                             ? `+${totalHandicapStrokes} strokes added to USA` 
                             : `+${totalHandicapStrokes} strokes added to Europe`}
@@ -936,28 +924,28 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-white dark:bg-gray-800 px-6 py-4 border-t dark:border-gray-700">
+        <div className="sticky bottom-0 bg-gradient-to-r from-gray-900/90 to-gray-950/90 dark:from-gray-950/90 dark:to-black/90 backdrop-blur-md px-6 py-4 border-t border-gray-700/50 dark:border-gray-800/50">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-800/50 rounded-lg">
               <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="w-5 h-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-medium text-red-800 dark:text-red-200">
+                <span className="text-sm font-medium text-red-300">
                   {error}
                 </span>
               </div>
             </div>
           )}
           {distancesError && (
-            <div className="text-sm text-red-500 mb-2">
+            <div className="text-sm text-red-400 mb-2">
               Error loading hole distances: {distancesError}
             </div>
           )}
           <div className="flex justify-end gap-2 sm:gap-3">
             <button
               onClick={onClose}
-              className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm sm:text-base"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-300 hover:text-white font-medium rounded-lg hover:bg-gray-700/50 text-sm sm:text-base transition-colors duration-200"
               aria-label="Cancel score entry"
             >
               Cancel

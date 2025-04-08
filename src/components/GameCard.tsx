@@ -139,7 +139,7 @@ export default function GameCard({
               {!initialGame.isStarted && onStatusChange && (
                 <button
                   onClick={handleStartGame}
-                  className="w-full px-4 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
+                  className="w-full px-3 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
                 >
                   Start Game
                 </button>
@@ -148,7 +148,7 @@ export default function GameCard({
               {initialGame.isStarted && !initialGame.isComplete && onEnterScores && (
                 <button
                   onClick={handleEnterScores}
-                  className="w-full px-4 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
+                  className="w-full px-3 py-2 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 text-sm font-medium"
                 >
                   Enter Scores
                 </button>
@@ -165,7 +165,7 @@ export default function GameCard({
                             handleStatusChange('in_progress');
                           }
                         }}
-                        className="w-full px-4 py-2 border border-europe-500 bg-europe-500/10 text-europe-700 dark:text-europe-300 rounded-lg hover:bg-europe-500/20 transition-colors duration-200 text-sm font-medium"
+                        className="w-full px-3 py-2 border border-europe-500 bg-europe-500/10 text-europe-700 dark:text-europe-300 rounded-lg hover:bg-europe-500/20 transition-colors duration-200 text-sm font-medium"
                       >
                         Mark as In Progress
                       </button>
@@ -177,7 +177,7 @@ export default function GameCard({
                           e.stopPropagation();
                           handleStatusChange('not_started');
                         }}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
                       >
                         Mark as Not Started
                       </button>
@@ -186,7 +186,7 @@ export default function GameCard({
                           e.stopPropagation();
                           handleStatusChange('complete');
                         }}
-                        className="w-full px-4 py-2 border border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-500/20 transition-colors duration-200 text-sm font-medium"
+                        className="w-full px-3 py-2 border border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-500/20 transition-colors duration-200 text-sm font-medium"
                       >
                         Mark as Complete
                       </button>

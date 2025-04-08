@@ -18,7 +18,7 @@ export default function BlogList({ posts }: BlogListProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 py-2">
       {posts.map((post) => (
         <article 
           key={post.id} 

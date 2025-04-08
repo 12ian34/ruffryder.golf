@@ -148,7 +148,7 @@ export default function Leaderboard() {
   }), { USA: 0, EUROPE: 0 });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 py-2">
       <div className="flex items-center justify-between">
         <ScoreCard
           currentScore={tournament.totalScore ? 
@@ -174,7 +174,7 @@ export default function Leaderboard() {
       </div>
 
       {tournament.progress && tournament.progress.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div className="bg-black text-white rounded-lg shadow-lg p-6">
           <TournamentProgress 
             progress={tournament.progress
               .filter(p => p && p.score)

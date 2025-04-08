@@ -32,8 +32,7 @@ export default function PlayerStats() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold dark:text-white">Player Statistics</h2>
+    <div className="space-y-6 py-2">
 
       <TeamFilter onFilterChange={setTeamFilter} />
 

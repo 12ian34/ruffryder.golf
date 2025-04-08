@@ -277,7 +277,7 @@ describe('Handicap Scoring Tests', () => {
       expect(result.europeMatchPlayAdjustedScore).toBe(0); // Tied after adjustment
     });
 
-    it('should handle handicap of 37 (2 strokes per hole + 1 extra on first hole)', () => {
+    it('should handle handicap of 37 (2 strokes for all holes + 1 extra for stroke index 1)', () => {
       const game = createMockGame(37, 'USA');
       const result1 = calculateHandicapAdjustedScores(
         game,
@@ -421,6 +421,212 @@ describe('Handicap Scoring Tests', () => {
         expect(result.europeAdjustedScore).toBe(6);
         expect(result.usaMatchPlayAdjustedScore).toBe(1); // USA wins because 5 < 6
         expect(result.europeMatchPlayAdjustedScore).toBe(0);
+      }
+    });
+
+    it('should allocate correct total strokes across various handicap values', () => {
+      // Test multiple handicap values to ensure correct total stroke allocation
+      const handicapValues = [1, 5, 14, 18, 19, 23, 36, 37, 40, 54];
+      
+      for (const handicapStrokes of handicapValues) {
+        const game = createMockGame(handicapStrokes, 'USA');
+        const baseScore = 4;
+        let totalStrokesAllocated = 0;
+        
+        // Check all 18 holes for this handicap value
+        for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+          const result = calculateHandicapAdjustedScores(
+            game,
+            { strokeIndex },
+            { usaScore: baseScore, europeScore: baseScore }
+          );
+          
+          // Count strokes added to EUROPE score
+          if (result.europeAdjustedScore !== baseScore) {
+            totalStrokesAllocated += (result.europeAdjustedScore! - baseScore);
+          }
+        }
+        
+        // Verify total strokes match the handicap value
+        expect(totalStrokesAllocated).toBe(handicapStrokes);
+      }
+    });
+
+    it('should not apply any strokes when players have equal handicaps', () => {
+      // Create a mock game where players have same handicap but USA is labeled as higherHandicapTeam
+      // This should result in handicapStrokes = 0
+      const game = {
+        ...createMockGame(0, 'USA'),
+        usaPlayerHandicap: 10,
+        europePlayerHandicap: 10
+      };
+      const baseScore = 4;
+      
+      // Test various stroke indexes
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Scores should remain unchanged
+        expect(result.usaAdjustedScore).toBe(baseScore);
+        expect(result.europeAdjustedScore).toBe(baseScore);
+        
+        // Match play scores should be tied
+        expect(result.usaMatchPlayAdjustedScore).toBe(0);
+        expect(result.europeMatchPlayAdjustedScore).toBe(0);
+      }
+    });
+
+    it('should not apply strokes when one player has no handicap specified', () => {
+      // Create mock games where one player's handicap is undefined
+      const gameUSANoHandicap = {
+        ...createMockGame(0, 'EUROPE'),
+        usaPlayerHandicap: undefined,
+        europePlayerHandicap: 15
+      };
+      
+      const gameEuropeNoHandicap = {
+        ...createMockGame(0, 'USA'),
+        usaPlayerHandicap: 15,
+        europePlayerHandicap: undefined
+      };
+      
+      const baseScore = 4;
+      
+      // Test with USA having no handicap
+      for (let strokeIndex = 1; strokeIndex <= 5; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          gameUSANoHandicap,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Scores should remain unchanged
+        expect(result.usaAdjustedScore).toBe(baseScore);
+        expect(result.europeAdjustedScore).toBe(baseScore);
+      }
+      
+      // Test with EUROPE having no handicap
+      for (let strokeIndex = 1; strokeIndex <= 5; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          gameEuropeNoHandicap,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Scores should remain unchanged
+        expect(result.usaAdjustedScore).toBe(baseScore);
+        expect(result.europeAdjustedScore).toBe(baseScore);
+      }
+    });
+  });
+
+  describe('Handicap stroke allocation by stroke index', () => {
+    it('should correctly allocate 14 strokes to holes with stroke indexes 1-14', () => {
+      const game = createMockGame(14, 'EUROPE');
+      const baseScore = 4;
+      
+      // Test all 18 holes to ensure correct stroke allocation
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Holes with stroke index 1-14 should get 1 stroke
+        if (strokeIndex <= 14) {
+          expect(result.usaAdjustedScore).toBe(baseScore + 1);
+        } 
+        // Holes with stroke index 15-18 should not get any strokes
+        else {
+          expect(result.usaAdjustedScore).toBe(baseScore);
+        }
+      }
+    });
+
+    it('should correctly allocate 23 strokes to holes with stroke indexes 1-18 and 1-5 again', () => {
+      const game = createMockGame(23, 'USA');
+      const baseScore = 4;
+      
+      // Test all 18 holes to ensure correct stroke allocation
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // All holes get at least 1 stroke (18 strokes)
+        // First 5 holes get an additional stroke (5 more strokes)
+        const expectedStrokes = 1 + (strokeIndex <= 5 ? 1 : 0);
+        expect(result.europeAdjustedScore).toBe(baseScore + expectedStrokes);
+      }
+    });
+
+    it('should correctly allocate exactly 18 strokes (1 per hole) for handicap of 18', () => {
+      const game = createMockGame(18, 'USA');
+      const baseScore = 4;
+      
+      // Test all 18 holes to ensure correct stroke allocation
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // All holes get exactly 1 stroke
+        expect(result.europeAdjustedScore).toBe(baseScore + 1);
+      }
+    });
+
+    it('should correctly handle the specific case of 11 strokes (the issue reported by user)', () => {
+      // Create a game with a 14 stroke difference (like in the reported issue)
+      const game = createMockGame(14, 'EUROPE');
+      const baseScore = 4;
+      
+      // Count how many strokes are actually allocated
+      let totalStrokesAllocated = 0;
+      
+      // Test all 18 holes
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Count allocated strokes
+        if (result.usaAdjustedScore !== baseScore) {
+          totalStrokesAllocated += (result.usaAdjustedScore! - baseScore);
+        }
+      }
+      
+      // Ensure exactly 14 strokes were allocated, not 11 as in the reported issue
+      expect(totalStrokesAllocated).toBe(14);
+    });
+
+    it('should handle handicap of 37 (2 strokes for all holes + 1 extra for stroke index 1)', () => {
+      const game = createMockGame(37, 'EUROPE');
+      const baseScore = 3;
+      
+      // For every hole
+      for (let strokeIndex = 1; strokeIndex <= 18; strokeIndex++) {
+        const result = calculateHandicapAdjustedScores(
+          game,
+          { strokeIndex },
+          { usaScore: baseScore, europeScore: baseScore }
+        );
+        
+        // Base strokes (37/18 = 2 for all holes)
+        // Extra stroke (37%18 = 1) for hole with stroke index 1
+        const expectedStrokes = 2 + (strokeIndex === 1 ? 1 : 0);
+        
+        expect(result.usaAdjustedScore).toBe(baseScore + expectedStrokes);
       }
     });
   });

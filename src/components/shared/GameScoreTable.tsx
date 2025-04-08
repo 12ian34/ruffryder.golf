@@ -60,15 +60,15 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
     // Calculate total strokes based on absolute difference
     const totalStrokes = Math.abs(handicapDiff);
     
-    // Calculate base strokes for this hole (integer division)
-    const baseStrokes = Math.floor(totalStrokes / 18);
+    // Calculate how many complete 18-hole cycles of strokes to apply
+    const fullCycles = Math.floor(totalStrokes / 18);
     
-    // Calculate extra stroke for low index holes
-    const extraStrokeHoles = totalStrokes % 18;
-    const getsExtraStroke = strokeIndex <= extraStrokeHoles;
+    // Calculate remaining strokes after full cycles
+    const remainingStrokes = totalStrokes % 18;
     
-    // Total strokes for this hole
-    return baseStrokes + (getsExtraStroke ? 1 : 0);
+    // Apply a stroke for each full cycle
+    // Plus an additional stroke if this hole's index is low enough for remaining strokes
+    return fullCycles + (strokeIndex <= remainingStrokes ? 1 : 0);
   };
 
   // Get team that receives strokes (the team playing against higher handicap)
@@ -82,44 +82,44 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
   return (
     <div className="space-y-6" data-attr="game-score-table">
       {/* Player Names and Handicaps */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-950 dark:from-gray-950 dark:to-black p-3 rounded-lg shadow-md border-2 border-usa-500/50 dark:border-usa-600/40 hover:border-usa-500 transition-all">
           <h3 className="text-sm font-medium text-usa-500 mb-1">USA</h3>
           <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold dark:text-white">{game.usaPlayerName}</p>
+            <p className="text-lg text-center font-semibold text-white">{game.usaPlayerName}</p>
             {useHandicaps && (
-              <span className="text-sm text-gray-500">(Handicap: {game.usaPlayerHandicap})</span>
+              <span className="text-sm text-center text-gray-400">(Handicap: {game.usaPlayerHandicap})</span>
             )}
           </div>
         </div>
-        <div>
+        <div className="bg-gradient-to-br from-gray-900/80 to-gray-950 dark:from-gray-950 dark:to-black p-3 rounded-lg shadow-md border-2 border-europe-500/50 dark:border-europe-600/40 hover:border-europe-500 transition-all">
           <h3 className="text-sm font-medium text-europe-500 mb-1">Europe</h3>
           <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold dark:text-white">{game.europePlayerName}</p>
+            <p className="text-lg font-semibold text-white">{game.europePlayerName}</p>
             {useHandicaps && (
-              <span className="text-sm text-gray-500">(Handicap: {game.europePlayerHandicap})</span>
+              <span className="text-sm text-center text-gray-400">(Handicap: {game.europePlayerHandicap})</span>
             )}
           </div>
         </div>
       </div>
 
       {useHandicaps && game.handicapStrokes > 0 && (
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <div className="text-center text-sm text-white dark:text-gray-300 mb-6 bg-gradient-to-br from-gray-800/80 to-gray-900 p-2 rounded-lg shadow-sm border border-white/10">
           {game.higherHandicapTeam === 'USA' ? game.usaPlayerName : game.europePlayerName} gets {game.handicapStrokes} strokes
         </div>
       )}
 
       {/* Score Table */}
-      <div className="overflow-x-auto" data-attr="game-score-table-container">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" data-attr="game-score-table-scores">
+      <div className="overflow-x-auto rounded-lg shadow-md border-2 border-gray-700/50 dark:border-gray-800/40" data-attr="game-score-table-container">
+        <table className="min-w-full divide-y divide-gray-700/50 dark:divide-gray-800/40 bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black" data-attr="game-score-table-scores">
           <thead>
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">HOLE</th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-usa-500 uppercase tracking-wider">USA</th>
-              <th className="px-4 py-2 text-center text-xs font-medium text-europe-500 uppercase tracking-wider">EUR</th>
+            <tr className="bg-gray-900/40 dark:bg-black/40">
+              <th className="px-2 py-1 text-left text-xs font-medium text-gray-300 dark:text-gray-400 uppercase tracking-wider">HOLE</th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-usa-500 uppercase tracking-wider">USA</th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-europe-500 uppercase tracking-wider">EUR</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-700/50 dark:divide-gray-800/40">
             {game.holes.map((hole, index) => {
               const usaScores = getHoleScore(hole, 'USA');
               const europeScores = getHoleScore(hole, 'EUROPE');
@@ -129,29 +129,29 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
               const strokeColor = teamGettingStrokes === 'USA' ? 'text-usa-500' : 'text-europe-500';
 
               return (
-                <tr key={hole.holeNumber} data-attr={`game-score-hole-${hole.holeNumber}`} className="dark:bg-gray-800">
-                  <td className="px-4 py-2">
+                <tr key={hole.holeNumber} data-attr={`game-score-hole-${hole.holeNumber}`} className="transition-colors hover:bg-gray-800/50 dark:hover:bg-gray-900/50">
+                  <td className="px-4 py-0.5">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-900 dark:text-white">{hole.holeNumber}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">(SI: {hole.strokeIndex})</span>
+                        <span className="text-sm text-white font-medium">{hole.holeNumber}</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">(SI: {hole.strokeIndex})</span>
                         {useHandicaps && handicapStrokes > 0 && (
-                          <span className={`text-xs font-medium ${strokeColor}`}>
+                          <span className={`text-xs font-medium ${strokeColor} bg-gray-800/50 px-1.5 py-0.5 rounded-full`}>
                             {teamGettingStrokes} (+{handicapStrokes})
                           </span>
                         )}
                       </div>
                       {!isLoadingDistances && holeDistance && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{holeDistance}yd</span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">{holeDistance}yd</span>
                       )}
                       {isLoadingDistances && (
-                        <span className="text-sm text-gray-400 dark:text-gray-500">Loading...</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-600">Loading...</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center justify-center w-full">
-                      <span className="text-sm text-gray-900 dark:text-white">
+                      <span className="text-sm text-white font-medium">
                         {useHandicaps ? (usaScores.adjusted ?? '-') : (usaScores.raw ?? '-')}
                       </span>
                       {useHandicaps && usaScores.raw !== null && usaScores.raw !== usaScores.adjusted && (
@@ -159,9 +159,9 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center justify-center w-full">
-                      <span className="text-sm text-gray-900 dark:text-white">
+                      <span className="text-sm text-white font-medium">
                         {useHandicaps ? (europeScores.adjusted ?? '-') : (europeScores.raw ?? '-')}
                       </span>
                       {useHandicaps && europeScores.raw !== null && europeScores.raw !== europeScores.adjusted && (
@@ -174,13 +174,13 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
             })}
             
             {/* Front 9 Total Row */}
-            <tr className="bg-gray-50 dark:bg-gray-800">
-              <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">
+            <tr className="bg-gray-800/60 dark:bg-gray-950 border-t-2 border-gray-700/50 dark:border-gray-800/40">
+              <td className="px-4 py-2 font-medium text-white">
                 Front 9
               </td>
               <td className="px-4 py-2 text-center">
                 <div className="flex flex-col items-center justify-center w-full">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-white">
                     {totals.front9UsaAdjusted}
                   </span>
                   {useHandicaps && totals.front9UsaAdjusted !== totals.front9UsaRaw && (
@@ -190,7 +190,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
               </td>
               <td className="px-4 py-2 text-center">
                 <div className="flex flex-col items-center justify-center w-full">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-white">
                     {totals.front9EuropeAdjusted}
                   </span>
                   {useHandicaps && totals.front9EuropeAdjusted !== totals.front9EuropeRaw && (
@@ -201,13 +201,13 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
             </tr>
             
             {/* Back 9 Total Row */}
-            <tr className="bg-gray-50 dark:bg-gray-800">
-              <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">
+            <tr className="bg-gray-800/60 dark:bg-gray-950">
+              <td className="px-4 py-2 font-medium text-white">
                 Back 9
               </td>
               <td className="px-4 py-2 text-center">
                 <div className="flex flex-col items-center justify-center w-full">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-white">
                     {totals.back9UsaAdjusted}
                   </span>
                   {useHandicaps && totals.back9UsaAdjusted !== totals.back9UsaRaw && (
@@ -217,7 +217,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
               </td>
               <td className="px-4 py-2 text-center">
                 <div className="flex flex-col items-center justify-center w-full">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-white">
                     {totals.back9EuropeAdjusted}
                   </span>
                   {useHandicaps && totals.back9EuropeAdjusted !== totals.back9EuropeRaw && (
@@ -232,60 +232,66 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4" data-attr="game-score-totals">
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4" data-attr="game-score-stroke-play">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Stroke Play</h3>
+        <div className="bg-gradient-to-br from-purple-900/80 to-purple-950 dark:from-purple-900/60 dark:to-black rounded-xl shadow-md p-4 border-2 border-purple-600/50 dark:border-purple-700/60 hover:shadow-lg transition-all hover:border-purple-500 dark:hover:border-purple-500/70" data-attr="game-score-stroke-play">
+          <h3 className="text-lg font-medium text-white mb-2 flex items-center">
+            <span className="text-sm mr-2">🏌️‍♂️</span>
+            Stroke Play
+          </h3>
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">USA:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-300 dark:text-gray-400">USA:</span>
+            <span className="font-medium text-white">
               {totals.usaAdjusted}
               {useHandicaps && totals.usaAdjusted !== totals.usaRaw && (
-                <span className="text-gray-500 dark:text-gray-400 ml-2">({totals.usaRaw})</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.usaRaw})</span>
               )}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">EUROPE:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-300 dark:text-gray-400">EUROPE:</span>
+            <span className="font-medium text-white">
               {totals.europeAdjusted}
               {useHandicaps && totals.europeAdjusted !== totals.europeRaw && (
-                <span className="text-gray-500 dark:text-gray-400 ml-2">({totals.europeRaw})</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.europeRaw})</span>
               )}
             </span>
           </div>
-          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+          <div className="mt-2 pt-2 border-t border-purple-700/30 dark:border-purple-800/30">
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Front 9:</span>
+              <span className="text-gray-300 dark:text-gray-400">Front 9:</span>
               <div className="flex gap-4">
-                <span className="text-xs text-usa-500 font-medium">{totals.front9UsaAdjusted}</span>
-                <span className="text-xs text-europe-500 font-medium">{totals.front9EuropeAdjusted}</span>
+                <span className="text-xs text-usa-400 font-medium">{totals.front9UsaAdjusted}</span>
+                <span className="text-xs text-europe-400 font-medium">{totals.front9EuropeAdjusted}</span>
               </div>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">Back 9:</span>
+              <span className="text-gray-300 dark:text-gray-400">Back 9:</span>
               <div className="flex gap-4">
-                <span className="text-xs text-usa-500 font-medium">{totals.back9UsaAdjusted}</span>
-                <span className="text-xs text-europe-500 font-medium">{totals.back9EuropeAdjusted}</span>
+                <span className="text-xs text-usa-400 font-medium">{totals.back9UsaAdjusted}</span>
+                <span className="text-xs text-europe-400 font-medium">{totals.back9EuropeAdjusted}</span>
               </div>
             </div>
           </div>
         </div>
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4" data-attr="game-score-match-play">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Match Play</h3>
+        <div className="bg-gradient-to-br from-indigo-900/80 to-indigo-950 dark:from-indigo-900/60 dark:to-black rounded-xl shadow-md p-4 border-2 border-indigo-600/50 dark:border-indigo-700/60 hover:shadow-lg transition-all hover:border-indigo-500 dark:hover:border-indigo-500/70" data-attr="game-score-match-play">
+          <h3 className="text-lg font-medium text-white mb-2 flex items-center">
+            <span className="text-sm mr-2">🏆</span>
+            Match Play
+          </h3>
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">USA:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-300 dark:text-gray-400">USA:</span>
+            <span className="font-medium text-white">
               {totals.usaMatchPlayAdjusted}
               {useHandicaps && totals.usaMatchPlayAdjusted !== totals.usaMatchPlayRaw && (
-                <span className="text-gray-500 dark:text-gray-400 ml-2">({totals.usaMatchPlayRaw})</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.usaMatchPlayRaw})</span>
               )}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500 dark:text-gray-400">EUROPE:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-300 dark:text-gray-400">EUROPE:</span>
+            <span className="font-medium text-white">
               {totals.europeMatchPlayAdjusted}
               {useHandicaps && totals.europeMatchPlayAdjusted !== totals.europeMatchPlayRaw && (
-                <span className="text-gray-500 dark:text-gray-400 ml-2">({totals.europeMatchPlayRaw})</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-2">({totals.europeMatchPlayRaw})</span>
               )}
             </span>
           </div>
@@ -293,7 +299,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
       </div>
 
       {distancesError && (
-        <div className="text-sm text-red-500 mt-2">
+        <div className="text-sm text-red-500 mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
           Error loading hole distances: {distancesError}
         </div>
       )}
