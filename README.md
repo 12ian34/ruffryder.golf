@@ -1,18 +1,22 @@
 # ruff ryders golf app
 
+https://ruffryder.golf
+
 web app for live tracking and score keeping for an annual golf tournament with friends
 
-https://ruffryder.golf
+## Screens
+
+
 
 ## Features
 
-- Tournament Management
+- Tournaments
   - Create and manage multiple tournaments
   - Track tournament progress and completion status
   - Real-time tournament leaderboard
   - Support for multiple game formats (stroke play and match play)
 
-- Advanced Scoring System
+- Real time scoring with handicap support
   - Real-time score tracking and updates
   - Handicap scoring support with automatic adjustments
   - Stroke index management for each hole
@@ -22,20 +26,20 @@ https://ruffryder.golf
   - Auto-scrolling score entry interface
   - Enhanced input validation and error handling
 
-- Player Management
+- Player management
   - Player profiles and statistics
   - Team assignments (USA vs EUROPE format)
   - Player handicap tracking
   - Historical performance data
 
-- Game Features
+- Game features
   - Individual game scorecards
   - Match status tracking (not started, in progress, complete)
   - Automatic point calculation for both teams
   - Real-time game status updates
   - Detailed game statistics and analytics
 
-- User Experience
+- UI/UX
   - Responsive design for mobile and desktop
   - Dark mode support
   - Real-time updates and notifications
@@ -45,42 +49,44 @@ https://ruffryder.golf
   - Enhanced security features
   - Improved input validation and error handling
 
-- Administrative Features
+- Admin
   - Tournament configuration and setup
   - Stroke index management for courses
   - User role management (admin/player)
   - Game completion validation
   - Tournament progress tracking
 
-- Blog System
+- Blogging
   - Tournament news and updates
   - Rich text editor support
   - Media embedding capabilities
 
-- Technical Features
+- Technical features
   - User authentication and authorization
   - Real-time data synchronization
   - Local data persistence
   - Progressive Web App capabilities
   - Cross-platform compatibility
 
-## Tech stack
+## Stack
 
-- React 18
+- React
 - TypeScript
 - Vite
-- Tailwind CSS
+- Tailwind
 - Firebase
 - Chart.js
-- TipTap Editor
+- TipTap
 
-## Prerequisites
+## For developers
+
+### Prerequisites
 
 - Node.js 16 or higher
 - npm 7 or higher
 - Firebase account and project
 
-## Getting Started
+### Develop
 
 1. Clone the repository:
    ```bash
@@ -111,15 +117,16 @@ https://ruffryder.golf
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Available Scripts
+### Useful commands
 
+- `npx vitest run` - Run tests
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 
-## Project Structure
+## Project structure
 
 ```
 src/
@@ -132,7 +139,7 @@ src/
 └── utils/         # Utility functions
 ```
 
-## Contributing
+### Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -140,10 +147,6 @@ src/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+### License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-![CleanShot 2024-11-29 at 15 06 54](https://github.com/user-attachments/assets/0378c7b7-88d7-49e4-b5dd-3559f2f96a22)
-
-![CleanShot 2024-11-29 at 15 07 32](https://github.com/user-attachments/assets/51382b21-b681-4d50-9505-0c4e892007e4)
