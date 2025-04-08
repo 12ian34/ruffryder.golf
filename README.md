@@ -136,7 +136,7 @@ web app for live tracking and score keeping for an annual golf tournament with f
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 
-## Project structure
+### Project structure
 
 ```
 src/
