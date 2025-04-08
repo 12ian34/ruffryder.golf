@@ -469,10 +469,96 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
               </div>
             </div>
           )}
-          
+
           {game && (
             <div className="mt-2">
               <HandicapDisplay game={game} useHandicaps={useHandicaps} />
+            </div>
+          )}
+
+          {/* Score difference indicator in header */}
+          {scores.length > 0 && (
+            <div className="mt-2 text-center">
+              {(() => {
+                if (useHandicaps && game.handicapStrokes > 0) {
+                  // Calculate adjusted totals
+                  const totals = { ...getTotals() };
+                  const teamWithStrokesAdded = game.higherHandicapTeam === 'USA' ? 'EUROPE' : 'USA';
+                  
+                  // Calculate total handicap strokes for completed holes
+                  let totalHandicapStrokes = 0;
+                  for (let i = 0; i < scores.length; i++) {
+                    if (scores[i].USA !== '' && scores[i].EUROPE !== '') {
+                      const baseStrokes = Math.floor(game.handicapStrokes / 18);
+                      const extraStrokeHoles = game.handicapStrokes % 18;
+                      const getsExtraStroke = strokeIndices[i] <= extraStrokeHoles && extraStrokeHoles > 0;
+                      totalHandicapStrokes += baseStrokes + (getsExtraStroke ? 1 : 0);
+                    }
+                  }
+                  
+                  // Apply handicap strokes to the right team
+                  if (teamWithStrokesAdded === 'USA') {
+                    totals.totalUSA += totalHandicapStrokes;
+                  } else {
+                    totals.totalEurope += totalHandicapStrokes;
+                  }
+                  
+                  // Determine which team is ahead in stroke play with handicap
+                  // In golf, lower score is better
+                  const isUsaAhead = totals.totalUSA < totals.totalEurope;
+                  const isEuropeAhead = totals.totalUSA > totals.totalEurope;
+                  const scoreDifference = Math.abs(totals.totalUSA - totals.totalEurope);
+                  
+                  if (isEuropeAhead && scoreDifference > 0) {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-europe-500/20 rounded-md text-sm text-europe-300 font-medium">
+                        Europe ahead by {scoreDifference} (with handicap)
+                      </div>
+                    );
+                  } else if (isUsaAhead && scoreDifference > 0) {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-usa-500/20 rounded-md text-sm text-usa-300 font-medium">
+                        USA ahead by {scoreDifference} (with handicap)
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-gray-700/30 rounded-md text-sm text-gray-300 font-medium">
+                        Tied
+                      </div>
+                    );
+                  }
+                } else {
+                  // Get raw score totals
+                  const { totalUSA, totalEurope } = getTotals();
+                  
+                  // In golf, lower score is better
+                  const isUsaAhead = totalUSA < totalEurope;
+                  const isEuropeAhead = totalUSA > totalEurope;
+                  const scoreDifference = Math.abs(totalUSA - totalEurope);
+                  
+                  if (isEuropeAhead && scoreDifference > 0) {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-europe-500/20 rounded-md text-sm text-europe-300 font-medium">
+                        Europe ahead by {scoreDifference}
+                      </div>
+                    );
+                  } else if (isUsaAhead && scoreDifference > 0) {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-usa-500/20 rounded-md text-sm text-usa-300 font-medium">
+                        USA ahead by {scoreDifference}
+                      </div>
+                    );
+                  } else if (totalUSA > 0 || totalEurope > 0) {
+                    return (
+                      <div className="inline-block px-3 py-1 bg-gray-700/30 rounded-md text-sm text-gray-300 font-medium">
+                        Tied
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
           )}
         </div>
