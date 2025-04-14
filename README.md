@@ -1,5 +1,7 @@
 # ruff ryders golf app
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/82caf536-bfd4-46bb-8aed-2a67e379a2c0/deploy-status)](https://app.netlify.com/sites/ruff-ryder/deploys)
+
 https://ruffryder.golf
 
 web app for live tracking and score keeping for an annual golf tournament with friends

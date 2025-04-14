@@ -9,7 +9,7 @@ export default function About() {
 
             <div className="flex justify-center">
               <a
-                href="https://github.com/12ian34/ruff-ryders-app"
+                href="https://github.com/12ian34/ruffryder.golf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center space-x-2 px-6 py-3 bg-gray-900 dark:bg-gray-900 text-white hover:text-white rounded-lg 

@@ -258,7 +258,7 @@ export default function Login() {
       {/* GitHub Badge */}
       <div className="mt-8 text-center space-x-4">
         <a 
-          href="https://github.com/12ian34/ruff-ryders-app" 
+          href="https://github.com/12ian34/ruffryder.golf" 
           target="_blank" 
           rel="noopener noreferrer"
           className="inline-flex items-center text-sm text-gray-400 hover:text-white transition-colors duration-200"
