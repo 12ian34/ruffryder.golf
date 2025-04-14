@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -15,6 +15,8 @@ import {
 import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { auth } from '../config/firebase';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
+import { track } from '../utils/analytics';
+import posthog from 'posthog-js';
 
 setPersistence(auth, browserLocalPersistence).catch((error) => {
   showErrorToast('Error setting auth persistence');
@@ -121,6 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: serverTimestamp()
       });
 
+      // Track user registration
+      track('user_registered', {
+        email: email,
+        $email: email,
+        user_id: userCredential.user.uid
+      });
+
       // Send verification email
       const actionCodeSettings = {
         url: `${window.location.origin}/?email=${encodeURIComponent(email)}`,
@@ -152,6 +161,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw { code: 'auth/unverified-email' };
       }
       
+      // Track login in PostHog directly
+      console.log('Tracking login in PostHog directly from auth context:', email);
+      
+      // Track the login event
+      posthog.capture('user_login', {
+        email: email,
+        $email: email,
+        user_id: userCredential.user.uid,
+        distinct_id: userCredential.user.uid,
+        method: 'email'
+      });
+      
+      // Explicitly identify the user
+      posthog.identify(userCredential.user.uid, {
+        email: email,
+        $email: email,
+        name: userCredential.user.displayName || email.split('@')[0],
+        emailVerified: userCredential.user.emailVerified
+      });
+      
+      // Set person properties
+      posthog.people.set({
+        email: email,
+        $email: email,
+        last_login: new Date().toISOString()
+      });
+      
+      // Create an alias between email and user ID
+      posthog.alias(email, userCredential.user.uid);
+      
       showSuccessToast('Successfully signed in!');
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));
@@ -161,6 +200,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     try {
+      // Track logout in PostHog
+      if (currentUser) {
+        posthog.capture('user_logout', {
+          email: currentUser.email,
+          $email: currentUser.email
+        });
+      }
+      
       await firebaseSignOut(auth);
       showSuccessToast('Successfully signed out!');
     } catch (error: any) {
@@ -189,6 +236,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
       localStorage.setItem(resetKey, now.toString());
+      
+      // Track password reset request
+      track('password_reset_requested', {
+        email: email,
+        $email: email
+      });
+      
       showSuccessToast('Password reset email sent. Please check your inbox.');
     } catch (error: any) {
       showErrorToast(getErrorMessage(error));
@@ -199,8 +253,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function completeUserPasswordReset(oobCode: string, newPassword: string) {
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
+      
+      // Track password reset completion
+      track('password_reset_completed', {
+        success: true
+      });
+      
       showSuccessToast('Password successfully reset! Please sign in with your new password.');
     } catch (error: any) {
+      // Track failed password reset completion
+      track('password_reset_completed', {
+        success: false,
+        error_code: error.code || 'unknown_error'
+      });
+      
       showErrorToast('Failed to reset password. The link may have expired.');
       throw error;
     }

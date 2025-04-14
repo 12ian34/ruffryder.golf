@@ -9,6 +9,7 @@ import StatusFilter from './filters/StatusFilter';
 import { GameList } from './GameList';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useAuth } from '../contexts/AuthContext';
+import { track } from '../utils/analytics';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -24,6 +25,9 @@ export default function Leaderboard() {
 
   useEffect(() => {
     isMounted.current = true;
+
+    // Track leaderboard view
+    track('leaderboard_viewed');
 
     return () => {
       isMounted.current = false;

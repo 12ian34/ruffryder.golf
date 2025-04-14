@@ -5,6 +5,7 @@ import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 import { useHoleDistances } from '../hooks/useHoleDistances';
+import { track } from '../utils/analytics';
 // import HandicapDisplay from './shared/HandicapDisplay';
 
 interface ScoreEntryProps {
@@ -54,6 +55,18 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
       return () => clearTimeout(timer);
     }
   }, [showToast]);
+
+  // Track modal view
+  useEffect(() => {
+    if (game) {
+      track('score_entry_modal_viewed', {
+        gameId,
+        tournamentId,
+        usaPlayerName: game.usaPlayerName,
+        europePlayerName: game.europePlayerName
+      });
+    }
+  }, [gameId, tournamentId, game]);
 
   // Fetch game data and stroke indices
   useEffect(() => {
@@ -197,12 +210,12 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
     const numValue = parseInt(value);
     
     // Validate the numeric value
-    if (numValue < 1 || numValue > 8) {
+    if (numValue < 1 || numValue > 20) {
       setInvalidScores(prev => ({
         ...prev,
         [`${holeIndex}-${team}`]: true
       }));
-      setError('Score must be between 1 and 8');
+      setError('Score must be between 1 and 20');
       return;
     }
 
@@ -227,6 +240,15 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
     };
     setScores(newScores);
     setShowClearConfirm(null);
+    
+    // Track score deletion event
+    if (game) {
+      track('score_deleted', {
+        gameId,
+        tournamentId,
+        holeNumber: game.holes[index].holeNumber
+      });
+    }
   };
 
   const handleSaveHole = async (index: number) => {
@@ -235,11 +257,11 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
     const holeScores = scores[index];
     
     // Check for invalid scores for this hole
-    const usaInvalid = typeof holeScores.USA === 'string' && (!/^\d+$/.test(holeScores.USA) || parseInt(holeScores.USA) < 1 || parseInt(holeScores.USA) > 8);
-    const europeInvalid = typeof holeScores.EUROPE === 'string' && (!/^\d+$/.test(holeScores.EUROPE) || parseInt(holeScores.EUROPE) < 1 || parseInt(holeScores.EUROPE) > 8);
+    const usaInvalid = typeof holeScores.USA === 'string' && (!/^\d+$/.test(holeScores.USA) || parseInt(holeScores.USA) < 1 || parseInt(holeScores.USA) > 20);
+    const europeInvalid = typeof holeScores.EUROPE === 'string' && (!/^\d+$/.test(holeScores.EUROPE) || parseInt(holeScores.EUROPE) < 1 || parseInt(holeScores.EUROPE) > 20);
     
     if ((holeScores.USA !== '' && usaInvalid) || (holeScores.EUROPE !== '' && europeInvalid)) {
-      setError('Please correct invalid scores (must be between 1 and 8) before saving');
+      setError('Please correct invalid scores (must be between 1 and 20) before saving');
       return;
     }
 
@@ -413,6 +435,15 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
         [index]: false
       }));
 
+      // Track score saved event
+      track('score_saved', {
+        gameId,
+        tournamentId,
+        holeNumber: game.holes[index].holeNumber,
+        usaScore: scores[index].USA,
+        europeScore: scores[index].EUROPE
+      });
+
       // Show success toast
       setShowToast({
         message: `Scores saved for hole ${game.holes[index].holeNumber}`,
@@ -436,13 +467,13 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
 
     // Check for any invalid scores
     const hasInvalidScores = scores.some((score) => {
-      const usaInvalid = typeof score.USA === 'string' && (!/^\d+$/.test(score.USA) || parseInt(score.USA) < 1 || parseInt(score.USA) > 8);
-      const europeInvalid = typeof score.EUROPE === 'string' && (!/^\d+$/.test(score.EUROPE) || parseInt(score.EUROPE) < 1 || parseInt(score.EUROPE) > 8);
+      const usaInvalid = typeof score.USA === 'string' && (!/^\d+$/.test(score.USA) || parseInt(score.USA) < 1 || parseInt(score.USA) > 20);
+      const europeInvalid = typeof score.EUROPE === 'string' && (!/^\d+$/.test(score.EUROPE) || parseInt(score.EUROPE) < 1 || parseInt(score.EUROPE) > 20);
       return (score.USA !== '' && usaInvalid) || (score.EUROPE !== '' && europeInvalid);
     });
 
     if (hasInvalidScores) {
-      setError('Please correct invalid scores (must be between 1 and 8) before saving');
+      setError('Please correct invalid scores (must be between 1 and 20) before saving');
       return;
     }
 
@@ -1066,7 +1097,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                             e.preventDefault();
                             const currentValue = scores[index].USA;
                             const newValue = typeof currentValue === 'number' ? 
-                              (currentValue < 8 ? currentValue + 1 : currentValue) : 1;
+                              (currentValue < 20 ? currentValue + 1 : currentValue) : 1;
                             handleScoreChange(index, 'USA', newValue.toString());
                           }}
                           aria-label={`Increment USA score for hole ${hole.holeNumber}`}
@@ -1149,7 +1180,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                             e.preventDefault();
                             const currentValue = scores[index].EUROPE;
                             const newValue = typeof currentValue === 'number' ? 
-                              (currentValue < 8 ? currentValue + 1 : currentValue) : 1;
+                              (currentValue < 20 ? currentValue + 1 : currentValue) : 1;
                             handleScoreChange(index, 'EUROPE', newValue.toString());
                           }}
                           aria-label={`Increment EUROPE score for hole ${hole.holeNumber}`}

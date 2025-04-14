@@ -1,26 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import posthog from 'posthog-js';
 import { useAuth } from '../contexts/AuthContext';
+import { identifyUser } from '../utils/analytics';
 
-declare global {
-  interface Window {
-    posthog: any;
-  }
-}
+// No longer needed as we're using the actual package
+// declare global {
+//   interface Window {
+//     posthog: any;
+//   }
+// }
 
 export function usePostHog() {
   const { currentUser } = useAuth();
+  const previousUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (currentUser) {
-      // Identify user in PostHog when they log in
-      window.posthog.identify(currentUser.uid, {
-        email: currentUser.email,
-      });
-    } else {
-      // Reset identification when user logs out
-      window.posthog.reset();
+    // Only proceed if user state has actually changed
+    const currentUserId = currentUser?.uid || null;
+    const previousUserId = previousUserRef.current;
+    
+    // Check if user state has changed
+    if (currentUserId !== previousUserId) {
+      console.log('Auth state changed, identifying user in PostHog');
+      
+      // Store current user ID for comparison in next render
+      previousUserRef.current = currentUserId;
+      
+      // Identify the user in PostHog
+      identifyUser(currentUser);
+      
+      // Log an authentication event if user is now logged in
+      if (currentUser?.email && !previousUserId) {
+        posthog.capture('user_authenticated', {
+          email: currentUser.email,
+          $email: currentUser.email,
+          user_id: currentUser.uid,
+          method: 'email'
+        });
+      }
     }
   }, [currentUser]);
 
-  return window.posthog;
+  // Return the PostHog instance
+  return posthog;
 }

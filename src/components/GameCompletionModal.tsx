@@ -4,6 +4,7 @@ import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
+import { track } from '../utils/analytics';
 
 interface GameCompletionModalProps {
   game: Game;
@@ -54,6 +55,17 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
         isComplete: true,
         isStarted: true,
         status: 'complete'
+      });
+
+      // Track game completion
+      track('game_completed', {
+        gameId: game.id,
+        tournamentId,
+        usaPlayerName: game.usaPlayerName,
+        europePlayerName: game.europePlayerName,
+        usaScore: game.strokePlayScore.USA,
+        europeScore: game.strokePlayScore.EUROPE,
+        isHandicapped: useHandicaps
       });
 
       // Update tournament scores after marking the game as complete

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types/player';
+import { track } from '../../utils/analytics';
 
 interface PlayerEditModalProps {
   player: Player | null;
@@ -28,8 +29,9 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Please enter a name');
+    
+    if (score && (isNaN(Number(score)) || Number(score) < 0)) {
+      setError('Please enter a valid score');
       return;
     }
 
@@ -61,6 +63,19 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
 
         updates.historicalScores = newScores;
         updates.averageScore = averageScore;
+        
+        // Track handicap change if average score has changed
+        if (player && player.averageScore !== averageScore) {
+          track('handicap_changed', {
+            player_id: player.id,
+            player_name: name.trim(),
+            previous_handicap: player.averageScore,
+            new_handicap: averageScore,
+            team: team,
+            year_updated: year,
+            score_added: Number(score)
+          });
+        }
       }
 
       await onSave(player?.id || null, updates);

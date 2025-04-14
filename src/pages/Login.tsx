@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { showSuccessToast } from '../utils/toast';
 import { auth } from '../config/firebase';
 import { signOut as firebaseSignOut } from 'firebase/auth';
+import posthog from 'posthog-js';
 
 export default function Login() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -75,8 +76,9 @@ export default function Login() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!loginEmail || !loginPassword) {
-      setError('Please enter both email and password');
+      setError('Please fill in all fields');
       return;
     }
 
@@ -85,6 +87,15 @@ export default function Login() {
 
     try {
       await signIn(loginEmail, loginPassword);
+      
+      // Directly track sign-in in PostHog
+      console.log('Tracking login directly from Login component:', loginEmail);
+      posthog.capture('login_button_clicked', {
+        email: loginEmail,
+        $email: loginEmail,
+        method: 'email'
+      });
+      
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { Game } from '../types/game';
 import GameScoreTable from './shared/GameScoreTable';
+import { track } from '../utils/analytics';
 
 interface GameScoreModalProps {
   game: Game;
@@ -30,7 +31,7 @@ export default function GameScoreModal({ game, isOpen, onClose, useHandicaps }: 
 
   useEffect(() => {
     if (isOpen) {
-      window.posthog?.capture('game_score_modal_viewed', {
+      track('game_score_modal_viewed', {
         gameId: game.id,
         playerNames: [game.usaPlayerName, game.europePlayerName]
       });

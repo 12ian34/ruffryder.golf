@@ -5,13 +5,22 @@ import StrokeIndexManagement from './StrokeIndexManagement';
 import UserManagement from './UserManagement';
 import PlayerManagement from './PlayerManagement';
 import BlogManagement from './blog/BlogManagement';
+import { track } from '../utils/analytics';
 
 export default function AdminPanel() {
   const [selectedTab, setSelectedTab] = useState(0);
+  
+  const handleTabChange = (index: number) => {
+    setSelectedTab(index);
+    const tabNames = ['tournament', 'stroke_index', 'players', 'users', 'blog'];
+    track('admin_tab_viewed', {
+      tab_name: tabNames[index]
+    });
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
-      <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
+      <Tab.Group selectedIndex={selectedTab} onChange={handleTabChange}>
         <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
           <Tab.List className="flex space-x-1 sm:space-x-4 whitespace-nowrap">
             <Tab

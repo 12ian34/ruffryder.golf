@@ -6,6 +6,7 @@ import { db } from '../config/firebase';
 import { availableEmojis } from '../utils/animalAvatars';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import type { User } from '../types/user';
+import { track } from '../utils/analytics';
 
 export default function Profile() {
   const { currentUser, signOut } = useAuth();
@@ -67,6 +68,21 @@ export default function Profile() {
           customEmoji: pendingEmoji || undefined
         });
       }
+
+      // Track avatar emoji change if it was changed
+      if (pendingEmoji !== userData?.customEmoji) {
+        track('avatar_emoji_changed', {
+          previous_emoji: userData?.customEmoji || 'default',
+          new_emoji: pendingEmoji || 'default'
+        });
+      }
+
+      // Track profile update
+      track('profile_updated', {
+        name_changed: name !== userData?.name,
+        emoji_changed: pendingEmoji !== userData?.customEmoji,
+        linked_player_id: userData?.linkedPlayerId || null
+      });
 
       setUserData(prev => prev ? { ...prev, ...updates } : null);
       showSuccessToast('Profile updated successfully!');

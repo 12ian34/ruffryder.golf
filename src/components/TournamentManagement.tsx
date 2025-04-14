@@ -9,6 +9,7 @@ import type { Game } from '../types/game';
 import type { Tournament, TeamConfig, Matchup } from '../types/tournament';
 import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
+import { track } from '../utils/analytics';
 
 interface NewTournamentForm {
   name: string;
@@ -160,20 +161,26 @@ export default function TournamentManagement() {
     };
   }, [selectedTournament?.id]);
 
-  const handleCreateTournament = async () => {
-    if (!newTournament.name || !newTournament.year) {
-      toast.error('Please fill in all required fields');
+  const handleCreateTournament = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newTournament.name) {
+      toast.error('Please enter a tournament name');
       return;
     }
 
-    setIsLoading(true);
     try {
-      const tournament: Omit<Tournament, 'id'> = {
+      setIsLoading(true);
+
+      const tournamentData: Omit<Tournament, 'id'> = {
         name: newTournament.name,
         year: newTournament.year,
-        isActive: false,
-        useHandicaps: newTournament.useHandicaps,
         teamConfig: newTournament.teamConfig,
+        useHandicaps: newTournament.useHandicaps,
+        matchups: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: true,
         handicapStrokes: 0,
         higherHandicapTeam: 'USA',
         totalScore: {
@@ -184,44 +191,38 @@ export default function TournamentManagement() {
           raw: { USA: 0, EUROPE: 0 },
           adjusted: { USA: 0, EUROPE: 0 }
         },
-        progress: [],
-        matchups: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        progress: []
       };
 
-      // First, deactivate any currently active tournament
-      const activeTournament = tournaments.find(t => t.isActive);
-      if (activeTournament) {
-        await updateDoc(doc(db, 'tournaments', activeTournament.id), {
-          isActive: false
-        });
-      }
+      const docRef = await addDoc(collection(db, 'tournaments'), tournamentData);
+      
+      // Update with server timestamp after creation
+      await updateDoc(docRef, { 
+        id: docRef.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
 
-      // Create the new tournament
-      const docRef = await addDoc(collection(db, 'tournaments'), tournament);
-
-      // Update local state with the Firestore document ID
-      const tournamentWithId = {
-        ...tournament,
-        id: docRef.id
-      };
-
-      setTournaments(prev => [...prev, tournamentWithId]);
-      setSelectedTournament(tournamentWithId);
+      // Track tournament creation
+      track('tournament_created', {
+        tournament_id: docRef.id,
+        tournament_name: newTournament.name,
+        year: newTournament.year,
+        useHandicaps: newTournament.useHandicaps,
+        teamConfig: newTournament.teamConfig
+      });
 
       // Reset form
       setNewTournament({
         name: '',
         year: new Date().getFullYear(),
-        useHandicaps: false,
-        teamConfig: 'USA_VS_EUROPE'
+        teamConfig: 'USA_VS_EUROPE',
+        useHandicaps: false
       });
 
-      toast.success('Tournament created successfully');
-    } catch (error) {
-      console.error('Error creating tournament:', error);
-      toast.error('Failed to create tournament');
+      showSuccessToast('Tournament created successfully');
+    } catch (err: any) {
+      showErrorToast('Failed to create tournament');
     } finally {
       setIsLoading(false);
     }
@@ -351,6 +352,18 @@ export default function TournamentManagement() {
         matchups: arrayUnion(matchup)
       });
 
+      // Track matchup creation
+      track('matchup_created', {
+        tournament_id: selectedTournament.id,
+        game_id: gameDocRef.id,
+        usa_player: player1Name,
+        europe_player: player2Name,
+        usa_player_id: player1Id,
+        europe_player_id: player2Id,
+        handicap_strokes: handicapStrokes,
+        team_config: selectedTournament.teamConfig
+      });
+
       // Update local state with the new game
       setCurrentMatchups(prev => [...prev, gameWithId]);
 
@@ -471,6 +484,14 @@ export default function TournamentManagement() {
       // Delete the tournament document
       await deleteDoc(doc(db, 'tournaments', tournament.id));
 
+      // Track tournament deletion
+      track('tournament_deleted', {
+        tournament_id: tournament.id,
+        tournament_name: tournament.name,
+        year: tournament.year,
+        game_count: gamesSnapshot.docs.length
+      });
+
       // Update local state
       setTournaments(tournaments.filter(t => t.id !== tournament.id));
       if (selectedTournament?.id === tournament.id) {
@@ -504,6 +525,17 @@ export default function TournamentManagement() {
 
       // Delete the game document
       await deleteDoc(gameDocRef);
+
+      // Track matchup deletion
+      track('matchup_deleted', {
+        tournament_id: selectedTournament.id,
+        tournament_name: selectedTournament.name,
+        matchup_id: matchup.id,
+        usa_player: matchup.usaPlayerName,
+        europe_player: matchup.europePlayerName,
+        usa_player_id: matchup.usaPlayerId,
+        europe_player_id: matchup.europePlayerId
+      });
 
       // Update the tournament document to remove the matchup
       const tournamentRef = doc(db, 'tournaments', selectedTournament.id);
@@ -558,6 +590,11 @@ export default function TournamentManagement() {
       // Update tournament document
       await updateDoc(tournamentRef, {
         useHandicaps: newUseHandicaps,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Also update with server timestamp
+      await updateDoc(tournamentRef, {
         updatedAt: serverTimestamp()
       });
 

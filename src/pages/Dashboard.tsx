@@ -13,6 +13,7 @@ import { db } from '../config/firebase';
 import type { User } from '../types/user';
 import type { BlogPost } from '../types/blog';
 import PlayerEmoji from '../components/PlayerEmoji';
+import { track } from '../utils/analytics';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -69,6 +70,13 @@ export default function Dashboard() {
 
     fetchData();
   }, [currentUser, navigate, location]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    track('tab_viewed', {
+      tab_name: tabId
+    });
+  };
 
   if (!currentUser) {
     return (
@@ -163,7 +171,7 @@ export default function Dashboard() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab.id
                     ? 'text-purple-500 border-b-2 border-purple-500'

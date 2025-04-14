@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { track } from '../utils/analytics';
 
 interface StrokeIndices {
   indices: number[];
@@ -65,6 +66,11 @@ export default function StrokeIndexManagement() {
       // Save stroke indices to config
       await setDoc(doc(db, 'config', 'strokeIndices'), {
         indices
+      });
+
+      // Track stroke index update
+      track('stroke_index_changed', {
+        indices: indices
       });
 
       setSuccessMessage('Stroke indices updated successfully!');
