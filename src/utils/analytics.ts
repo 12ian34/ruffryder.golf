@@ -9,11 +9,6 @@ const posthogDebug = import.meta.env.VITE_POSTHOG_DEBUG === 'true';
 
 // Log configuration in development mode
 if (posthogDebug) {
-  console.log('PostHog configuration:');
-  console.log('API Key available:', !!posthogApiKey);
-  console.log('Host:', posthogHost || '(using default)');
-  console.log('Debug mode:', posthogDebug);
-  
   if (!posthogApiKey) {
     console.warn('PostHog API key is missing! Add VITE_POSTHOG_API_KEY to your Netlify environment variables');
   }
@@ -42,10 +37,7 @@ export function track(eventName: string, properties: Record<string, any> = {}) {
 
   // Log tracking in debug mode
   if (posthogDebug) {
-    console.log(`PostHog tracking: ${eventName}`, {
-      ...properties,
-      ...userProperties,
-    });
+    // Intentionally removed console.log for tracking
   }
 
   // Capture the event with combined properties
@@ -67,10 +59,7 @@ export function identifyUser(user: User | null) {
   if (user && user.email) {
     // Log identification in debug mode
     if (posthogDebug) {
-      console.log('PostHog identifying user:', {
-        id: user.uid,
-        email: user.email,
-      });
+      // Intentionally removed console.log for user identification
     }
 
     // Force the distinct_id to be the email to make it more visible in PostHog
@@ -121,7 +110,7 @@ export function identifyUser(user: User | null) {
   } else {
     // Reset identification when user is null
     if (posthogDebug) {
-      console.log('PostHog resetting user identification');
+      // Intentionally removed console.log for reset identification
     }
     posthog.reset();
   }

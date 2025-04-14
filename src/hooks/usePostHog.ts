@@ -21,8 +21,6 @@ export function usePostHog() {
     
     // Check if user state has changed
     if (currentUserId !== previousUserId) {
-      console.log('Auth state changed, identifying user in PostHog');
-      
       // Store current user ID for comparison in next render
       previousUserRef.current = currentUserId;
       

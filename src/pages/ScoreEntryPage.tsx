@@ -27,7 +27,6 @@ export default function ScoreEntryPage() {
         const holeRows = document.querySelectorAll('[data-hole-index]');
         
         if (holeRows.length === 0) {
-          console.log('No hole rows found, trying again...');
           // Try again after a short delay if hole rows aren't found
           setTimeout(scrollToFirstIncompleteHole, 100);
           return;

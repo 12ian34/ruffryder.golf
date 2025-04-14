@@ -161,9 +161,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw { code: 'auth/unverified-email' };
       }
       
-      // Track login in PostHog directly
-      console.log('Tracking login in PostHog directly from auth context:', email);
-      
       // Track the login event
       posthog.capture('user_login', {
         email: email,

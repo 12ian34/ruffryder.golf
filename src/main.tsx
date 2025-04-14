@@ -11,8 +11,6 @@ const posthogDebug = import.meta.env.VITE_POSTHOG_DEBUG === 'true';
 
 // Initialize PostHog if the key is available
 if (posthogKey) {
-  console.log('Initializing PostHog with API key');
-  
   posthog.init(posthogKey, {
     api_host: posthogHost,
     autocapture: true,
@@ -36,8 +34,6 @@ if (posthogKey) {
     property_denylist: ['$current_url', '$pathname'],
     debug: posthogDebug,
     loaded: function(posthogInstance) {
-      console.log('PostHog loaded successfully');
-      
       // Register default properties that will be sent with all events
       posthogInstance.register({
         app_version: '1.0.0',

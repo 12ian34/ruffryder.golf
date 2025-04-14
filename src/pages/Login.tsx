@@ -89,7 +89,6 @@ export default function Login() {
       await signIn(loginEmail, loginPassword);
       
       // Directly track sign-in in PostHog
-      console.log('Tracking login directly from Login component:', loginEmail);
       posthog.capture('login_button_clicked', {
         email: loginEmail,
         $email: loginEmail,
