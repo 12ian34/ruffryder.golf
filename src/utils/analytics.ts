@@ -4,7 +4,6 @@ import posthog from 'posthog-js';
 
 // Log the environment variables to help debug PostHog initialization
 const posthogApiKey = import.meta.env.VITE_POSTHOG_API_KEY;
-const posthogHost = import.meta.env.VITE_POSTHOG_HOST;
 const posthogDebug = import.meta.env.VITE_POSTHOG_DEBUG === 'true';
 
 // Log configuration in development mode
