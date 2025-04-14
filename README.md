@@ -6,7 +6,7 @@ https://ruffryder.golf
 
 web app for live tracking and score keeping for an annual golf tournament with friends
 
-## Screens
+## screens
 
 <table>
   <tr>
@@ -20,145 +20,72 @@ web app for live tracking and score keeping for an annual golf tournament with f
 </table>
 
   
-## Features
+## features
 
-- Tournaments
-  - Create and manage multiple tournaments
-  - Track tournament progress and completion status
-  - Real-time tournament leaderboard
-  - Support for multiple game formats (stroke play and match play)
+### tournaments
+- create and manage multiple tournaments
+- track tournament progress and completion status
+- real-time tournament leaderboard
+- support for multiple game formats (stroke play and match play)
 
-- Real time scoring with handicap support
-  - Real-time score tracking and updates
-  - Handicap scoring support with automatic adjustments
-  - Stroke index management for each hole
-  - Offline mode support with data persistence
-  - Projected scores and current standings
-  - Hole-by-hole score entry and validation
-  - Auto-scrolling score entry interface
-  - Enhanced input validation and error handling
+### real time scoring
+- real-time score tracking and updates
+- handicap scoring support with automatic adjustments
+- stroke index management for each hole
+- offline mode support with data persistence
+- projected scores and current standings
+- hole-by-hole score entry and validation
+- auto-scrolling score entry interface
+- enhanced input validation and error handling
 
-- Player management
-  - Player profiles and statistics
-  - Team assignments (USA vs EUROPE format)
-  - Player handicap tracking
-  - Historical performance data
+### player management
+- player profiles and statistics
+- team assignments (usa vs europe format)
+- player handicap tracking
+- historical performance data
 
-- Game features
-  - Individual game scorecards
-  - Match status tracking (not started, in progress, complete)
-  - Automatic point calculation for both teams
-  - Real-time game status updates
-  - Detailed game statistics and analytics
+### game features
+- individual game scorecards
+- match status tracking (not started, in progress, complete)
+- automatic point calculation for both teams
+- real-time game status updates
+- detailed game statistics and analytics
 
-- UI/UX
-  - Responsive design for mobile and desktop
-  - Dark mode support
-  - Real-time updates and notifications
-  - Offline mode with sync capabilities
-  - Intuitive score entry interface with auto-scroll
-  - Game filtering by status
-  - Enhanced security features
-  - Improved input validation and error handling
+### ui/ux
+- responsive design for mobile and desktop
+- dark mode support
+- real-time updates and notifications
+- offline mode with sync capabilities
+- intuitive score entry interface with auto-scroll
+- game filtering by status
+- enhanced security features
+- improved input validation and error handling
 
-- Admin
-  - Tournament configuration and setup
-  - Stroke index management for courses
-  - User role management (admin/player)
-  - Game completion validation
-  - Tournament progress tracking
+### admin
+- tournament configuration and setup
+- stroke index management for courses
+- user role management (admin/player)
+- game completion validation
+- tournament progress tracking
 
-- Blogging
-  - Tournament news and updates
-  - Rich text editor support
-  - Media embedding capabilities
+### blogging
+- tournament news and updates
+- rich text editor support
+- media embedding capabilities
 
-- Technical features
-  - User authentication and authorization
-  - Real-time data synchronization
-  - Local data persistence
-  - Progressive Web App capabilities
-  - Cross-platform compatibility
+### technical features
+- user authentication and authorization
+- real-time data synchronization
+- local data persistence
+- progressive web app capabilities
+- cross-platform compatibility
 
-## Stack
+## stack
 
-- React
-- TypeScript
-- Vite
-- Tailwind
-- Firebase
-- Chart.js
-- TipTap
-
-## For developers
-
-### Prerequisites
-
-- Node.js 16 or higher
-- npm 7 or higher
-- Firebase account and project
-
-### Develop
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/ruffryder.golf.git
-   cd ruffryder.golf
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file in the root directory and add your Firebase configuration:
-   ```
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Useful commands
-
-- `npx vitest run` - Run tests
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-
-### Project structure
-
-```
-src/
-├── components/     # React components
-├── contexts/      # React contexts
-├── hooks/         # Custom hooks
-├── pages/         # Page components
-├── services/      # API and service functions
-├── types/         # TypeScript type definitions
-└── utils/         # Utility functions
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- react
+- typeScript
+- vite
+- tailwind
+- firebase
+- chart.js
+- tiptap
