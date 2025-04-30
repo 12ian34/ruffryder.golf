@@ -1254,7 +1254,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                           <button
                             disabled={savingHole === index}
                             onClick={() => handleSaveHole(index)}
-                            className="p-2 text-gray-500 hover:text-green-400 transition-all duration-200 group rounded-lg hover:bg-green-900/20 backdrop-blur-sm transform hover:scale-105 active:scale-95 relative"
+                            className="p-2 text-gray-500 hover:text-green-400 transition-all duration-200 group rounded-lg transform hover:scale-105 active:scale-95 relative"
                             title="Save hole scores"
                             aria-label={`Save scores for hole ${hole.holeNumber}`}
                           >
@@ -1278,7 +1278,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
                         {/* Clear button */}
                         <button
                           onClick={() => setShowClearConfirm(index)}
-                          className="p-2 text-gray-500 hover:text-red-400 transition-all duration-200 group rounded-lg hover:bg-red-900/20 backdrop-blur-sm transform hover:scale-105 active:scale-95"
+                          className="p-2 text-gray-500 hover:text-red-400 transition-all duration-200 group rounded-lg transform hover:scale-105 active:scale-95"
                           title="Clear hole scores"
                           aria-label={`Clear scores for hole ${hole.holeNumber}`}
                         >
@@ -1782,7 +1782,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
           <div className="flex justify-end gap-2 sm:gap-3">
             <button
               onClick={onClose}
-              className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-300 hover:text-white font-medium rounded-lg hover:bg-gray-700/50 text-sm sm:text-base transition-colors duration-200"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-300 hover:text-white font-medium rounded-lg text-sm sm:text-base transition-colors duration-200"
               aria-label="Cancel score entry"
             >
               Cancel
@@ -1790,7 +1790,7 @@ export default function ScoreEntry({ gameId, tournamentId, onClose, onSave, useH
             <button
               onClick={handleScoreSubmit}
               disabled={isLoading}
-              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-br from-europe-500 to-europe-600 text-white rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
               aria-label="Save scores"
             >
               {isLoading ? 'Saving...' : 'Save Scores'}
