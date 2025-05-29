@@ -124,7 +124,7 @@ export default function Dashboard() {
 
   const tabs = [
     { id: 'leaderboard', label: 'Leaderboard' },
-    { id: 'games', label: 'Games' },
+    { id: 'games', label: 'My games' },
     { id: 'players', label: 'Players' },
     { id: 'blog', label: 'Blog' },
     { id: 'about', label: 'About' },
