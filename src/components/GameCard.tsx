@@ -116,9 +116,9 @@ export default function GameCard({
   const handleEnterScores = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     navigate(`/score-entry/${initialGame.tournamentId}/${initialGame.id}`, {
-      state: { from: location.pathname }
+      state: { returnToTab: 'games' }
     });
-  }, [navigate, initialGame.tournamentId, initialGame.id, location.pathname]);
+  }, [navigate, initialGame.tournamentId, initialGame.id]);
 
   // Combine game data with handicap data
   const gameWithHandicaps = {

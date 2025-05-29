@@ -16,8 +16,11 @@ export default function ScoreEntryPage() {
   const [error, setError] = useState<string | null>(null);
   const [useHandicaps, setUseHandicaps] = useState(false);
 
-  // Get the previous location from state or default to the current path
-  const previousLocation = location.state?.from || `/score-entry/${tournamentId}/${gameId}`;
+  const handleBackNavigation = () => {
+    // Pass the tab state back to the dashboard so it opens on the games tab
+    const returnToTab = location.state?.returnToTab || 'games';
+    navigate('/dashboard', { state: { activeTab: returnToTab } });
+  };
 
   const scrollToFirstIncompleteHole = () => {
     // Use a longer timeout to ensure the DOM is fully rendered before trying to find and scroll
@@ -160,25 +163,25 @@ export default function ScoreEntryPage() {
     );
   }
 
+  // Regular page mode for mobile/course use
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Enter scores
             </h1>
             <button
-              onClick={() => navigate(previousLocation)}
-              className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
+              onClick={handleBackNavigation}
+              className="text-purple-500 hover:text-purple-600 dark:text-purple-400 font-medium"
             >
-              Back
+              ← Back
             </button>
           </div>
           <ScoreEntry
             gameId={gameId!}
             tournamentId={tournamentId!}
-            onClose={() => navigate(previousLocation)}
+            onClose={handleBackNavigation}
             onSave={async () => {
               // Refresh the game data
               setIsLoading(true);
@@ -189,7 +192,6 @@ export default function ScoreEntryPage() {
             }}
             useHandicaps={useHandicaps}
           />
-        </div>
       </div>
     </div>
   );
