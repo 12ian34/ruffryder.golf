@@ -140,14 +140,16 @@ export default function Login() {
         {/* Sign Up Form */}
         <div className="py-8 px-4 shadow-lg sm:rounded-lg sm:px-10 mb-8 hover:shadow-xl transition-all duration-200">
           <h2 className="text-xl font-semibold mb-6 text-white">Create account</h2>
-          <form onSubmit={handleSignUp} className="space-y-4">
+          <form onSubmit={handleSignUp} className="space-y-4" autoComplete="off">
             <div>
               <label htmlFor="signup-email" className="block text-sm font-medium text-gray-300 mb-1">
                 Email
               </label>
               <input
                 id="signup-email"
+                name="signup-email"
                 type="email"
+                autoComplete="off"
                 value={signupEmail}
                 onChange={(e) => setSignupEmail(e.target.value)}
                 className="w-full bg-gray-800 border-gray-700 text-white rounded-md focus:ring-europe-500 focus:border-europe-500"
@@ -162,7 +164,9 @@ export default function Login() {
               </label>
               <input
                 id="signup-password"
+                name="signup-password"
                 type="password"
+                autoComplete="new-password"
                 value={signupPassword}
                 onChange={(e) => setSignupPassword(e.target.value)}
                 className="w-full bg-gray-800 border-gray-700 text-white rounded-md focus:ring-europe-500 focus:border-europe-500"
@@ -178,7 +182,9 @@ export default function Login() {
               </label>
               <input
                 id="signup-confirm-password"
+                name="signup-confirm-password"
                 type="password"
+                autoComplete="new-password"
                 value={signupConfirmPassword}
                 onChange={(e) => setSignupConfirmPassword(e.target.value)}
                 className="w-full bg-gray-800 border-gray-700 text-white rounded-md focus:ring-europe-500 focus:border-europe-500"
@@ -201,14 +207,16 @@ export default function Login() {
         {/* Sign In Form */}
         <div className="py-8 px-4 shadow-lg sm:rounded-lg sm:px-10 hover:shadow-xl transition-all duration-200">
           <h2 className="text-xl font-semibold mb-6 text-white">Sign in</h2>
-          <form onSubmit={handleSignIn} className="space-y-6">
+          <form onSubmit={handleSignIn} className="space-y-6" autoComplete="on">
             <div>
               <label htmlFor="login-email" className="block text-sm font-medium text-gray-300 mb-1">
                 Email
               </label>
               <input
                 id="login-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full bg-gray-800 border-gray-700 text-white rounded-md focus:ring-europe-500 focus:border-europe-500"
@@ -223,7 +231,9 @@ export default function Login() {
               </label>
               <input
                 id="login-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="w-full bg-gray-800 border-gray-700 text-white rounded-md focus:ring-europe-500 focus:border-europe-500"
