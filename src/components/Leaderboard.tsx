@@ -113,10 +113,31 @@ export default function Leaderboard() {
   useEffect(() => {
     if (!games) return;
 
+    const statusOrder: GameStatus[] = ['in_progress', 'complete', 'not_started'];
+
+    const sortedGames = [...games].sort((a, b) => {
+      const statusAIndex = statusOrder.indexOf(a.status);
+      const statusBIndex = statusOrder.indexOf(b.status);
+
+      if (statusAIndex !== statusBIndex) {
+        return statusAIndex - statusBIndex;
+      }
+
+      if (a.status === 'in_progress') {
+        // Calculate holes completed for game a
+        const holesCompletedA = a.holes.filter(hole => hole.usaPlayerScore !== null && hole.europePlayerScore !== null).length;
+        // Calculate holes completed for game b
+        const holesCompletedB = b.holes.filter(hole => hole.usaPlayerScore !== null && hole.europePlayerScore !== null).length;
+        return holesCompletedB - holesCompletedA; // Sort by most holes completed first
+      }
+
+      return 0; // Keep original order for other statuses or if equal
+    });
+
     if (activeStatus === 'all') {
-      setFilteredGames(games);
+      setFilteredGames(sortedGames);
     } else {
-      setFilteredGames(games.filter(game => game.status === activeStatus));
+      setFilteredGames(sortedGames.filter(game => game.status === activeStatus));
     }
   }, [games, activeStatus]);
 

@@ -85,7 +85,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
       {/* Player Names and Handicaps */}
       <div className="grid grid-cols-2 gap-2 mb-6">
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-950 dark:from-gray-950 dark:to-black p-3 rounded-lg shadow-md border-2 border-usa-500/50 dark:border-usa-600/40 hover:border-usa-500 transition-all">
-          <h3 className="text-sm font-medium text-usa-500 mb-1">USA</h3>
+          <h3 className="text-sm font-medium text-usa-500 mb-1">🇺🇸 USA</h3>
           <div className="flex items-center gap-2">
             <p className="text-lg text-center font-semibold text-white">{game.usaPlayerName}</p>
             {useHandicaps && (
@@ -94,7 +94,7 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
           </div>
         </div>
         <div className="bg-gradient-to-br from-gray-900/80 to-gray-950 dark:from-gray-950 dark:to-black p-3 rounded-lg shadow-md border-2 border-europe-500/50 dark:border-europe-600/40 hover:border-europe-500 transition-all">
-          <h3 className="text-sm font-medium text-europe-500 mb-1">Europe</h3>
+          <h3 className="text-sm font-medium text-europe-500 mb-1">🇪🇺 Europe</h3>
           <div className="flex items-center gap-2">
             <p className="text-lg font-semibold text-white">{game.europePlayerName}</p>
             {useHandicaps && (
