@@ -8,6 +8,7 @@ export interface Matchup {
   europePlayerName: string;
   status: 'pending' | 'in_progress' | 'completed';
   handicapStrokes?: number;
+  fourballId?: string;
 }
 
 export interface TournamentProgress {

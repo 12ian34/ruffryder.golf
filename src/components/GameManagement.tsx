@@ -14,8 +14,9 @@ interface GameManagementProps {
 export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameManagementProps) {
   const isOnline = useOnlineStatus();
   const { activeTournament, isLoading: isLoadingTournament } = useActiveTournament(currentUser?.uid);
-  const { games, handleGameStatusChange, tournamentSettings, isLoading: isLoadingGames } = useGameData(
+  const { games, handleGameStatusChange, tournamentSettings, isLoading: isLoadingGames, userFourballMatchupIds } = useGameData(
     activeTournament?.id,
+    currentUser?.uid,
     linkedPlayerId,
     isAdmin
   );
@@ -47,6 +48,7 @@ export function GameManagement({ currentUser, isAdmin, linkedPlayerId }: GameMan
         useHandicaps={tournamentSettings?.useHandicaps ?? false}
         tournamentSettings={tournamentSettings}
         linkedPlayerId={linkedPlayerId}
+        userFourballMatchupIds={userFourballMatchupIds}
       />
     </div>
   );

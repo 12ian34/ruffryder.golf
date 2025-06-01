@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import ScoreEntry from '../components/ScoreEntry';
+import { getUserFourballMatchups } from '../services/matchupService';
 
 export default function ScoreEntryPage() {
   const { gameId, tournamentId } = useParams<{ gameId: string; tournamentId: string }>();
@@ -15,6 +16,10 @@ export default function ScoreEntryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useHandicaps, setUseHandicaps] = useState(false);
+
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authCheckLoading, setAuthCheckLoading] = useState(true);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   const handleBackNavigation = () => {
     // Pass the tab state back to the dashboard so it opens on the games tab
@@ -73,52 +78,113 @@ export default function ScoreEntryPage() {
     }, 300); // Increased timeout to ensure modal is fully rendered
   };
 
-  const fetchGame = async () => {
-    if (!gameId || !tournamentId) {
-      setError('Game ID or Tournament ID not provided');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Get both game and tournament settings
-      const [gameDoc, tournamentDoc] = await Promise.all([
-        getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId)),
-        getDoc(doc(db, 'tournaments', tournamentId))
-      ]);
-      
-      if (!gameDoc.exists()) {
-        throw new Error('Game not found');
-      }
-
-      const gameData = gameDoc.data() as Game;
-      const tournamentData = tournamentDoc.data();
-      
-      // Use tournament settings if game settings are not explicitly set
-      const effectiveUseHandicaps = gameData.useHandicaps !== undefined 
-        ? gameData.useHandicaps 
-        : tournamentData?.useHandicaps || false;
-      
-      setGame(gameData);
-      setUseHandicaps(effectiveUseHandicaps);
-      
-      // We'll handle scrolling in useEffect after the state update has completed
-    } catch (err: any) {
-      setError(err.message || 'Failed to load game data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!currentUser) {
       navigate('/login');
       return;
     }
 
-    fetchGame();
-  }, [currentUser, gameId, tournamentId, navigate]);
+    // Separate effect for authorization check
+    const checkAuthorization = async () => {
+      if (!currentUser || !tournamentId || !gameId) {
+        setIsAuthorized(false);
+        setAuthCheckLoading(false);
+        setError("Missing critical information for authorization.");
+        return;
+      }
+
+      setAuthCheckLoading(true);
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (!userDocSnap.exists()) {
+          setError('User profile not found.');
+          setIsAuthorized(false);
+          setAuthCheckLoading(false);
+          return;
+        }
+
+        const userData = userDocSnap.data();
+        const isAdmin = userData.isAdmin || false;
+        const linkedPlayerId = userData.linkedPlayerId || null;
+
+        if (isAdmin) {
+          setIsAuthorized(true);
+        } else if (linkedPlayerId) {
+          const fourballMatchups = await getUserFourballMatchups(tournamentId, linkedPlayerId);
+          const canManageThisGame = fourballMatchups.some(matchup => matchup.id === gameId);
+          setIsAuthorized(canManageThisGame);
+          if (!canManageThisGame) {
+            setError("You are not authorized to enter scores for this game.");
+          }
+        } else {
+          setError("Unable to determine your player association for score entry.");
+          setIsAuthorized(false);
+        }
+      } catch (authError: any) {
+        console.error("Error during authorization check:", authError);
+        setError(authError.message || 'Error checking authorization.');
+        setIsAuthorized(false);
+      } finally {
+        setAuthCheckLoading(false);
+      }
+    };
+
+    checkAuthorization();
+  }, [currentUser, tournamentId, gameId, navigate]);
   
+  // Effect for fetching game data, runs after initial currentUser check
+  useEffect(() => {
+    if (!currentUser) return; // Already handled by navigation in the auth check effect
+    
+    // Only fetch game if authorization check is complete and successful (or pending admin)
+    // This can be simplified if checkAuthorization sets an error that stops game fetch
+    
+    // Let's keep fetchGame separate for now and rely on error/loading states
+    // The authorization check will set its own error if needed.
+
+    const fetchGameData = async () => {
+      if (!gameId || !tournamentId) {
+        setError('Game ID or Tournament ID not provided for game fetch.');
+        setIsLoading(false); // For game data loading
+        return;
+      }
+      setIsLoading(true); // For game data loading
+      try {
+        // Get both game and tournament settings
+        const [gameDoc, tournamentDoc] = await Promise.all([
+          getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId)),
+          getDoc(doc(db, 'tournaments', tournamentId))
+        ]);
+        
+        if (!gameDoc.exists()) {
+          throw new Error('Game not found');
+        }
+
+        const gameData = gameDoc.data() as Game;
+        const tournamentData = tournamentDoc.data();
+        
+        const effectiveUseHandicaps = gameData.useHandicaps !== undefined 
+          ? gameData.useHandicaps 
+          : tournamentData?.useHandicaps || false;
+        
+        setGame(gameData);
+        setUseHandicaps(effectiveUseHandicaps);
+        
+      } catch (err: any) {
+        // Preserve auth error if it exists, otherwise set game fetch error
+        if (!error) setError(err.message || 'Failed to load game data');
+      } finally {
+        setIsLoading(false); // For game data loading
+      }
+    };
+    
+    // Fetch game data regardless of initial auth state, display errors appropriately
+    fetchGameData();
+
+  }, [currentUser, gameId, tournamentId, error, refetchTrigger]);
+
   // New effect to scroll to first incomplete hole after game is loaded
   useEffect(() => {
     if (game && !isLoading) {
@@ -131,10 +197,10 @@ export default function ScoreEntryPage() {
     }
   }, [game, isLoading]);
 
-  if (isLoading) {
+  if (isLoading || authCheckLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" data-testid="loading-spinner"></div>
       </div>
     );
   }
@@ -163,6 +229,25 @@ export default function ScoreEntryPage() {
     );
   }
 
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+        <div className="max-w-md mx-auto mt-10 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {error || "You are not authorized to enter scores for this game."}
+          </p>
+          <button
+            onClick={handleBackNavigation}
+            className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+          >
+            ← Back to Games
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Regular page mode for mobile/course use
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
@@ -183,12 +268,11 @@ export default function ScoreEntryPage() {
             tournamentId={tournamentId!}
             onClose={handleBackNavigation}
             onSave={async () => {
-              // Refresh the game data
-              setIsLoading(true);
-              await fetchGame();
-              setIsLoading(false);
-              // Scroll to first incomplete hole after saving
-              scrollToFirstIncompleteHole();
+              // Trigger a refetch of game data
+              setRefetchTrigger(prev => prev + 1);
+              // Scroll to first incomplete hole after saving (might need a slight delay or be part of game loaded effect)
+              // For now, keep it simple. The scrollToFirstIncompleteHole is in a useEffect dependent on `game` and `isLoading`.
+              // So it should trigger once the refetched game data is loaded.
             }}
             useHandicaps={useHandicaps}
           />

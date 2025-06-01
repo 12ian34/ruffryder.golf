@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { Game } from '../types/game';
@@ -39,8 +39,55 @@ export default function GameCard({
     higherHandicapTeam: initialGame.higherHandicapTeam || 'USA'
   });
   const navigate = useNavigate();
-  const location = useLocation();
   const effectiveUseHandicaps = tournamentSettings?.useHandicaps ?? useHandicaps;
+
+  // Helper function to format handicap stroke play difference
+  const getHandicapStrokePlayDifference = (): string | null => {
+    if (!initialGame.isStarted || !effectiveUseHandicaps || !initialGame.strokePlayScore || 
+        initialGame.strokePlayScore.adjustedUSA === undefined || initialGame.strokePlayScore.adjustedEUROPE === undefined) {
+      return null;
+    }
+    const diff = initialGame.strokePlayScore.adjustedUSA - initialGame.strokePlayScore.adjustedEUROPE;
+    if (diff === 0) return "Tied on strokes (with handicap)";
+    const leader = diff < 0 ? "USA" : "EUROPE";
+    const absDiff = Math.abs(diff);
+    return `${leader} ahead by ${absDiff} stroke${absDiff > 1 ? 's' : ''} (with handicap)`;
+  };
+
+  // Helper function to format handicap match play difference
+  const getHandicapMatchPlayDifference = (): string | null => {
+    if (!initialGame.isStarted || !effectiveUseHandicaps || !initialGame.matchPlayScore ||
+        initialGame.matchPlayScore.adjustedUSA === undefined || initialGame.matchPlayScore.adjustedEUROPE === undefined) {
+      return null;
+    }
+    // Match play scores represent holes won.
+    const usaScore = initialGame.matchPlayScore.adjustedUSA;
+    const europeScore = initialGame.matchPlayScore.adjustedEUROPE;
+    
+    if (usaScore === europeScore) return "Tied on holes (with handicap)";
+    
+    const leader = usaScore > europeScore ? "USA" : "EUROPE";
+    const diff = Math.abs(usaScore - europeScore);
+    
+    // Check if game is complete to determine final phrasing
+    if (initialGame.isComplete) {
+        return `${leader} wins ${diff} up (with handicap)`;
+    }
+
+    // Determine remaining holes to phrase like "X Up with Y to play"
+    const completedHolesCount = initialGame.holes.filter(h => h.usaPlayerScore !== null && h.europePlayerScore !== null).length;
+    const totalHolesCount = initialGame.holes.length || 18; // Default to 18 if not specified
+    const remainingHoles = totalHolesCount - completedHolesCount;
+
+    if (diff > remainingHoles && remainingHoles > 0) { // Game should be over if difference > remaining holes
+      return `${leader} wins ${diff} & ${remainingHoles} (with handicap)`;
+    }
+    const absDiff = Math.abs(diff);
+    return `${leader} ahead by ${diff} hole${absDiff > 1 ? 's' : ''} (with handicap)`;
+  };
+  
+  const handicapStrokePlayDifferenceString = getHandicapStrokePlayDifference();
+  const handicapMatchPlayDifferenceString = getHandicapMatchPlayDifference();
 
   const isPlayerInGame = linkedPlayerId && (
     initialGame.usaPlayerId === linkedPlayerId || 
@@ -182,7 +229,24 @@ export default function GameCard({
           
           <GameScoreDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
 
-          {showControls && (isAdmin || isPlayerInGame) && (
+          {/* Display Handicap Differences */}
+          {effectiveUseHandicaps && initialGame.isStarted && (handicapStrokePlayDifferenceString || handicapMatchPlayDifferenceString) && (
+            <div className={`text-center text-xs ${compact ? 'mt-1 mb-1' : 'mt-2 mb-2'} text-gray-400 dark:text-gray-500`}>
+              {handicapStrokePlayDifferenceString && (
+                <p>{handicapStrokePlayDifferenceString}</p>
+              )}
+              {handicapMatchPlayDifferenceString && (
+                <p>{handicapMatchPlayDifferenceString}</p>
+              )}
+            </div>
+          )}
+
+          {/* Controls section: visibility determined by showControls prop passed from GameList,
+              which already incorporates canManageThisGame logic.
+              Individual buttons' presence (onStatusChange, onEnterScores) is also
+              determined by GameList passing those functions conditionally.
+          */}
+          {showControls && (
             <div className="space-y-2 md:max-w-xs mx-auto">
               {!initialGame.isStarted && onStatusChange && (
                 <button
@@ -202,6 +266,7 @@ export default function GameCard({
                 </button>
               )}
 
+              {/* Status change buttons are only rendered if onStatusChange is provided */}
               {onStatusChange && initialGame.isStarted && (
                 <div className="space-y-2">
                   {initialGame.isComplete ? (

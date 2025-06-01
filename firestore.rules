@@ -76,11 +76,13 @@ service cloud.firestore {
         allow update: if isAdmin() || (
           isSignedIn() && 
           getUserLinkedPlayerId() != null && (
-            // Check both existing and new data to ensure player is in the game
+            // Check if player is directly in the game OR in the allowedEditors list (for four-ball support)
             (resource.data.usaPlayerId == getUserLinkedPlayerId() ||
-             resource.data.europePlayerId == getUserLinkedPlayerId()) &&
+             resource.data.europePlayerId == getUserLinkedPlayerId() ||
+             (resource.data.allowedEditors != null && getUserLinkedPlayerId() in resource.data.allowedEditors)) &&
             (request.resource.data.usaPlayerId == getUserLinkedPlayerId() ||
-             request.resource.data.europePlayerId == getUserLinkedPlayerId()) &&
+             request.resource.data.europePlayerId == getUserLinkedPlayerId() ||
+             (request.resource.data.allowedEditors != null && getUserLinkedPlayerId() in request.resource.data.allowedEditors)) &&
             // Ensure all required fields are present and unchanged
             request.resource.data.usaPlayerId == resource.data.usaPlayerId &&
             request.resource.data.europePlayerId == resource.data.europePlayerId &&
@@ -88,6 +90,8 @@ service cloud.firestore {
             request.resource.data.europePlayerName == resource.data.europePlayerName &&
             request.resource.data.tournamentId == resource.data.tournamentId &&
             request.resource.data.playerIds == resource.data.playerIds &&
+            // Ensure allowedEditors field is not tampered with by non-admins
+            (resource.data.allowedEditors == null || request.resource.data.allowedEditors == resource.data.allowedEditors) &&
             // Only allow updating specific fields
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['holes', 'strokePlayScore', 'matchPlayScore', 'points', 'status', 'isStarted', 'isComplete', 'endTime', 'updatedAt'])

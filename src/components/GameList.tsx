@@ -14,6 +14,7 @@ interface GameListProps {
   showStatusFilter?: boolean;
   showControls?: boolean;
   linkedPlayerId: string | null;
+  userFourballMatchupIds?: string[];
 }
 
 export function GameList({ 
@@ -25,7 +26,8 @@ export function GameList({
   tournamentSettings = null,
   showStatusFilter = true,
   showControls = true,
-  linkedPlayerId
+  linkedPlayerId,
+  userFourballMatchupIds
 }: GameListProps) {
   const [gameToComplete, setGameToComplete] = useState<Game | null>(null);
   const [modalKey, setModalKey] = useState(0);
@@ -82,20 +84,23 @@ export function GameList({
       )}
       <div className="grid grid-cols-1 gap-4 w-full max-w-full">
         {filteredGames.map(game => {
-          const isPlayerInGame = linkedPlayerId && 
-            (game.usaPlayerId === linkedPlayerId || game.europePlayerId === linkedPlayerId);
+          // const isPlayerInGame = linkedPlayerId && 
+          //   (game.usaPlayerId === linkedPlayerId || game.europePlayerId === linkedPlayerId);
+          
+          // Determine if current user can manage this specific game
+          const canManageThisGame = isAdmin || (userFourballMatchupIds?.includes(game.id) ?? false);
           
           // Ensure showControls is always a boolean by explicitly checking against false
-          const shouldShowControls = showControls !== false && (isAdmin || isPlayerInGame);
+          const effectiveShowControls = showControls !== false && canManageThisGame;
           
           return (
             <GameCard
               key={game.id}
               game={game}
               isAdmin={isAdmin}
-              onStatusChange={(isAdmin || isPlayerInGame) ? handleGameStatusChange : undefined}
-              onEnterScores={() => {}}
-              showControls={!!shouldShowControls}
+              onStatusChange={canManageThisGame ? handleGameStatusChange : undefined}
+              onEnterScores={canManageThisGame ? () => {} : undefined}
+              showControls={effectiveShowControls}
               useHandicaps={effectiveUseHandicaps}
               tournamentSettings={tournamentSettings}
               linkedPlayerId={linkedPlayerId}

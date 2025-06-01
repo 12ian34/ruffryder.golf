@@ -4,6 +4,8 @@ import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import MatchupCreator from './tournament/MatchupCreator';
 import MatchupList from './tournament/MatchupList';
+import FourballPairing from './tournament/FourballPairing';
+import ExistingFourballsList from './tournament/ExistingFourballsList';
 import type { Player } from '../types/player';
 import type { Game } from '../types/game';
 import type { Tournament, TeamConfig, Matchup } from '../types/tournament';
@@ -112,54 +114,35 @@ export default function TournamentManagement() {
   }, []);
 
   useEffect(() => {
-    if (!selectedTournament) return;
+    if (!selectedTournament?.id) return; // Ensure selectedTournament and its ID exist
 
-    // Set up real-time listener for games
-    const unsubscribe = onSnapshot(
+    // Set up real-time listener for games subcollection
+    const gamesListenerUnsubscribe = onSnapshot(
       collection(db, 'tournaments', selectedTournament.id, 'games'),
       (snapshot) => {
-        const matchupsData = snapshot.docs.map(doc => ({
+        const gamesDataFromSubcollection = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Game[];
         
-        // Update currentMatchups with the latest game data
-        setCurrentMatchups(matchupsData);
+        // Update ONLY currentMatchups (Game[]) with the latest game data from subcollection
+        setCurrentMatchups(gamesDataFromSubcollection);
         
-        // Update selectedTournament's matchups array to match the games
-        setSelectedTournament(prev => {
-          if (!prev) return null;
-          
-          // Create new matchups array from games data
-          const newMatchups = matchupsData.map(game => ({
-            id: game.id,
-            usaPlayerId: game.usaPlayerId,
-            europePlayerId: game.europePlayerId,
-            usaPlayerName: game.usaPlayerName,
-            europePlayerName: game.europePlayerName,
-            status: game.status === 'complete' ? 'completed' as const 
-              : game.status === 'in_progress' ? 'in_progress' as const 
-              : 'pending' as const,
-            handicapStrokes: game.handicapStrokes
-          }));
-
-          return {
-            ...prev,
-            matchups: newMatchups // Replace entire matchups array
-          };
-        });
+        // DO NOT update selectedTournament.matchups here. 
+        // selectedTournament.matchups should be sourced from the Tournament document itself,
+        // which is handled by fetchData and fetchDataForSelectedTournament.
       },
       (error) => {
-        console.error('Error in games listener:', error);
-        toast.error('Failed to get real-time game updates');
+        console.error('Error in games subcollection listener:', error);
+        toast.error('Failed to get real-time game updates from subcollection');
       }
     );
 
     // Clean up subscription on unmount or when selectedTournament changes
     return () => {
-      unsubscribe();
+      gamesListenerUnsubscribe();
     };
-  }, [selectedTournament?.id]);
+  }, [selectedTournament?.id]); // Dependency only on tournament ID
 
   const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -622,6 +605,56 @@ export default function TournamentManagement() {
     }
   };
 
+  // Function to explicitly refetch data for the selected tournament
+  const fetchDataForSelectedTournament = async (tournamentId: string) => {
+    setIsLoading(true);
+    try {
+      const tournamentDocRef = doc(db, 'tournaments', tournamentId);
+      const tournamentSnap = await getDoc(tournamentDocRef);
+
+      if (tournamentSnap.exists()) {
+        const tournamentData = tournamentSnap.data();
+        const updatedTournamentObject = {
+          id: tournamentSnap.id,
+          name: tournamentData.name || '',
+          year: tournamentData.year || new Date().getFullYear(),
+          isActive: tournamentData.isActive || false,
+          useHandicaps: tournamentData.useHandicaps || false,
+          teamConfig: tournamentData.teamConfig || 'USA_VS_EUROPE',
+          totalScore: tournamentData.totalScore || { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } },
+          projectedScore: tournamentData.projectedScore || { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } },
+          progress: tournamentData.progress || [],
+          matchups: tournamentData.matchups || [], // This is the key array to update
+          createdAt: tournamentData.createdAt?.toDate ? tournamentData.createdAt.toDate().toISOString() : new Date().toISOString(),
+          updatedAt: tournamentData.updatedAt?.toDate ? tournamentData.updatedAt.toDate().toISOString() : new Date().toISOString(),
+        } as Tournament;
+        setSelectedTournament(updatedTournamentObject);
+
+        // Also refetch games for consistency, though matchups array on Tournament doc is the source of truth for pairings
+        const gamesSnapshot = await getDocs(
+          collection(db, 'tournaments', tournamentId, 'games')
+        );
+        const gamesData = gamesSnapshot.docs.map(gDoc => ({
+          id: gDoc.id,
+          ...gDoc.data()
+        })) as Game[];
+        setCurrentMatchups(gamesData);
+        
+        // Update the main tournaments list as well if this tournament was updated
+        setTournaments(prevTournaments => prevTournaments.map(t => t.id === tournamentId ? updatedTournamentObject : t));
+
+      } else {
+        showErrorToast(`Tournament ${tournamentId} not found while refetching.`);
+        setSelectedTournament(null);
+      }
+    } catch (error) {
+      console.error("Error refetching selected tournament data:", error);
+      showErrorToast('Failed to refresh tournament data.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -856,6 +889,25 @@ export default function TournamentManagement() {
           />
         </div>
       )}
+
+      {/* Fourball Pairing Section */}
+      {isAdmin && selectedTournament && (
+        <FourballPairing 
+          tournamentId={selectedTournament.id}
+          allMatchups={selectedTournament.matchups || []}
+          onPairingComplete={() => fetchDataForSelectedTournament(selectedTournament.id)}
+        />
+      )}
+
+      {/* Existing Fourballs List Section - Added */}
+      {isAdmin && selectedTournament && (
+        <ExistingFourballsList
+          tournamentId={selectedTournament.id}
+          allMatchups={selectedTournament.matchups || []}
+          onUnpairComplete={() => fetchDataForSelectedTournament(selectedTournament.id)}
+        />
+      )}
+
     </div>
   );
 }

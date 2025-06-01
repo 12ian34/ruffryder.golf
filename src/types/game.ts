@@ -58,6 +58,7 @@ export interface Game {
   useHandicaps?: boolean;
   status: GameStatus;
   updatedAt?: any;
+  allowedEditors?: string[];
 }
 
 export interface TournamentSettings {

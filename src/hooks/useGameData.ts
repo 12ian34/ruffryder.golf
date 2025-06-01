@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { collection, doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, serverTimestamp, getDoc, getDocs } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import type { Game, TournamentSettings, GameStatus } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
+import { getUserFourballMatchups } from '../services/matchupService';
 
-export function useGameData(tournamentId: string | undefined, linkedPlayerId: string | null, isAdmin: boolean) {
+export function useGameData(
+  tournamentId: string | undefined,
+  currentUserId: string | null,
+  linkedPlayerId: string | null,
+  isAdmin: boolean
+) {
   const [games, setGames] = useState<Game[]>([]);
   const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userFourballMatchupIds, setUserFourballMatchupIds] = useState<string[]>([]);
   const isMounted = useRef(true);
   const authStateRef = useRef<boolean>(!!auth.currentUser);
   const listenersRef = useRef<{
@@ -27,6 +34,44 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
     };
   }, []);
 
+  const formatGameData = (id: string, data: any, tournamentId: string): Game => {
+    return {
+      ...data,
+      id,
+      tournamentId,
+      playerIds: data.playerIds || [],
+      points: data.points || {
+        raw: { USA: 0, EUROPE: 0 },
+        adjusted: { USA: 0, EUROPE: 0 }
+      },
+      status: data.status || 'not_started',
+      isStarted: data.isStarted || false,
+      isComplete: data.isComplete || false,
+      startTime: data.startTime?.toDate ? data.startTime.toDate() : undefined,
+      endTime: data.endTime?.toDate ? data.endTime.toDate() : undefined,
+      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
+    } as Game;
+  };
+
+  const sortGames = useCallback((gamesToSort: Game[]): Game[] => {
+    return [...gamesToSort].sort((a, b) => {
+      const isPlayerInGameA = linkedPlayerId && a.playerIds?.includes(linkedPlayerId);
+      const isPlayerInGameB = linkedPlayerId && b.playerIds?.includes(linkedPlayerId);
+
+      if (isPlayerInGameA !== isPlayerInGameB) {
+        return isPlayerInGameA ? -1 : 1;
+      }
+
+      if (a.isComplete !== b.isComplete) {
+        return a.isComplete ? 1 : -1;
+      }
+      if (a.isStarted !== b.isStarted) {
+        return a.isStarted ? -1 : 1;
+      }
+      return (a.usaPlayerName || '').localeCompare(b.usaPlayerName || '');
+    });
+  }, [linkedPlayerId]);
+
   useEffect(() => {
     if (!tournamentId) {
       setGames([]);
@@ -40,7 +85,6 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
         listenersRef.current.games();
         listenersRef.current.games = undefined;
       }
-      // Then clean up tournament listener
       if (listenersRef.current.tournament) {
         listenersRef.current.tournament();
         listenersRef.current.tournament = undefined;
@@ -59,59 +103,87 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
 
       setIsLoading(true);
 
-      // Set up real-time listener for tournament settings
       const tournamentRef = doc(db, 'tournaments', tournamentId);
-      listenersRef.current.tournament = onSnapshot(tournamentRef, (doc) => {
-        if (!isMounted.current || !authStateRef.current) {
-          return;
-        }
+      listenersRef.current.tournament = onSnapshot(tournamentRef, async (tournamentDoc) => {
+        if (!isMounted.current || !authStateRef.current) return;
 
-        if (doc.exists()) {
-          const tournamentData = doc.data();
+        if (tournamentDoc.exists()) {
+          const tournamentDocData = tournamentDoc.data();
           const settings = {
-            id: doc.id,
-            useHandicaps: tournamentData.useHandicaps || false,
-            handicapStrokes: tournamentData.handicapStrokes || 0,
-            higherHandicapTeam: tournamentData.higherHandicapTeam || 'USA'
+            id: tournamentDoc.id,
+            useHandicaps: tournamentDocData.useHandicaps || false,
+            handicapStrokes: tournamentDocData.handicapStrokes || 0,
+            higherHandicapTeam: tournamentDocData.higherHandicapTeam || 'USA'
           };
           setTournamentSettings(settings);
 
-          // Set up real-time listener for games only after tournament data is loaded
-          const gamesRef = collection(db, 'tournaments', tournamentId, 'games');
-          listenersRef.current.games = onSnapshot(gamesRef, (snapshot) => {
-            if (!isMounted.current || !authStateRef.current) {
-              return;
-            }
+          if (listenersRef.current.games) {
+            listenersRef.current.games();
+            listenersRef.current.games = undefined;
+          }
 
-            const gamesData = snapshot.docs.map(doc => {
-              const data = doc.data();
-              return {
-                ...data,
-                id: doc.id,
-                tournamentId,
-                playerIds: data.playerIds || [],
-                points: data.points || {
-                  raw: { USA: 0, EUROPE: 0 },
-                  adjusted: { USA: 0, EUROPE: 0 }
-                },
-                status: data.status || 'not_started',
-                isStarted: data.isStarted || false,
-                isComplete: data.isComplete || false
-              } as Game;
+          if (isAdmin) {
+            const gamesCollRef = collection(db, 'tournaments', tournamentId, 'games');
+            listenersRef.current.games = onSnapshot(gamesCollRef, (snapshot) => {
+              if (!isMounted.current || !authStateRef.current) return;
+              const gamesData = snapshot.docs.map(gameDoc => formatGameData(gameDoc.id, gameDoc.data(), tournamentId));
+              // console.log('[Admin] Fetched games:', gamesData.length);
+              setGames(sortGames(gamesData));
+              setUserFourballMatchupIds([]);
+              setIsLoading(false);
+            }, (error) => {
+              if (!isMounted.current || !authStateRef.current) return;
+              console.error('Error in admin games listener:', error);
+              setGames([]);
+              setUserFourballMatchupIds([]);
+              setIsLoading(false);
             });
-            // Sort games before setting state
-            const sortedGames = sortGames(gamesData);
-            setGames(sortedGames);
-            setIsLoading(false);
-          }, (error) => {
-            if (!isMounted.current || !authStateRef.current) return;
-            console.error('Error in games listener:', error);
+          } else if (currentUserId && linkedPlayerId) {
+            console.log(`[useGameData] Non-admin. Tournament ID: ${tournamentId}, Current User ID (Auth): ${currentUserId}, Linked Player ID (DB): ${linkedPlayerId}`); // DEBUG LOG
+            try {
+              const userFourballMatchups = await getUserFourballMatchups(tournamentId, linkedPlayerId);
+              console.log('[useGameData] userFourballMatchups:', userFourballMatchups); // DEBUG LOG
+
+              const gameIdsToFetch = userFourballMatchups.map(m => m.id);
+              setUserFourballMatchupIds(gameIdsToFetch);
+              console.log('[useGameData] gameIdsToFetch (and userFourballMatchupIds):', gameIdsToFetch); // DEBUG LOG
+
+              if (gameIdsToFetch.length === 0) {
+                console.log('[useGameData] No game IDs to fetch for user.'); // DEBUG LOG
+                setGames([]);
+                setIsLoading(false);
+                return;
+              }
+
+              const gamePromises = gameIdsToFetch.map(gameId =>
+                getDoc(doc(db, 'tournaments', tournamentId, 'games', gameId))
+              );
+              const gameDocSnaps = await Promise.all(gamePromises);
+              const fetchedGames = gameDocSnaps
+                .filter(snap => snap.exists())
+                .map(snap => formatGameData(snap.id, snap.data(), tournamentId));
+              
+              console.log('[useGameData] Fetched games for user:', fetchedGames); // DEBUG LOG
+              
+              setGames(sortGames(fetchedGames));
+              setIsLoading(false);
+
+            } catch (error) {
+              console.error('[useGameData] Error fetching user fourball games:', error); // DEBUG LOG with prefix
+              setGames([]);
+              setUserFourballMatchupIds([]);
+              setIsLoading(false);
+            }
+          } else {
+            console.log('[useGameData] Not admin, or missing currentUserId or linkedPlayerId.'); // DEBUG LOG
             setGames([]);
+            setUserFourballMatchupIds([]);
             setIsLoading(false);
-          });
+          }
         } else {
           setTournamentSettings(null);
           setGames([]);
+          setUserFourballMatchupIds([]);
           setIsLoading(false);
         }
       }, (error) => {
@@ -119,53 +191,33 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
         console.error('Error in tournament settings listener:', error);
         setTournamentSettings(null);
         setGames([]);
+        setUserFourballMatchupIds([]);
         setIsLoading(false);
       });
     };
 
-    // Set up auth state change listener first
     listenersRef.current.auth = auth.onAuthStateChanged((user) => {
-      if (!isMounted.current) {
-        return;
-      }
-      
-      // Update auth state ref
+      if (!isMounted.current) return;
       const newAuthState = !!user;
-      
-      // Only clean up and re-setup if auth state actually changed or it's the initial setup
       if (authStateRef.current !== newAuthState || !listenersRef.current.tournament) {
         authStateRef.current = newAuthState;
-        
-        // Clean up existing listeners first
         cleanupListeners();
-        
         if (user) {
-          // Small delay to ensure auth state is fully registered before setting up listeners
-          setTimeout(() => {
-            if (isMounted.current) {
-              setupListeners();
-            }
-          }, 100);
+          setTimeout(() => { if (isMounted.current) setupListeners(); }, 100);
         } else {
           setTournamentSettings(null);
           setGames([]);
+          setUserFourballMatchupIds([]);
           setIsLoading(false);
         }
       }
     });
 
-    // Initial setup if already authenticated - but wait a short moment
-    // to ensure auth state is fully initialized
     if (auth.currentUser) {
       authStateRef.current = true;
-      setTimeout(() => {
-        if (isMounted.current) {
-          setupListeners();
-        }
-      }, 100);
+       setTimeout(() => { if (isMounted.current) setupListeners(); }, 100);
     }
 
-    // Cleanup function
     return () => {
       cleanupListeners();
       if (listenersRef.current.auth) {
@@ -174,105 +226,49 @@ export function useGameData(tournamentId: string | undefined, linkedPlayerId: st
       }
       authStateRef.current = false;
     };
-  }, [tournamentId]);
-
-  const sortGames = useCallback((games: Game[]): Game[] => {
-    return [...games].sort((a, b) => {
-      // First check if either game has the linked player
-      const isPlayerInGameA = linkedPlayerId && a.playerIds?.includes(linkedPlayerId);
-      const isPlayerInGameB = linkedPlayerId && b.playerIds?.includes(linkedPlayerId);
-      
-      if (isPlayerInGameA !== isPlayerInGameB) {
-        return isPlayerInGameA ? -1 : 1;
-      }
-      
-      // If both games have the same player status, use the original sorting logic
-      if (a.isComplete !== b.isComplete) {
-        return a.isComplete ? 1 : -1;
-      }
-      if (a.isStarted !== b.isStarted) {
-        return a.isStarted ? -1 : 1;
-      }
-      return a.usaPlayerName.localeCompare(b.usaPlayerName);
-    });
-  }, [linkedPlayerId]);
+  }, [tournamentId, currentUserId, linkedPlayerId, isAdmin]);
 
   const handleGameStatusChange = useCallback(async (game: Game, newStatus: GameStatus) => {
-    if (!tournamentId || !tournamentSettings?.id) {
-      throw new Error('Missing required IDs');
+    if (!tournamentId) return;
+    const gameRef = doc(db, 'tournaments', tournamentId, 'games', game.id);
+    const updateData: any = { 
+      status: newStatus,
+      updatedAt: serverTimestamp()
+    };
+
+    if (newStatus === 'in_progress' && !game.isStarted) {
+      updateData.isStarted = true;
+      updateData.startTime = serverTimestamp(); 
+    } else if (newStatus === 'complete' && !game.isComplete) {
+      updateData.isComplete = true;
+      updateData.endTime = serverTimestamp();
+      if (!game.isStarted) {
+        updateData.isStarted = true;
+        updateData.startTime = game.startTime || serverTimestamp();
+      }
+    } else if (newStatus === 'not_started') {
+        updateData.isStarted = false;
+        updateData.isComplete = false;
     }
-
-    if (!game.id) {
-      throw new Error('Game ID is required');
-    }
-
-    // Check if user is admin or a player in the game
-    const isPlayerInGame = linkedPlayerId && game.playerIds?.includes(linkedPlayerId);
-
-    if (!isAdmin && !isPlayerInGame) {
-      throw new Error('Permission denied: User is neither admin nor player in game');
-    }
-
-    // Only allow actual game statuses, not 'all'
-    if (newStatus === 'all') {
-      throw new Error('Invalid status: all');
-    }
-
+    
     try {
-      const gameRef = doc(db, 'tournaments', tournamentId, 'games', game.id);
+      await updateDoc(gameRef, updateData);
       
-      // Validate we have all required fields before updating
-      if (!game.usaPlayerId || !game.europePlayerId || !game.usaPlayerName || !game.europePlayerName) {
-        throw new Error('Missing required game fields');
-      }
+      const gamesCollectionRef = collection(db, 'tournaments', tournamentId, 'games');
+      await getDocs(gamesCollectionRef);
+      
+      await updateTournamentScores(tournamentId);
 
-      await updateDoc(gameRef, {
-        // Preserve existing fields
-        usaPlayerId: game.usaPlayerId,
-        europePlayerId: game.europePlayerId,
-        usaPlayerName: game.usaPlayerName,
-        europePlayerName: game.europePlayerName,
-        tournamentId: game.tournamentId,
-        playerIds: game.playerIds || [],
-        // Update status fields
-        status: newStatus,
-        isStarted: newStatus !== 'not_started',
-        isComplete: newStatus === 'complete',
-        // If moving back to in_progress, ensure points don't count in total
-        points: newStatus === 'in_progress' ? {
-          raw: { USA: 0, EUROPE: 0 },
-          adjusted: { USA: 0, EUROPE: 0 }
-        } : (game.points || {
-          raw: { USA: 0, EUROPE: 0 },
-          adjusted: { USA: 0, EUROPE: 0 }
-        }),
-        updatedAt: serverTimestamp()
-      });
-
-      // Only update tournament scores if user is admin
-      if (isAdmin) {
-        await updateTournamentScores(tournamentId);
-      }
-    } catch (error: any) {
-      console.error('Error updating game status:', error);
-      console.error('Error details:', {
-        errorCode: error.code,
-        errorMessage: error.message,
-        gameId: game.id || '',
-        tournamentId,
-        isAdmin,
-        isPlayerInGame: isPlayerInGame,
-        linkedPlayerId,
-        game: JSON.stringify(game)
-      });
-      throw error; // Re-throw to let caller handle the error
+    } catch (error) {
+      console.error('Error updating game status or tournament scores:', error);
     }
-  }, [tournamentId, tournamentSettings, linkedPlayerId, isAdmin]);
+  }, [tournamentId]);
 
   return useMemo(() => ({
     games,
     handleGameStatusChange,
     tournamentSettings,
-    isLoading
-  }), [games, handleGameStatusChange, tournamentSettings, isLoading]);
+    isLoading,
+    userFourballMatchupIds
+  }), [games, handleGameStatusChange, tournamentSettings, isLoading, userFourballMatchupIds]);
 }
