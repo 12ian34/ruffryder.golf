@@ -107,7 +107,7 @@ export default function Dashboard() {
   const tabs = [
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'games', label: 'My games' },
-    { id: 'players', label: 'Players' },
+    { id: 'players', label: 'Stats' },
     { id: 'about', label: 'About' },
     ...(userData?.isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
