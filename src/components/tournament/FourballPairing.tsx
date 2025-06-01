@@ -86,7 +86,6 @@ export default function FourballPairing({ tournamentId, allMatchups, onPairingCo
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {matchup.usaPlayerName} vs {matchup.europePlayerName}
                 </span>
-                 <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">ID: {matchup.id.substring(0,6)}...</span>
               </label>
             </div>
           ))}

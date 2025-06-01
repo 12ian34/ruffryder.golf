@@ -77,7 +77,7 @@ export default function ExistingFourballsList({ tournamentId, allMatchups, onUnp
           <div key={group.fourballId} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
             <div className="flex justify-between items-center mb-3">
               <h4 className="text-md font-semibold text-purple-700 dark:text-purple-400">
-                Fourball ID: <span className="font-mono text-xs">{group.fourballId.substring(0,8)}...</span>
+                Fourball Pairing
               </h4>
               <button
                 onClick={() => handleUnpair(group.fourballId)}
@@ -101,7 +101,6 @@ export default function ExistingFourballsList({ tournamentId, allMatchups, onUnp
               {group.matchups.map(matchup => (
                 <li key={matchup.id} className="text-sm p-2 bg-white dark:bg-gray-600 rounded shadow-sm">
                   <span className="font-medium text-gray-800 dark:text-gray-200">{matchup.usaPlayerName} vs {matchup.europePlayerName}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(ID: {matchup.id.substring(0,6)}...)</span>
                 </li>
               ))}
             </ul>
