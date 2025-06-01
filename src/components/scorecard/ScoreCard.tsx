@@ -1,13 +1,9 @@
 interface ScoreCardProps {
   currentScore: { USA: number, EUROPE: number };
   projectedScore: { USA: number, EUROPE: number };
-  totalStrokes: { USA: number, EUROPE: number };
-  rawStrokes: { USA: number, EUROPE: number };
-  totalHoles: { USA: number, EUROPE: number };
-  useHandicaps: boolean;
 }
 
-export default function ScoreCard({ currentScore, projectedScore, totalStrokes, rawStrokes, totalHoles, useHandicaps }: ScoreCardProps) {
+export default function ScoreCard({ currentScore, projectedScore }: ScoreCardProps) {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black rounded-lg shadow-lg border-2 border-gray-800/50 dark:border-gray-700/50 p-4 sm:p-6 backdrop-blur-sm backdrop-filter">
@@ -47,51 +43,7 @@ export default function ScoreCard({ currentScore, projectedScore, totalStrokes, 
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-800/50 dark:border-gray-700/50">
-          <h3 className="text-sm font-medium text-gray-400 dark:text-gray-400 mb-2 text-center">
-            🏌️‍♀️ Strokes hit
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="bg-gradient-to-br from-usa-900/60 to-usa-950/60 dark:from-usa-900/40 dark:to-black/40 rounded-lg p-2 border border-usa-500/30 dark:border-usa-600/20">
-              <div className={`text-2xl font-semibold ${totalStrokes.USA < totalStrokes.EUROPE ? 'text-usa-400' : 'text-gray-400'}`}>
-                {totalStrokes.USA}
-                {useHandicaps && (
-                  <span className="text-sm text-gray-400 dark:text-gray-400 ml-2">({rawStrokes.USA})</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-400 dark:text-gray-400">USA</div>
-            </div>
-            <div className="bg-gradient-to-br from-europe-900/60 to-europe-950/60 dark:from-europe-900/40 dark:to-black/40 rounded-lg p-2 border border-europe-500/30 dark:border-europe-600/20">
-              <div className={`text-2xl font-semibold ${totalStrokes.EUROPE < totalStrokes.USA ? 'text-europe-400' : 'text-gray-400'}`}>
-                {totalStrokes.EUROPE}
-                {useHandicaps && (
-                  <span className="text-sm text-gray-400 dark:text-gray-400 ml-2">({rawStrokes.EUROPE})</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-400 dark:text-gray-400">EUROPE</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-gray-800/50 dark:border-gray-700/50">
-          <h3 className="text-sm font-medium text-gray-400 dark:text-gray-400 mb-2 text-center">
-            ⛳️ Holes won
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="bg-gradient-to-br from-usa-900/60 to-usa-950/60 dark:from-usa-900/40 dark:to-black/40 rounded-lg p-2 border border-usa-500/30 dark:border-usa-600/20">
-              <div className={`text-2xl font-semibold ${totalHoles.USA > totalHoles.EUROPE ? 'text-usa-400' : 'text-gray-400'}`}>
-                {totalHoles.USA}
-              </div>
-              <div className="text-xs text-gray-400 dark:text-gray-400">USA</div>
-            </div>
-            <div className="bg-gradient-to-br from-europe-900/60 to-europe-950/60 dark:from-europe-900/40 dark:to-black/40 rounded-lg p-2 border border-europe-500/30 dark:border-europe-600/20">
-              <div className={`text-2xl font-semibold ${totalHoles.EUROPE > totalHoles.USA ? 'text-europe-400' : 'text-gray-400'}`}>
-                {totalHoles.EUROPE}
-              </div>
-              <div className="text-xs text-gray-400 dark:text-gray-400">EUROPE</div>
-            </div>
-          </div>
-        </div>
+        {/* Strokes hit and Holes won sections removed from here */}
       </div>
     </div>
   );

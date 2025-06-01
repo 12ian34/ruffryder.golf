@@ -165,10 +165,6 @@ export default function Leaderboard() {
               : (tournament.projectedScore.raw || { USA: 0, EUROPE: 0 }))
             : { USA: 0, EUROPE: 0 }
           }
-          totalStrokes={totalStrokes}
-          rawStrokes={rawStrokes}
-          totalHoles={totalHoles}
-          useHandicaps={tournament.useHandicaps}
         />
         {!isOnline && (
           <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-medium">
@@ -196,6 +192,18 @@ export default function Leaderboard() {
           />
         </div>
       )}
+
+      <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
+        <div>
+          Strokes Hit: USA {totalStrokes.USA}
+          {tournament.useHandicaps && ` (Raw: ${rawStrokes.USA})`}
+          {' '}| EUR {totalStrokes.EUROPE}
+          {tournament.useHandicaps && ` (Raw: ${rawStrokes.EUROPE})`}
+        </div>
+        <div>
+          Holes Won: USA {totalHoles.USA} | EUR {totalHoles.EUROPE}
+        </div>
+      </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
