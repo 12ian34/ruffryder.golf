@@ -19,9 +19,10 @@ export default function PlayerManagement() {
     toggleSort
   } = usePlayerData(undefined);
 
-  const onSavePlayer = async (playerId: string | null, updates: Partial<Player>) => {
+  const onSaveModal = async (playerId: string | null, updates: Partial<Player>) => {
     await handleSavePlayer(playerId, updates);
-    showSuccessToast(`Player ${playerId ? 'updated' : 'created'} successfully!`);
+    showSuccessToast(`Player data ${playerId ? 'updated' : 'created'} successfully!`);
+    setShowEditModal(false);
   };
 
   const onDeletePlayer = async (playerId: string) => {
@@ -33,6 +34,14 @@ export default function PlayerManagement() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        Error loading player data: {error}
       </div>
     );
   }
@@ -52,12 +61,6 @@ export default function PlayerManagement() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
       <PlayerTable
         players={players}
         sortField={sortField}
@@ -74,7 +77,7 @@ export default function PlayerManagement() {
         <PlayerEditModal
           player={selectedPlayer}
           onClose={() => setShowEditModal(false)}
-          onSave={onSavePlayer}
+          onSave={onSaveModal}
         />
       )}
     </div>
