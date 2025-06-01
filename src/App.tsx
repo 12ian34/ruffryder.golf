@@ -7,10 +7,6 @@ import { usePostHog } from './hooks/usePostHog';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import Blog from './pages/Blog';
-import BlogPost from './pages/BlogPost';
-import NewBlogPost from './pages/NewBlogPost';
-import EditBlogPost from './pages/EditBlogPost';
 import About from './pages/About';
 import PasswordResetComplete from './pages/PasswordResetComplete';
 import ScoreEntryPage from './pages/ScoreEntryPage';
@@ -44,10 +40,6 @@ function AppContent() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/password-reset-complete" element={<PasswordResetComplete />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/new" element={<NewBlogPost />} />
-          <Route path="/blog/edit/:postId" element={<EditBlogPost />} />
-          <Route path="/blog/:postId" element={<BlogPost />} />
           <Route path="/about" element={<About />} />
           <Route path="/score-entry/:tournamentId/:gameId" element={<ScoreEntryPage />} />
         </Routes>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, doc, updateDoc, getDocs, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, doc, updateDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import type { User } from '../types/user';
@@ -89,12 +89,6 @@ export default function UserManagement() {
       
       // Delete user's data from Firestore
       await deleteDoc(doc(db, 'users', user.id));
-
-      // Delete any associated blog posts
-      const postsQuery = query(collection(db, 'blog-posts'), where('authorId', '==', user.id));
-      const postsSnapshot = await getDocs(postsQuery);
-      const deletePromises = postsSnapshot.docs.map(doc => deleteDoc(doc.ref));
-      await Promise.all(deletePromises);
 
       // Update local state
       setUsers(prev => prev.filter(u => u.id !== user.id));
@@ -231,7 +225,6 @@ export default function UserManagement() {
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
               Are you sure you want to delete {userToDelete.name}'s account? This action cannot be undone.
-              All associated data, including blog posts, will be permanently deleted.
             </p>
             <div className="flex justify-end space-x-4">
               <button

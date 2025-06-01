@@ -106,33 +106,5 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-
-    // Blog rules
-    match /blog-posts/{postId} {
-      allow read: if isSignedIn();
-      
-      allow create: if isAdmin() && 
-        request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt', 'updatedAt']) &&
-        request.resource.data.authorId == request.auth.uid &&
-        request.resource.data.title is string &&
-        request.resource.data.title.size() <= 200 &&
-        request.resource.data.content is string &&
-        request.resource.data.content.size() <= 10000 &&
-        request.resource.data.createdAt is timestamp &&
-        request.resource.data.updatedAt is timestamp;
-      
-      allow update: if isAdmin() && 
-        request.auth.uid == resource.data.authorId &&
-        request.resource.data.keys().hasAll(['title', 'content', 'authorId', 'createdAt', 'updatedAt']) &&
-        request.resource.data.title is string &&
-        request.resource.data.title.size() <= 200 &&
-        request.resource.data.content is string &&
-        request.resource.data.content.size() <= 10000 &&
-        request.resource.data.createdAt is timestamp &&
-        request.resource.data.updatedAt is timestamp &&
-        request.resource.data.updatedAt > resource.data.updatedAt;
-      
-      allow delete: if isAdmin() && request.auth.uid == resource.data.authorId;
-    }
   }
 }

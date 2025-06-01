@@ -108,6 +108,9 @@ export async function unpairFourball(tournamentId: string, fourballIdToUnpair: s
       throw new Error(`Tournament data or matchups array is missing for ID ${tournamentId}.`);
     }
 
+    // Get the matchups that will be unpaired before updating
+    const matchupsToUnpair = tournamentData.matchups.filter(m => m.fourballId === fourballIdToUnpair);
+
     let matchupsUnpairedCount = 0;
     const updatedMatchups = tournamentData.matchups.map(m => {
       if (m.fourballId === fourballIdToUnpair) {
@@ -126,8 +129,26 @@ export async function unpairFourball(tournamentId: string, fourballIdToUnpair: s
     await updateDoc(tournamentRef, { matchups: updatedMatchups });
     console.log(`${matchupsUnpairedCount} matchup(s) with fourballId ${fourballIdToUnpair} have been unpaired in tournament ${tournamentId}.`);
 
-    // Update game permissions to remove allowedEditors for unpaired games
-    await updateGamePermissionsForFourball(tournamentId);
+    // Update game permissions only for the games that were just unpaired
+    // Remove allowedEditors from these specific games
+    for (const matchup of matchupsToUnpair) {
+      const gameRef = doc(db, 'tournaments', tournamentId, 'games', matchup.id);
+      try {
+        const gameSnap = await getDoc(gameRef);
+        if (gameSnap.exists()) {
+          const gameData = gameSnap.data();
+          if (gameData.allowedEditors) {
+            // Remove the allowedEditors field by updating without it
+            const { allowedEditors, ...gameDataWithoutAllowedEditors } = gameData;
+            await updateDoc(gameRef, gameDataWithoutAllowedEditors);
+            console.log(`Removed allowedEditors from game ${matchup.id} (unpaired from fourball)`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error removing allowedEditors from game ${matchup.id}:`, error);
+        // Continue with other games even if one fails
+      }
+    }
 
   } catch (error) {
     console.error(`Error unpairing fourball ${fourballIdToUnpair} in tournament ${tournamentId}:`, error);

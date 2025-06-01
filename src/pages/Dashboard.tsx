@@ -5,13 +5,11 @@ import Leaderboard from '../components/Leaderboard';
 import PlayerStats from '../components/PlayerStats';
 import { GameManagement } from '../components/GameManagement';
 import AdminPanel from '../components/AdminPanel';
-import BlogList from '../components/blog/BlogList';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 import About from './About';
-import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
-import type { BlogPost } from '../types/blog';
 import PlayerEmoji from '../components/PlayerEmoji';
 import { track } from '../utils/analytics';
 
@@ -23,7 +21,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('leaderboard');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [posts, setPosts] = useState<BlogPost[]>([]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -39,28 +36,13 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       try {
-        const [userDoc, postsSnapshot] = await Promise.all([
-          getDoc(doc(db, 'users', currentUser.uid)),
-          getDocs(query(
-            collection(db, 'blog-posts'),
-            where('status', '==', 'published'),
-            orderBy('publishedAt', 'desc')
-          ))
-        ]);
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
 
         if (userDoc.exists()) {
           setUserData(userDoc.data() as User);
         } else {
           setError('User data not found');
         }
-
-        const postsData = postsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          publishedAt: doc.data().publishedAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-        })) as BlogPost[];
-        setPosts(postsData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -126,7 +108,6 @@ export default function Dashboard() {
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'games', label: 'My games' },
     { id: 'players', label: 'Players' },
-    { id: 'blog', label: 'Blog' },
     { id: 'about', label: 'About' },
     ...(userData?.isAdmin ? [{ id: 'admin', label: 'Admin' }] : [])
   ];
@@ -195,7 +176,6 @@ export default function Dashboard() {
             linkedPlayerId={userData.linkedPlayerId}
           />
         )}
-        {activeTab === 'blog' && <BlogList posts={posts} />}
         {activeTab === 'admin' && userData?.isAdmin && <AdminPanel />}
         {activeTab === 'about' && <About />}
       </main>

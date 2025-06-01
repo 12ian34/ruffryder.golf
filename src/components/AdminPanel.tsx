@@ -4,7 +4,6 @@ import TournamentManagement from './TournamentManagement';
 import StrokeIndexManagement from './StrokeIndexManagement';
 import UserManagement from './UserManagement';
 import PlayerManagement from './PlayerManagement';
-import BlogManagement from './blog/BlogManagement';
 import { track } from '../utils/analytics';
 
 export default function AdminPanel() {
@@ -12,7 +11,7 @@ export default function AdminPanel() {
   
   const handleTabChange = (index: number) => {
     setSelectedTab(index);
-    const tabNames = ['tournament', 'stroke_index', 'players', 'users', 'blog'];
+    const tabNames = ['tournament', 'stroke_index', 'players', 'users'];
     track('admin_tab_viewed', {
       tab_name: tabNames[index]
     });
@@ -67,17 +66,6 @@ export default function AdminPanel() {
             >
               Users
             </Tab>
-            <Tab
-              className={({ selected }) =>
-                `px-2 py-1 text-sm font-medium transition-colors whitespace-nowrap ${
-                  selected
-                    ? 'text-purple-500 border-b-2 border-purple-500'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`
-              }
-            >
-              Blog
-            </Tab>
           </Tab.List>
         </div>
         <Tab.Panels className="mt-6">
@@ -92,9 +80,6 @@ export default function AdminPanel() {
           </Tab.Panel>
           <Tab.Panel>
             <UserManagement />
-          </Tab.Panel>
-          <Tab.Panel>
-            <BlogManagement />
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>
