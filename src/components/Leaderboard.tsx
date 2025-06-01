@@ -174,6 +174,11 @@ export default function Leaderboard() {
 
   return (
     <div className="space-y-8 py-2">
+      {tournament && tournament.name && (
+        <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-gray-100">
+          Active tournament: {tournament.name}
+        </h1>
+      )}
       <div className="flex items-center justify-between">
         <ScoreCard
           currentScore={tournament.totalScore ? 
