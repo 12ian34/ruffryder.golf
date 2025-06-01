@@ -12,6 +12,7 @@ import type { Tournament, TeamConfig, Matchup } from '../types/tournament';
 import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 import { track } from '../utils/analytics';
+import { calculateAverageTeamHandicaps, type TeamAverageHandicaps } from '../utils/handicapScoring';
 
 interface NewTournamentForm {
   name: string;
@@ -37,6 +38,7 @@ export default function TournamentManagement() {
   });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [teamAverageHandicaps, setTeamAverageHandicaps] = useState<TeamAverageHandicaps>({ usaAverage: 0, europeAverage: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -143,6 +145,32 @@ export default function TournamentManagement() {
       gamesListenerUnsubscribe();
     };
   }, [selectedTournament?.id]); // Dependency only on tournament ID
+
+  useEffect(() => {
+    if (selectedTournament && selectedTournament.matchups && selectedTournament.matchups.length > 0 && players.length > 0) {
+      const playerIdsInMatchups = new Set<string>();
+      selectedTournament.matchups.forEach(matchup => {
+        // Ensure player IDs are valid strings before adding
+        if (matchup.usaPlayerId && typeof matchup.usaPlayerId === 'string') {
+          playerIdsInMatchups.add(matchup.usaPlayerId);
+        }
+        if (matchup.europePlayerId && typeof matchup.europePlayerId === 'string') {
+          playerIdsInMatchups.add(matchup.europePlayerId);
+        }
+      });
+  
+      const participatingPlayers = players.filter(p => playerIdsInMatchups.has(p.id));
+  
+      if (participatingPlayers.length > 0) {
+        const averages = calculateAverageTeamHandicaps(participatingPlayers);
+        setTeamAverageHandicaps(averages);
+      } else {
+        setTeamAverageHandicaps({ usaAverage: 0, europeAverage: 0 });
+      }
+    } else {
+      setTeamAverageHandicaps({ usaAverage: 0, europeAverage: 0 });
+    }
+  }, [selectedTournament, players, currentMatchups]); // Added currentMatchups to dependencies
 
   const handleCreateTournament = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -886,6 +914,7 @@ export default function TournamentManagement() {
             onDeleteMatchup={handleDeleteMatchup}
             isAdmin={true}
             useHandicaps={selectedTournament.useHandicaps}
+            teamAverageHandicaps={teamAverageHandicaps}
           />
         </div>
       )}

@@ -4,6 +4,7 @@ import type { Game } from '../../types/game';
 import type { Player } from '../../types/player';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import type { TeamAverageHandicaps } from '../../utils/handicapScoring';
 
 interface MatchupListProps {
   matchups?: Matchup[];
@@ -12,6 +13,7 @@ interface MatchupListProps {
   onDeleteMatchup?: (matchup: Matchup) => void;
   isAdmin?: boolean;
   useHandicaps?: boolean;
+  teamAverageHandicaps?: TeamAverageHandicaps;
 }
 
 export default function MatchupList({ 
@@ -20,7 +22,8 @@ export default function MatchupList({
   teamConfig, 
   onDeleteMatchup, 
   isAdmin = false,
-  useHandicaps = false
+  useHandicaps = false,
+  teamAverageHandicaps
 }: MatchupListProps) {
   const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +107,27 @@ export default function MatchupList({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
       <h3 className="text-lg font-medium mb-4 dark:text-white">Current Matchups</h3>
+
+      {teamAverageHandicaps && (
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
+          <h4 className="text-base font-semibold mb-1 text-gray-700 dark:text-gray-200">average handicap of selections</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <span className="font-medium text-sm text-gray-600 dark:text-gray-300">USA: </span>
+              <span className="font-bold text-md text-blue-600 dark:text-blue-400">
+                {teamAverageHandicaps.usaAverage}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-sm text-gray-600 dark:text-gray-300">Europe: </span>
+              <span className="font-bold text-md text-red-600 dark:text-red-400">
+                {teamAverageHandicaps.europeAverage}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {matchups.length === 0 ? (
           <div className="text-gray-500 dark:text-gray-400 text-center py-4">

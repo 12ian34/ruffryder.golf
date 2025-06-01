@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calculateHandicapAdjustedScores } from '../utils/handicapScoring';
+import { calculateHandicapAdjustedScores, calculateAverageTeamHandicaps } from '../utils/handicapScoring';
 import type { Game } from '../types/game';
+import type { Player } from '../types/player';
 
 describe('Handicap Scoring Tests', () => {
   const createMockGame = (handicapStrokes: number, higherHandicapTeam: 'USA' | 'EUROPE'): Game => ({
@@ -629,5 +630,75 @@ describe('Handicap Scoring Tests', () => {
         expect(result.usaAdjustedScore).toBe(baseScore + expectedStrokes);
       }
     });
+  });
+});
+
+describe('calculateAverageTeamHandicaps', () => {
+  const mockPlayers: Player[] = [
+    { id: '1', name: 'USA Player 1', team: 'USA', averageScore: 10, historicalScores: [] },
+    { id: '2', name: 'USA Player 2', team: 'USA', averageScore: 12.5, historicalScores: [] },
+    { id: '3', name: 'Europe Player 1', team: 'EUROPE', averageScore: 8, historicalScores: [] },
+    { id: '4', name: 'Europe Player 2', team: 'EUROPE', averageScore: 14.2, historicalScores: [] },
+    { id: '5', name: 'USA Player 3', team: 'USA', averageScore: 9.8, historicalScores: [] },
+  ];
+
+  it('should calculate average handicaps correctly for both teams', () => {
+    const result = calculateAverageTeamHandicaps(mockPlayers);
+    // USA: (10 + 12.5 + 9.8) / 3 = 32.3 / 3 = 10.766... -> 10.8
+    // Europe: (8 + 14.2) / 2 = 22.2 / 2 = 11.1
+    expect(result.usaAverage).toBe(10.8);
+    expect(result.europeAverage).toBe(11.1);
+  });
+
+  it('should return 0 if no players for a team', () => {
+    const noUsaPlayers: Player[] = mockPlayers.filter(p => p.team === 'EUROPE');
+    const result = calculateAverageTeamHandicaps(noUsaPlayers);
+    expect(result.usaAverage).toBe(0);
+    expect(result.europeAverage).toBe(11.1); // (8 + 14.2) / 2
+
+    const noEuropePlayers: Player[] = mockPlayers.filter(p => p.team === 'USA');
+    const result2 = calculateAverageTeamHandicaps(noEuropePlayers);
+    expect(result2.usaAverage).toBe(10.8); // (10 + 12.5 + 9.8) / 3
+    expect(result2.europeAverage).toBe(0);
+  });
+
+  it('should return 0 for both if no players are provided', () => {
+    const result = calculateAverageTeamHandicaps([]);
+    expect(result.usaAverage).toBe(0);
+    expect(result.europeAverage).toBe(0);
+  });
+
+  it('should handle players with missing or invalid averageScore by excluding them', () => {
+    const playersWithInvalid: Player[] = [
+      ...mockPlayers,
+      { id: '6', name: 'USA Player Invalid', team: 'USA', averageScore: NaN, historicalScores: [] } as Player,
+      { id: '7', name: 'Europe Player Missing', team: 'EUROPE', averageScore: undefined as any, historicalScores: [] } as Player,
+    ];
+    const result = calculateAverageTeamHandicaps(playersWithInvalid);
+    expect(result.usaAverage).toBe(10.8); // Should be same as original mockPlayers
+    expect(result.europeAverage).toBe(11.1); // Should be same as original mockPlayers
+  });
+  
+  it('should handle single player per team', () => {
+    const singlePlayers: Player[] = [
+      { id: '1', name: 'USA Player 1', team: 'USA', averageScore: 10, historicalScores: [] },
+      { id: '3', name: 'Europe Player 1', team: 'EUROPE', averageScore: 8.5, historicalScores: [] },
+    ];
+    const result = calculateAverageTeamHandicaps(singlePlayers);
+    expect(result.usaAverage).toBe(10.0);
+    expect(result.europeAverage).toBe(8.5);
+  });
+
+  it('should correctly round to one decimal place', () => {
+    const playersForRounding: Player[] = [
+      { id: '1', name: 'USA Player A', team: 'USA', averageScore: 10.12, historicalScores: [] },
+      { id: '2', name: 'USA Player B', team: 'USA', averageScore: 10.17, historicalScores: [] },
+      { id: '3', name: 'Europe Player C', team: 'EUROPE', averageScore: 8.88, historicalScores: [] },
+    ];
+    // USA: (10.12 + 10.17) / 2 = 20.29 / 2 = 10.145 -> 10.1
+    // Europe: 8.88 -> 8.9
+    const result = calculateAverageTeamHandicaps(playersForRounding);
+    expect(result.usaAverage).toBe(10.1); 
+    expect(result.europeAverage).toBe(8.9);
   });
 }); 

@@ -1,4 +1,5 @@
 import type { Game } from '../types/game';
+import type { Player } from '../types/player';
 
 interface HandicapAdjustedScores {
   usaAdjustedScore: number | null;
@@ -68,4 +69,39 @@ export function calculateHandicapAdjustedScores(
   }
 
   return result;
+}
+
+// New interface for the return type
+export interface TeamAverageHandicaps {
+  usaAverage: number;
+  europeAverage: number;
+}
+
+/**
+ * Calculates the average handicap for Team USA and Team Europe from a list of players.
+ * Players without a valid numeric averageScore are excluded from the calculation.
+ * Averages are rounded to one decimal place.
+ * If no players are found for a team, their average handicap will be 0.
+ *
+ * @param players - An array of Player objects.
+ * @returns An object containing the average handicap for Team USA and Team Europe.
+ */
+export function calculateAverageTeamHandicaps(players: Player[]): TeamAverageHandicaps {
+  const usaPlayers = players.filter(
+    p => p.team === 'USA' && typeof p.averageScore === 'number' && !isNaN(p.averageScore)
+  );
+  const europePlayers = players.filter(
+    p => p.team === 'EUROPE' && typeof p.averageScore === 'number' && !isNaN(p.averageScore)
+  );
+
+  const usaTotalHandicap = usaPlayers.reduce((sum, p) => sum + p.averageScore, 0);
+  const europeTotalHandicap = europePlayers.reduce((sum, p) => sum + p.averageScore, 0);
+
+  const usaAverage = usaPlayers.length > 0 ? usaTotalHandicap / usaPlayers.length : 0;
+  const europeAverage = europePlayers.length > 0 ? europeTotalHandicap / europePlayers.length : 0;
+
+  return {
+    usaAverage: parseFloat(usaAverage.toFixed(1)),
+    europeAverage: parseFloat(europeAverage.toFixed(1)),
+  };
 } 
