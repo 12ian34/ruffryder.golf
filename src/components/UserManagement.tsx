@@ -154,11 +154,11 @@ export default function UserManagement() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {user.email}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap min-w-48">
                   <select
                     value={user.linkedPlayerId || ''}
                     onChange={(e) => handlePlayerLinkage(user.id, e)}
-                    className="text-sm rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-4 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
                     <option value="">Select player</option>
                     {players.map(player => (
@@ -197,7 +197,7 @@ export default function UserManagement() {
                       onClick={() => handleUnlinkPlayer(user.id)}
                       className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     >
-                      Unlink Player
+                      ✂️ Unlink player
                     </button>
                   )}
                   <button
@@ -207,7 +207,7 @@ export default function UserManagement() {
                     }}
                     className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                   >
-                    Delete
+                    🗑️ Delete
                   </button>
                 </td>
               </tr>
