@@ -227,7 +227,6 @@ export default function GameCard({
             </div>
           )}
           
-          <GameScoreDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
 
           {/* Display Handicap Differences */}
           {effectiveUseHandicaps && initialGame.isStarted && (handicapStrokePlayDifferenceString || handicapMatchPlayDifferenceString) && (
@@ -240,6 +239,8 @@ export default function GameCard({
               )}
             </div>
           )}
+          
+          <GameScoreDisplay game={gameWithHandicaps} compact={compact} useHandicaps={effectiveUseHandicaps} />
 
           {/* Controls section: visibility determined by showControls prop passed from GameList,
               which already incorporates canManageThisGame logic.

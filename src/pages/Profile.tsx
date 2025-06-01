@@ -12,6 +12,7 @@ export default function Profile() {
   const { currentUser, signOut } = useAuth();
   const navigate = useNavigate();
   const [userData, setUserData] = useState<User | null>(null);
+  const [linkedPlayerName, setLinkedPlayerName] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [pendingEmoji, setPendingEmoji] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +32,20 @@ export default function Profile() {
           setUserData(data);
           setName(data.name || '');
           setPendingEmoji(data.customEmoji || null);
+
+          // Fetch linked player data if linkedPlayerId exists
+          if (data.linkedPlayerId) {
+            try {
+              const playerDoc = await getDoc(doc(db, 'players', data.linkedPlayerId));
+              if (playerDoc.exists()) {
+                const playerData = playerDoc.data();
+                setLinkedPlayerName(playerData.name || null);
+              }
+            } catch (playerErr: any) {
+              console.error('Error fetching linked player data:', playerErr);
+              // Don't show error to user, just keep player name as null
+            }
+          }
         }
       } catch (err: any) {
         showErrorToast('Failed to load profile');
@@ -224,7 +239,7 @@ export default function Profile() {
               <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-700">
                 {userData?.linkedPlayerId ? (
                   <div className="flex items-center space-x-2">
-                    <span>{userData.linkedPlayerId}</span>
+                    <span>{linkedPlayerName || userData.linkedPlayerId}</span>
                   </div>
                 ) : (
                   <span className="text-gray-500 dark:text-gray-400">ask ian/tommy to link you</span>
