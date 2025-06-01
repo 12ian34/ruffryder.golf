@@ -62,11 +62,21 @@ export default function Profile() {
       // Update user document
       await updateDoc(doc(db, 'users', currentUser.uid), updates);
 
-      // If user has a linked player, update the player's custom emoji
+      // If user has a linked player, update the player's custom emoji and name
       if (userData?.linkedPlayerId) {
-        await updateDoc(doc(db, 'players', userData.linkedPlayerId), {
-          customEmoji: pendingEmoji || undefined
-        });
+        const playerUpdates: any = {};
+        
+        if (pendingEmoji !== userData?.customEmoji) {
+          playerUpdates.customEmoji = pendingEmoji || undefined;
+        }
+        
+        if (name !== userData?.name) {
+          playerUpdates.name = name;
+        }
+        
+        if (Object.keys(playerUpdates).length > 0) {
+          await updateDoc(doc(db, 'players', userData.linkedPlayerId), playerUpdates);
+        }
       }
 
       // Track avatar emoji change if it was changed

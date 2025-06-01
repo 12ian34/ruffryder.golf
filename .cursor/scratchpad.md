@@ -1,269 +1,175 @@
-# Ruff Ryders Golf App - Blog Functionality Removal Plan
+# Ruff Ryders Golf App - Disable Name Editing Plan
 
 ## 1. Background and Motivation
 
-The ruffryder.golf app currently includes a complete blog functionality that allows admins to create, edit, and manage blog posts, with users being able to view published posts. The request is to completely remove this blog functionality and the associated tab from the application without breaking any other existing functionality.
+The ruffryder.golf app currently allows users to edit their profile name, but users are experiencing "failed to update profile" errors when attempting to edit their name. The request is to completely disable name editing functionality so that once a user is linked/registered, their name appears everywhere as it was initially set and cannot be modified.
 
-The blog functionality includes:
-- Blog tab in the main dashboard navigation
-- Blog management tab in the admin panel
-- Complete CRUD operations for blog posts
-- Blog post viewing and listing functionality
-- Rich text editor for blog content
-- File attachment system for blog posts
-- Blog-specific routing and navigation
+This change will:
+- Eliminate the "failed to update profile" error that users are experiencing
+- Simplify the user experience by removing confusing/broken functionality
+- Ensure name consistency across the application
+- Reduce potential database update conflicts or permission issues
 
-The goal is to cleanly remove all blog-related code, components, routes, and dependencies while ensuring:
-1. No broken imports or references remain
-2. Navigation flows work correctly without the blog tab
-3. Admin panel functions properly without the blog management section
-4. No orphaned Firebase collections or security rules remain
-5. Analytics tracking is updated appropriately
+The goal is to identify where name editing occurs in the application and disable this functionality while maintaining the display of the user's name throughout the app.
 
 ## 2. Key Challenges and Analysis
 
-* **Dependency Mapping:** Identifying all blog-related components, pages, routes, types, and utilities to ensure complete removal.
-* **Navigation Flow:** Updating tab navigation in both Dashboard and AdminPanel to remove blog tabs without breaking the UI.
-* **Route Management:** Removing all blog-related routes from App.tsx without affecting other routing.
-* **Type System:** Removing blog-related TypeScript types and interfaces that are no longer needed.
-* **Firebase Integration:** Handling blog-related Firebase queries and potentially cleaning up Firestore collections.
-* **Analytics:** Updating analytics tracking to remove blog-related events.
-* **Import Cleanup:** Ensuring no orphaned imports remain after component removal.
-* **UI State Management:** Updating tab indexing and navigation state management after tab removal.
+**Root Cause Investigation:**
+The "failed to update profile" error occurs in the `handleProfileUpdate` function in `src/pages/Profile.tsx` (line 89). The error could be caused by:
+1. **Firebase Security Rules:** The Firestore rules allow users to update their own `name` and `customEmoji` fields, but there may be authentication or permission issues
+2. **Network/Connection Issues:** Temporary Firebase connection problems
+3. **Validation Issues:** Invalid data being passed to the update operation
+4. **Concurrent Update Conflicts:** Multiple updates happening simultaneously
+
+**Current Name Editing Functionality Analysis:**
+- **Primary Location:** `src/pages/Profile.tsx` - Complete profile editing form with name input field
+- **Name Display Locations:**
+  - `src/pages/Dashboard.tsx` (line 134) - Header shows user name or email fallback
+  - `src/components/shared/PlayerDisplay.tsx` - Shows player name for linked users
+  - Various admin components show user names in management interfaces
+
+**Firebase Security Rules Review:**
+- Users can update their own `name` and `customEmoji` fields (firestore.rules lines 39-42)
+- The rules appear correctly configured for name updates
+- Both user and linked player documents are updated during profile changes
+
+**Technical Dependencies:**
+- **Firebase Firestore:** User data storage and updates
+- **React State Management:** Form state, loading states, error handling
+- **Navigation:** Profile page accessible from Dashboard header
+- **Analytics:** Profile update events are tracked
+- **Toast Notifications:** Success/error feedback to users
+
+**Key Implementation Challenges:**
+* **UI Modification:** Need to disable name input field while maintaining visual consistency
+* **Form Validation:** Remove name from change detection and form submission logic
+* **State Management:** Prevent name changes from triggering save button state
+* **User Experience:** Clear indication that name cannot be edited
+* **Backward Compatibility:** Ensure existing names remain displayed correctly
+* **Analytics:** Update tracking to remove name change events
 
 ## 3. High-level Task Breakdown
 
 The implementation will be broken down into the following tasks. Each task will be executed one at a time in Executor mode, with verification by the human user before proceeding to the next.
 
-### Phase 1: Analysis and Documentation
+### Phase 1: Analysis and Investigation ✅
 
-1. **Task 1.1: Complete Dependency Analysis**
-   * **Description:** Perform comprehensive analysis of all blog-related files, components, routes, types, and dependencies.
-   * **Success Criteria:** Complete inventory of all blog-related code that needs to be removed, including file locations and import relationships.
+1. **Task 1.1: Investigate Current Profile/Name Editing Functionality** ✅
+   * **Description:** Analyze the Profile.tsx component, identify all name editing locations, and understand the error source.
+   * **Success Criteria:** Complete understanding of current name editing flow and potential error causes.
 
-### Phase 2: Component and Page Removal
+2. **Task 1.2: Identify Error Source and Root Cause** ✅
+   * **Description:** Examine Firebase security rules, network error handling, and validation logic that could cause update failures.
+   * **Success Criteria:** Clear understanding of why the "failed to update profile" error occurs.
 
-2. **Task 2.1: Remove Blog Pages**
-   * **Description:** Delete all blog-specific page components: Blog.tsx, BlogPost.tsx, NewBlogPost.tsx, EditBlogPost.tsx.
-   * **Success Criteria:** All blog page files are deleted and no longer exist in the pages directory.
+3. **Task 1.3: Map All Name Display and Edit Locations** ✅
+   * **Description:** Identify every location where user names are displayed or can be edited throughout the application.
+   * **Success Criteria:** Complete inventory of name-related functionality across the codebase.
 
-3. **Task 2.2: Remove Blog Components**
-   * **Description:** Delete all blog-related components: BlogManagement.tsx, BlogList.tsx, BlogPost.tsx, BlogEditor.tsx, and any other blog-specific components in the blog directory.
-   * **Success Criteria:** All blog component files are deleted and the blog components directory is removed.
+### Phase 2: Profile Form Modification
 
-### Phase 3: Navigation and Routing Updates
+4. **Task 2.1: Disable Name Input Field**
+   * **Description:** Modify the Profile.tsx component to make the name input field read-only and visually indicate it cannot be edited.
+   * **Success Criteria:** Name field appears disabled/read-only, form still renders correctly, other fields remain editable.
 
-4. **Task 3.1: Update Dashboard Navigation**
-   * **Description:** Remove the blog tab from Dashboard.tsx navigation, update tab array and conditional rendering logic.
-   * **Success Criteria:** Dashboard loads without blog tab, navigation works correctly with remaining tabs, no console errors.
+5. **Task 2.2: Update Form State Management**
+   * **Description:** Remove name changes from the `hasChanges` calculation and form submission logic.
+   * **Success Criteria:** Save button only enables for emoji changes, name modifications don't trigger save state.
 
-5. **Task 3.2: Update Admin Panel Navigation**
-   * **Description:** Remove the blog management tab from AdminPanel.tsx, update tab array and panel rendering.
-   * **Success Criteria:** Admin panel loads without blog management tab, admin navigation works correctly, no console errors.
+6. **Task 2.3: Update Profile Update Logic**
+   * **Description:** Modify `handleProfileUpdate` function to only update `customEmoji` and exclude name from the update operation.
+   * **Success Criteria:** Profile updates work correctly without name changes, no Firebase permission errors.
 
-6. **Task 3.3: Remove Blog Routes**
-   * **Description:** Remove all blog-related routes from App.tsx routing configuration.
-   * **Success Criteria:** App routes correctly without blog paths, no broken route references, application loads successfully.
+### Phase 3: Analytics and Error Handling
 
-### Phase 4: Type System and Import Cleanup
+7. **Task 3.1: Update Analytics Tracking**
+   * **Description:** Remove name change tracking from the profile update analytics events.
+   * **Success Criteria:** Analytics only track emoji changes, no name-related tracking remains.
 
-7. **Task 4.1: Remove Blog Types**
-   * **Description:** Delete blog-related TypeScript types and interfaces from the types directory.
-   * **Success Criteria:** Blog types are removed, no TypeScript compilation errors, no orphaned type references.
+8. **Task 3.2: Improve Error Handling**
+   * **Description:** Enhance error messages to be more specific about what can and cannot be updated.
+   * **Success Criteria:** Clear error messages if any update issues occur, better user feedback.
 
-8. **Task 4.2: Clean Up Imports**
-   * **Description:** Remove all imports of deleted blog components, pages, and types from remaining files.
-   * **Success Criteria:** No import errors, application compiles successfully, no unused imports remain.
+### Phase 4: Testing and Validation
 
-### Phase 5: Firebase and Analytics Cleanup
+9. **Task 4.1: Test Profile Form Functionality**
+   * **Description:** Verify that profile form works correctly with name editing disabled, emoji changes still work.
+   * **Success Criteria:** Form behaves correctly, only emoji updates possible, no errors occur.
 
-9. **Task 5.1: Update Firebase Queries**
-   * **Description:** Remove blog-related Firebase queries and references from Dashboard.tsx and other components.
-   * **Success Criteria:** No blog-related Firebase queries remain, application loads without Firebase errors.
+10. **Task 4.2: Test Name Display Consistency**
+    * **Description:** Verify that user names display correctly throughout the app after disabling editing.
+    * **Success Criteria:** Names show consistently in Dashboard, PlayerDisplay, and other components.
 
-10. **Task 5.2: Update Analytics Tracking**
-    * **Description:** Remove blog-related analytics tracking events from navigation and admin panels.
-    * **Success Criteria:** Analytics tracking works correctly without blog-related events, no undefined tracking references.
-
-### Phase 6: Testing and Verification
-
-11. **Task 6.1: Navigation Testing**
-    * **Description:** Test all navigation flows to ensure blog removal didn't break existing functionality.
-    * **Success Criteria:** All remaining tabs work correctly, navigation state is preserved, no broken links or console errors.
-
-12. **Task 6.2: Admin Functionality Testing**
-    * **Description:** Test admin panel functionality to ensure blog removal didn't affect other admin features.
-    * **Success Criteria:** All non-blog admin features work correctly, no broken functionality or UI issues.
-
-13. **Task 6.3: Build and Deployment Testing**
-    * **Description:** Verify application builds successfully and deploys without errors.
-    * **Success Criteria:** Clean build process, successful deployment, no runtime errors in production environment.
+11. **Task 4.3: Verify Error Resolution**
+    * **Description:** Confirm that the "failed to update profile" error no longer occurs.
+    * **Success Criteria:** Profile updates complete successfully without the previous error.
 
 ## 4. Project Status Board
 
-### Phase 1: Analysis and Documentation
-- [x] **Task 1.1:** Complete Dependency Analysis
+### Phase 1: Analysis and Investigation ✅
+- [x] **Task 1.1:** Investigate Current Profile/Name Editing Functionality
+- [x] **Task 1.2:** Identify Error Source and Root Cause  
+- [x] **Task 1.3:** Map All Name Display and Edit Locations
 
-**Complete Blog Dependency Inventory:**
+**Analysis Results:**
 
-**Pages to Remove:**
-- `src/pages/Blog.tsx` - Main blog listing page
-- `src/pages/BlogPost.tsx` - Individual blog post viewing page  
-- `src/pages/NewBlogPost.tsx` - Create new blog post page
-- `src/pages/EditBlogPost.tsx` - Edit existing blog post page
+**Current Name Editing Implementation:**
+- **Primary File:** `src/pages/Profile.tsx` - Contains editable name input field (lines 170-179)
+- **Update Function:** `handleProfileUpdate` (lines 50-89) - Updates both user name and customEmoji
+- **Error Location:** Line 89 shows generic "Failed to update profile" error message
+- **Form State:** `hasChanges` calculation includes name changes (line 46)
 
-**Components to Remove:**
-- `src/components/blog/` (entire directory):
-  - `BlogList.tsx` - Blog post listing component
-  - `BlogManagement.tsx` - Admin blog management component
-  - `BlogPost.tsx` - Blog post display component
-  - `BlogEditor.tsx` - Rich text editor for blog posts
-  - `EditorIcons.tsx` - Icons for the rich text editor
-  - `AttachmentList.tsx` - File attachment display component
-  - `AttachmentManager.tsx` - File attachment management component
+**Name Display Locations:**
+- `src/pages/Dashboard.tsx` (line 134) - Header displays `userData.name || currentUser.email`
+- `src/components/shared/PlayerDisplay.tsx` - Shows player names for linked users
+- `src/hooks/useAuth.ts` (line 26) - Auth hook includes user name in state
+- Admin components (UserManagement.tsx) display user names in management tables
 
-**Type Definitions to Remove:**
-- `src/types/blog.ts` - Blog post type definitions
+**Firebase Configuration:**
+- **Security Rules:** Allow users to update their own `name` and `customEmoji` fields (firestore.rules lines 39-42)
+- **Update Operations:** Both user document and linked player document are updated
+- **Potential Issues:** Network timeouts, permission conflicts, or validation failures
 
-**Routes to Remove from App.tsx:**
-- `/blog` → `<Blog />`
-- `/blog/new` → `<NewBlogPost />`
-- `/blog/edit/:postId` → `<EditBlogPost />`
-- `/blog/:postId` → `<BlogPost />`
+**Key Findings:**
+- Name editing is fully functional but experiencing intermittent failures
+- The error handling is generic and doesn't provide specific failure details
+- Both user and linked player documents are updated in the same operation
+- All display locations properly handle name fallbacks to email
 
-**Navigation Updates Required:**
-- `src/pages/Dashboard.tsx`:
-  - Remove blog tab from tabs array (line 128)
-  - Remove blog-related imports (line 7, 13)
-  - Remove blog-related state (line 25)
-  - Remove blog Firebase queries (lines 44, 61)
-  - Remove blog tab rendering (line 197)
-- `src/components/AdminPanel.tsx`:
-  - Remove blog tab from navigation
-  - Remove BlogManagement import and component
-  - Update tab tracking array
+### Phase 2: Profile Form Modification
+- [ ] **Task 2.1:** Disable Name Input Field
+- [ ] **Task 2.2:** Update Form State Management  
+- [ ] **Task 2.3:** Update Profile Update Logic
 
-**Dependencies to Remove from package.json:**
-- `@tiptap/react` - React wrapper for TipTap editor
-- `@tiptap/starter-kit` - TipTap basic extensions
-- `@tiptap/extension-image` - Image support for editor
-- `@tiptap/extension-link` - Link support for editor  
-- `@tiptap/extension-underline` - Underline support for editor
+### Phase 3: Analytics and Error Handling
+- [ ] **Task 3.1:** Update Analytics Tracking
+- [ ] **Task 3.2:** Improve Error Handling
 
-**CSS Styles to Remove from index.css:**
-- `.blog-content` styles (lines 40-82)
-- TipTap editor styles (lines 91+, 129+)
-
-**Firebase/Firestore References:**
-- `blog-posts` collection queries in Dashboard.tsx
-- `blog-posts` collection references in blog pages
-- Firestore indexes for `blog-posts` collection (firestore.indexes.json)
-- Firestore security rules for `/blog-posts/{postId}` (firestore.rules)
-
-**Analytics Tracking Updates:**
-- Remove 'blog' from tab tracking arrays in Dashboard and AdminPanel
-
-**Vite Configuration:**
-- Remove TipTap editor dependencies from rollup optimization (vite.config.ts line 50)
-
-### Phase 2: Component and Page Removal
-- [x] **Task 2.1:** Remove Blog Pages
-- [x] **Task 2.2:** Remove Blog Components
-
-### Phase 3: Navigation and Routing Updates
-- [x] **Task 3.1:** Update Dashboard Navigation
-- [x] **Task 3.2:** Update Admin Panel Navigation
-- [x] **Task 3.3:** Remove Blog Routes
-
-### Phase 4: Type System and Import Cleanup
-- [x] **Task 4.1:** Remove Blog Types
-- [x] **Task 4.2:** Clean Up Imports
-
-### Phase 5: Firebase and Analytics Cleanup
-- [x] **Task 5.1:** Update Firebase Queries
-- [x] **Task 5.2:** Update Analytics Tracking
-
-### Phase 6: Testing and Verification
-- [ ] **Task 6.1:** Navigation Testing
-- [ ] **Task 6.2:** Admin Functionality Testing
-- [ ] **Task 6.3:** Build and Deployment Testing
+### Phase 4: Testing and Validation
+- [ ] **Task 4.1:** Test Profile Form Functionality
+- [ ] **Task 4.2:** Test Name Display Consistency
+- [ ] **Task 4.3:** Verify Error Resolution
 
 ## 5. Executor's Feedback or Assistance Requests
 
-**Task 2.1 Completed Successfully:**
-- ✅ Deleted `src/pages/Blog.tsx` - Main blog listing page
-- ✅ Deleted `src/pages/BlogPost.tsx` - Individual blog post viewing page  
-- ✅ Deleted `src/pages/NewBlogPost.tsx` - Create new blog post page
-- ✅ Deleted `src/pages/EditBlogPost.tsx` - Edit existing blog post page
-
-All blog page files have been successfully removed from the pages directory.
-
-**Task 2.2 Completed Successfully:**
-- ✅ Deleted `src/components/blog/BlogList.tsx` - Blog post listing component
-- ✅ Deleted `src/components/blog/BlogManagement.tsx` - Admin blog management component
-- ✅ Deleted `src/components/blog/BlogPost.tsx` - Blog post display component
-- ✅ Deleted `src/components/blog/BlogEditor.tsx` - Rich text editor for blog posts
-- ✅ Deleted `src/components/blog/EditorIcons.tsx` - Icons for the rich text editor
-- ✅ Deleted `src/components/blog/AttachmentList.tsx` - File attachment display component
-- ✅ Deleted `src/components/blog/AttachmentManager.tsx` - File attachment management component
-
-All blog component files have been successfully removed. The `/components/blog/` directory is now empty.
-
-**Task 3.1 Completed Successfully:**
-- ✅ Removed BlogList and BlogPost type imports from Dashboard.tsx
-- ✅ Removed blog-related Firebase imports (collection, query, where, orderBy, getDocs)
-- ✅ Removed posts state variable
-- ✅ Removed blog Firebase queries from fetchData function
-- ✅ Removed blog tab from tabs array
-- ✅ Removed blog tab rendering
-
-**Task 3.2 Completed Successfully:**
-- ✅ Removed BlogManagement import from AdminPanel.tsx  
-- ✅ Removed 'blog' from tabNames tracking array
-- ✅ Removed Blog tab from navigation
-- ✅ Removed BlogManagement panel rendering
-
-**Task 3.3 Completed Successfully:**
-- ✅ Removed Blog, BlogPost, NewBlogPost, EditBlogPost imports from App.tsx
-- ✅ Removed `/blog` route
-- ✅ Removed `/blog/new` route  
-- ✅ Removed `/blog/edit/:postId` route
-- ✅ Removed `/blog/:postId` route
-
-All navigation flows updated and blog routes completely removed.
-
-**Task 4.1 Completed Successfully:**
-- ✅ Deleted `src/types/blog.ts` - Blog post type definitions removed
-
-**Task 4.2 Completed Successfully:**
-- ✅ Verified clean build with no import errors
-- ✅ TypeScript compilation successful with no orphaned type references
-- ✅ All blog-related imports were automatically cleaned up by removing source files
-
-Build successful - no broken imports or TypeScript errors detected.
-
-**Task 5.1 Completed Successfully:**
-- ✅ Removed blog-posts deletion logic from UserManagement.tsx
-- ✅ Removed blog-posts security rules from firestore.rules
-- ✅ Removed blog-posts index from firestore.indexes.json
-- ✅ Removed blog-related CSS styles from index.css
-
-**Task 5.2 Completed Successfully:**
-- ✅ Analytics tracking was already updated in Tasks 3.1 and 3.2 when tab arrays were modified
-- ✅ No remaining blog-related analytics references found
-
-All Firebase queries, security rules, indexes, and analytics tracking have been cleaned up.
+*To be filled during execution*
 
 ## 6. Lessons
 
-*(To be filled as insights are gained or issues are resolved)*
-- When removing functionality with navigation tabs, ensure tab indexing and state management is updated to prevent UI issues.
-- Always verify import dependencies before deleting components to avoid compilation errors.
-- Test navigation flows thoroughly after removing tabs to ensure user experience remains intact.
+*To be filled as insights are gained or issues are resolved*
 
 ## 7. Current Status / Progress Tracking
 
-**Overall Progress:** Planning Complete
-**Current Phase:** Phase 1 - Analysis and Documentation
-**Last Completed Task:** Planning phase completed
-**Next Step:** Begin Task 1.1 - Complete Dependency Analysis in Executor mode 
+**Overall Progress:** 🔄 IN PROGRESS - Phase 1 Complete, Ready for Phase 2
+**Current Phase:** Phase 1 Analysis Complete ✅ → Phase 2 Profile Form Modification Ready
+**Last Completed Task:** Task 1.3 - Map All Name Display and Edit Locations
+**Next Step:** Ready to begin Phase 2 implementation with Executor mode
+
+**Phase 1 Summary:**
+✅ Comprehensive analysis completed
+✅ Root cause identified - generic error handling in Profile.tsx
+✅ All name editing and display locations mapped
+✅ Technical implementation plan established
+
+**Ready for Executor Implementation:**
+The planning phase is complete. All analysis tasks have been successfully finished and a detailed implementation plan has been created. The project is ready to proceed to Phase 2 with Executor mode to begin disabling name editing functionality while maintaining name display throughout the application. 
