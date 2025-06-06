@@ -56,13 +56,18 @@ export default function GameCard({
 
   // Helper function to format handicap match play difference
   const getHandicapMatchPlayDifference = (): string | null => {
-    if (!initialGame.isStarted || !effectiveUseHandicaps || !initialGame.matchPlayScore ||
-        initialGame.matchPlayScore.adjustedUSA === undefined || initialGame.matchPlayScore.adjustedEUROPE === undefined) {
+    if (!initialGame.isStarted || !effectiveUseHandicaps) {
       return null;
     }
-    // Match play scores represent holes won.
-    const usaScore = initialGame.matchPlayScore.adjustedUSA;
-    const europeScore = initialGame.matchPlayScore.adjustedEUROPE;
+
+    const completedHolesCount = initialGame.holes.filter(h => h.usaPlayerScore !== null && h.europePlayerScore !== null).length;
+
+    if (completedHolesCount === 0) {
+      return null;
+    }
+
+    const usaScore = initialGame.matchPlayScore?.adjustedUSA ?? 0;
+    const europeScore = initialGame.matchPlayScore?.adjustedEUROPE ?? 0;
     
     if (usaScore === europeScore) return "Tied on holes (with handicap)";
     
@@ -75,15 +80,14 @@ export default function GameCard({
     }
 
     // Determine remaining holes to phrase like "X Up with Y to play"
-    const completedHolesCount = initialGame.holes.filter(h => h.usaPlayerScore !== null && h.europePlayerScore !== null).length;
     const totalHolesCount = initialGame.holes.length || 18; // Default to 18 if not specified
     const remainingHoles = totalHolesCount - completedHolesCount;
 
     if (diff > remainingHoles && remainingHoles > 0) { // Game should be over if difference > remaining holes
       return `${leader} wins ${diff} & ${remainingHoles} (with handicap)`;
     }
-    const absDiff = Math.abs(diff);
-    return `${leader} ahead by ${diff} hole${absDiff > 1 ? 's' : ''} (with handicap)`;
+
+    return `${leader} ahead by ${diff} hole${diff > 1 ? 's' : ''} (with handicap)`;
   };
   
   const handicapStrokePlayDifferenceString = getHandicapStrokePlayDifference();
