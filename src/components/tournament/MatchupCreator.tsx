@@ -41,7 +41,7 @@ export default function MatchupCreator({
                 <option value="">Select USA Player</option>
                 {availableUsaPlayers.map(player => (
                   <option key={player.id} value={player.id}>
-                    {player.name} (Avg: {player.averageScore})
+                    {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                   </option>
                 ))}
               </select>
@@ -58,7 +58,7 @@ export default function MatchupCreator({
                 <option value="">Select Europe Player</option>
                 {availableEuropePlayers.map(player => (
                   <option key={player.id} value={player.id}>
-                    {player.name} (Avg: {player.averageScore})
+                    {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                   </option>
                 ))}
               </select>
@@ -80,7 +80,7 @@ export default function MatchupCreator({
                 <option value="">Select Europe Player 1</option>
                 {availableEuropePlayers.map(player => (
                   <option key={player.id} value={player.id}>
-                    {player.name} (Avg: {player.averageScore})
+                    {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                   </option>
                 ))}
               </select>
@@ -99,7 +99,7 @@ export default function MatchupCreator({
                   .filter(p => p.id !== selectedUsaPlayer)
                   .map(player => (
                     <option key={player.id} value={player.id}>
-                      {player.name} (Avg: {player.averageScore})
+                      {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                     </option>
                   ))}
               </select>
@@ -121,7 +121,7 @@ export default function MatchupCreator({
                 <option value="">Select USA Player 1</option>
                 {availableUsaPlayers.map(player => (
                   <option key={player.id} value={player.id}>
-                    {player.name} (Avg: {player.averageScore})
+                    {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                   </option>
                 ))}
               </select>
@@ -140,7 +140,7 @@ export default function MatchupCreator({
                   .filter(p => p.id !== selectedUsaPlayer)
                   .map(player => (
                     <option key={player.id} value={player.id}>
-                      {player.name} (Avg: {player.averageScore})
+                      {player.name} (Tier: {player.tier ?? 'N/A'}, Avg: {player.averageScore})
                     </option>
                   ))}
               </select>

@@ -1,6 +1,6 @@
 import type { Player } from '../../types/player';
 
-type SortField = 'name' | 'team' | 'averageScore' | number;
+type SortField = 'name' | 'team' | 'averageScore' | 'tier' | number;
 type SortDirection = 'asc' | 'desc';
 
 interface PlayerTableProps {
@@ -43,6 +43,12 @@ export default function PlayerTable({
             >
               Team {sortField === 'team' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
+            <th
+              onClick={() => onSort('tier')}
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+            >
+              Tier {sortField === 'tier' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </th>
             <th 
               onClick={() => onSort('averageScore')}
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
@@ -77,6 +83,9 @@ export default function PlayerTable({
                 }`}>
                   {player.team}
                 </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                {player.tier || '-'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 {player.averageScore}

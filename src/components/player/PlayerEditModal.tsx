@@ -13,6 +13,7 @@ interface PlayerEditModalProps {
 export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditModalProps) {
   const [name, setName] = useState(player?.name || '');
   const [team, setTeam] = useState<'USA' | 'EUROPE'>(player?.team || 'USA');
+  const [tier, setTier] = useState<number | undefined>(player?.tier);
   const [year, setYear] = useState(new Date().getFullYear());
   const [score, setScore] = useState('');
   const [directAverageScoreInput, setDirectAverageScoreInput] = useState(player?.averageScore?.toString() || '0');
@@ -38,6 +39,7 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
   useEffect(() => {
     setName(player?.name || '');
     setTeam(player?.team || 'USA');
+    setTier(player?.tier);
     setDirectAverageScoreInput(player?.averageScore?.toString() || (player ? '0' : ''));
     setScore(getScoreForYear(year));
     setError(null);
@@ -64,6 +66,7 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
       const updates: Partial<Player> = {
         name: name.trim(),
         team,
+        tier,
         historicalScores: player ? [...(player.historicalScores || [])] : []
       };
 
@@ -202,6 +205,20 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
               <option value="USA">USA</option>
               <option value="EUROPE">EUROPE</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Tier
+            </label>
+            <input
+              type="number"
+              value={tier ?? ''}
+              onChange={(e) => setTier(e.target.value ? Number(e.target.value) : undefined)}
+              className="w-full px-3 py-2 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              disabled={isLoading}
+              placeholder="Enter player tier (1-4)"
+            />
           </div>
 
           {player && (

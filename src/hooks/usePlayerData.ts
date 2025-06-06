@@ -3,7 +3,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs } from 'firebase
 import { db } from '../config/firebase';
 import type { Player } from '../types/player';
 
-type SortField = 'name' | 'team' | 'averageScore' | number;
+type SortField = 'name' | 'team' | 'averageScore' | 'tier' | number;
 type SortDirection = 'asc' | 'desc';
 
 export function usePlayerData(tournamentId: string | undefined) {
@@ -106,6 +106,10 @@ export function usePlayerData(tournamentId: string | undefined) {
         return direction * a.name.localeCompare(b.name);
       case 'team':
         return direction * a.team.localeCompare(b.team);
+      case 'tier':
+        const aTier = a.tier ?? 999;
+        const bTier = b.tier ?? 999;
+        return direction * (aTier - bTier);
       case 'averageScore':
         return direction * (a.averageScore - b.averageScore);
       default:
