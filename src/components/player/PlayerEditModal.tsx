@@ -105,11 +105,12 @@ export default function PlayerEditModal({ player, onClose, onSave }: PlayerEditM
       const directAvgScoreTrimmed = directAverageScoreInput.trim();
       if (directAvgScoreTrimmed !== '' && !isNaN(directAvgScoreValue) && directAvgScoreValue >= 0) {
         averageScoreToSave = directAvgScoreValue;
-      } else if (directAvgScoreTrimmed === '' && !player?.id && !historicalScoreWasUpdated) {
-        averageScoreToSave = 0;
-      } else if (directAvgScoreTrimmed === '' && player?.id && !historicalScoreWasUpdated) {
+      } else if (!player?.id && !historicalScoreWasUpdated) {
+        // Default to undefined instead of forcing 0
+        averageScoreToSave = undefined;
+      } else if (player?.id && !historicalScoreWasUpdated) {
         averageScoreToSave = player.averageScore;
-      }
+      }   
 
       if (averageScoreToSave !== undefined) {
         updates.averageScore = averageScoreToSave;
