@@ -1,6 +1,6 @@
 // src/utils/statsAnalysis.ts
 import { Player } from '../types/player';
-import { Game, HoleScore as GameHoleScore } from '../types/game'; // Renamed to avoid conflict if any
+import { Game } from '../types/game';
 import { Tournament } from '../types/tournament';
 
 // This interface defines the structure of data the analysis functions will work with.
@@ -32,7 +32,7 @@ export function findMostStrokesOnHole(data: AnalyzableTournamentData): string | 
         if (score !== null && score > maxStrokes) {
           maxStrokes = score;
           const playerName = getPlayerNameById(playerId, data.players);
-          statMessage = `💣 ${playerName} had a tough time, taking ${maxStrokes} strokes on hole ${holeScore.holeNumber}.`;
+          statMessage = `💣 BLOW UP ALERT! ${playerName} had a tough time, taking ${maxStrokes} strokes on hole ${holeScore.holeNumber}.`;
         }
       };
 
@@ -43,9 +43,9 @@ export function findMostStrokesOnHole(data: AnalyzableTournamentData): string | 
   
   // Only return if maxStrokes is significant (e.g. > par or a high number like 6+)
   // For now, let's return if any maxStrokes > 0 found and it's not just a normal high score.
-  // Example: only if maxStrokes is, say, >= 7, or significantly above par.
+  // Example: only if maxStrokes is, say, >= 6, or significantly above par.
   // This condition can be refined based on what's considered "fun" or noteworthy.
-  if (maxStrokes >= 7) { // Arbitrary threshold for "fun fact" worthy blow-up hole
+  if (maxStrokes >= 6) { // Arbitrary threshold for "fun fact" worthy blow-up hole
     return statMessage;
   }
   return null;
@@ -71,7 +71,7 @@ export function findHoleInOnes(data: AnalyzableTournamentData): string[] {
         if (score === 1 && holeScore.parScore > 1) {
           const playerName = getPlayerNameById(playerId, data.players);
           // console.log(`[findHoleInOnes] HOLE IN ONE DETECTED for ${playerName} on hole ${holeScore.holeNumber}`);
-          holeInOneMessages.push(`🎯 UNBELIEVABLE! ${playerName} got a HOLE-IN-ONE on hole ${holeScore.holeNumber}!`);
+          holeInOneMessages.push(`🎯 HOLE-IN-ONE! ${playerName} got an ace on hole ${holeScore.holeNumber}!`);
         } else if (score === 1) {
           // console.log(`[findHoleInOnes] Score of 1 detected for player ${playerId} on hole ${holeScore.holeNumber}, but par is ${holeScore.parScore}. Not a HIO.`);
         }
@@ -84,151 +84,53 @@ export function findHoleInOnes(data: AnalyzableTournamentData): string[] {
   return holeInOneMessages;
 }
 
-interface PlayerScoreSequence {
-  holeNumber: number;
-  score: number;
-  // par: number; // Removed as it's unused for Par 3 birdie calculation
-}
-
 /**
- * Finds players who had a streak of three birdies (or more).
- * Birdie is 1 stroke under par.
+ * Finds every birdie in the tournament.
+ * A birdie on a par 3 course is a score of 2.
  */
-export function findBirdieStreaks(data: AnalyzableTournamentData): string[] {
-  const birdieStreakMessages: string[] = [];
-  if (!data || !data.games || !data.players || data.games.length === 0) return [];
-
-  data.games.forEach(game => {
-    const processPlayerStreaks = (playerId: string, playerHoleScores: GameHoleScore[]) => {
-      if (!playerId) return;
-      const playerName = getPlayerNameById(playerId, data.players);
-      
-      const scores: PlayerScoreSequence[] = playerHoleScores.map(h => ({
-        holeNumber: h.holeNumber,
-        // Determine if it's USA or Europe player's score based on current context
-        score: game.usaPlayerId === playerId ? (h.usaPlayerScore ?? Infinity) : (h.europePlayerScore ?? Infinity),
-        // par: h.parScore // Removed as it's unused
-      })).filter(s => s.score !== Infinity).sort((a, b) => a.holeNumber - b.holeNumber);
-
-      let consecutiveBirdies = 0;
-      let streakStartHole: number | null = null;
-
-      for (let i = 0; i < scores.length; i++) {
-        const ps = scores[i];
-        if (ps.score === 2) { // Birdie on a Par 3
-          consecutiveBirdies++;
-          if (consecutiveBirdies === 1) {
-            streakStartHole = ps.holeNumber;
-          }
-          if (consecutiveBirdies === 3) {
-            // Found a streak of 3. Check if it continues for more.
-            let currentStreakEndHole = ps.holeNumber;
-            for (let j = i + 1; j < scores.length; j++) {
-              const nextScore = scores[j];
-              if (nextScore.holeNumber === currentStreakEndHole + 1 && nextScore.score === 2) {
-                consecutiveBirdies++;
-                currentStreakEndHole = nextScore.holeNumber;
-              } else {
-                break;
-              }
-            }
-            birdieStreakMessages.push(
-              `🔥 ${playerName} is on FIRE with ${consecutiveBirdies} birdies in a row (holes ${streakStartHole}-${currentStreakEndHole})!`
-            );
-            i = scores.findIndex(s => s.holeNumber === currentStreakEndHole); // Move index past this streak
-            consecutiveBirdies = 0;
-            streakStartHole = null;
-          }
-        } else {
-          consecutiveBirdies = 0;
-          streakStartHole = null;
-        }
-      }
-    };
-
-    // It's possible a game might not have one of the players (e.g. singles match setup incomplete)
-    if (game.usaPlayerId) {
-      processPlayerStreaks(game.usaPlayerId, game.holes);
-    }
-    if (game.europePlayerId && game.europePlayerId !== game.usaPlayerId) { // Avoid double processing if by some chance IDs were same
-       processPlayerStreaks(game.europePlayerId, game.holes);
-    }
-  });
-  return birdieStreakMessages;
-}
-
-/**
- * Finds Eagles (2 under par) and Albatrosses/Double Eagles (3 under par).
- */
-export function findBetterThanBirdie(data: AnalyzableTournamentData): string[] {
+export function findAllBirdies(data: AnalyzableTournamentData): string[] {
   const messages: string[] = [];
-  if (!data || !data.games || !data.players || data.games.length === 0) return [];
+  if (!data || !data.games || !data.players) return [];
 
   data.games.forEach(game => {
-    game.holes.forEach(holeScore => {
-      const checkScore = (score: number | null, playerId: string, /* par: number, */ holeNum: number) => {
-        if (score === null) return;
-        const playerName = getPlayerNameById(playerId, data.players);
-        // On a Par 3 course:
-        // Eagle (2 under par) is a score of 1 (Hole-in-One)
-        if (score === 1) { // Par 3 - 2 = 1
-          messages.push(`🦅 ${playerName} aced hole ${holeNum} for an Eagle (Hole-in-One)!`);
+    game.holes.forEach(hole => {
+      const checkPlayerScore = (score: number | null, playerId:string) => {
+        if (score === 2) {
+          const playerName = getPlayerNameById(playerId, data.players);
+          messages.push(`🕊️ BIRDIE! ${playerName} makes a birdie on hole ${hole.holeNumber}!`);
         }
-        // Albatross (3 under par) on a Par 3 would be a score of 0, which is typically impossible.
       };
-
-      // We still pass holeScore.parScore, but the logic inside checkScore now assumes Par 3 for eagle calc.
-      checkScore(holeScore.usaPlayerScore, game.usaPlayerId, /* holeScore.parScore, */ holeScore.holeNumber);
-      checkScore(holeScore.europePlayerScore, game.europePlayerId, /* holeScore.parScore, */ holeScore.holeNumber);
+      checkPlayerScore(hole.usaPlayerScore, game.usaPlayerId);
+      checkPlayerScore(hole.europePlayerScore, game.europePlayerId);
     });
   });
   return messages;
 }
 
 /**
- * Finds the player with the most birdies in a single game/round.
+ * Finds every par made by a Tier 3 player.
+ * A par on a par 3 course is a score of 3.
  */
-export function findMostBirdiesInARound(data: AnalyzableTournamentData): string | null {
-  if (!data || !data.games || !data.players || data.games.length === 0) return null;
+export function findParsByTier3Players(data: AnalyzableTournamentData): string[] {
+  const messages: string[] = [];
+  if (!data || !data.games || !data.players) return [];
 
-  let maxBirdies = 0;
-  let statMessage: string | null = null;
+  const tier3Players = new Set(data.players.filter(p => p.tier === 3).map(p => p.id));
+  if (tier3Players.size === 0) return [];
 
   data.games.forEach(game => {
-    const countPlayerBirdies = (playerId: string, playerHoleScores: GameHoleScore[]) => {
-      if (!playerId) return 0;
-      let birdieCount = 0;
-      playerHoleScores.forEach(h => {
-        const score = game.usaPlayerId === playerId ? h.usaPlayerScore : h.europePlayerScore;
-        if (score === 2) { // Birdie on a Par 3
-          birdieCount++;
+    game.holes.forEach(hole => {
+      const checkPlayerScore = (score: number | null, playerId: string) => {
+        if (score === 3 && tier3Players.has(playerId)) {
+          const playerName = getPlayerNameById(playerId, data.players);
+          messages.push(`👀 TIER 3 PAR! Well, look at that. ${playerName} managed a par on hole ${hole.holeNumber}.`);
         }
-      });
-      return birdieCount;
-    };
-
-    const usaBirdies = countPlayerBirdies(game.usaPlayerId, game.holes);
-    const europeBirdies = countPlayerBirdies(game.europePlayerId, game.holes);
-
-    if (usaBirdies > maxBirdies) {
-      maxBirdies = usaBirdies;
-      const playerName = getPlayerNameById(game.usaPlayerId, data.players);
-      statMessage = `🐦 ${playerName} went on a BIRDIE BARRAGE, carding ${maxBirdies} birdies in their round!`;
-    }
-    if (europeBirdies > maxBirdies) {
-      maxBirdies = europeBirdies;
-      const playerName = getPlayerNameById(game.europePlayerId, data.players);
-      statMessage = `🐦 ${playerName} went on a BIRDIE BARRAGE, carding ${maxBirdies} birdies in their round!`;
-    } else if (europeBirdies === maxBirdies && maxBirdies > 0 && game.usaPlayerId !== game.europePlayerId) {
-        // Handle ties if it's a different player
-        const usaPlayerName = getPlayerNameById(game.usaPlayerId, data.players);
-        const europePlayerName = getPlayerNameById(game.europePlayerId, data.players);
-        statMessage = `🐦🐦 Birdie fest! Both ${usaPlayerName} and ${europePlayerName} carded ${maxBirdies} birdies in their rounds!`;
-    }
+      };
+      checkPlayerScore(hole.usaPlayerScore, game.usaPlayerId);
+      checkPlayerScore(hole.europePlayerScore, game.europePlayerId);
+    });
   });
-
-  // Only return if a decent number of birdies were made, e.g., 3+
-  return maxBirdies >= 3 ? statMessage : null;
+  return messages;
 }
 
 /**
@@ -239,7 +141,7 @@ export function findGrindMatches(data: AnalyzableTournamentData): string[] {
   const messages: string[] = [];
   if (!data || !data.games || !data.players || data.games.length === 0) return [];
 
-  const CONSECUTIVE_TIE_THRESHOLD = 4; // E.g., 4 or more consecutive tied holes
+  const CONSECUTIVE_TIE_THRESHOLD = 3; // E.g., 3 or more consecutive tied holes
 
   data.games.forEach(game => {
     let consecutiveTies = 0;
@@ -289,41 +191,6 @@ export function findGrindMatches(data: AnalyzableTournamentData): string[] {
 }
 
 /**
- * Finds dominating performances (large margin of victory in match play).
- * Uses game.points.adjusted for the final result.
- */
-export function findDominatingWins(data: AnalyzableTournamentData): string[] {
-  const messages: string[] = [];
-  if (!data || !data.games || !data.players || data.games.length === 0) return [];
-
-  const DOMINATING_MARGIN_THRESHOLD = 3; // E.g., winning by 3 or more points
-
-  data.games.forEach(game => {
-    if (game.isComplete && game.points && game.points.adjusted) {
-      const usaScore = game.points.adjusted.USA;
-      const europeScore = game.points.adjusted.EUROPE;
-      const margin = Math.abs(usaScore - europeScore);
-
-      if (margin >= DOMINATING_MARGIN_THRESHOLD) {
-        let winnerName: string;
-        let loserName: string;
-        if (usaScore > europeScore) {
-          winnerName = getPlayerNameById(game.usaPlayerId, data.players);
-          loserName = getPlayerNameById(game.europePlayerId, data.players);
-        } else {
-          winnerName = getPlayerNameById(game.europePlayerId, data.players);
-          loserName = getPlayerNameById(game.usaPlayerId, data.players);
-        }
-        messages.push(
-          `👑 DOMINATION! ${winnerName} secured a commanding victory over ${loserName} with a margin of ${margin} points!`
-        );
-      }
-    }
-  });
-  return messages;
-}
-
-/**
  * Finds Upset Alerts (higher handicap player wins).
  * Considers game.useHandicaps or tournamentInfo.useHandicaps.
  */
@@ -331,7 +198,7 @@ export function findUpsetAlerts(data: AnalyzableTournamentData): string[] {
   const messages: string[] = [];
   if (!data || !data.games || !data.players || data.games.length === 0) return [];
 
-  const SIGNIFICANT_HANDICAP_DIFFERENCE = 5; // E.g., underdog has at least 5 strokes more handicap
+  const SIGNIFICANT_HANDICAP_DIFFERENCE = 3; // E.g., underdog has at least 3 strokes more handicap
 
   data.games.forEach(game => {
     const gameUsesHandicaps = game.useHandicaps !== undefined ? game.useHandicaps : data.tournamentInfo.useHandicaps;
@@ -344,31 +211,22 @@ export function findUpsetAlerts(data: AnalyzableTournamentData): string[] {
 
       let underdogPlayerId: string | null = null;
       let favoredPlayerId: string | null = null;
-      let handicapDiff = 0;
 
       if (usaHcp > europeHcp + SIGNIFICANT_HANDICAP_DIFFERENCE && usaWon) {
         underdogPlayerId = game.usaPlayerId;
         favoredPlayerId = game.europePlayerId;
-        handicapDiff = usaHcp - europeHcp;
       } else if (europeHcp > usaHcp + SIGNIFICANT_HANDICAP_DIFFERENCE && europeWon) {
         underdogPlayerId = game.europePlayerId;
         favoredPlayerId = game.usaPlayerId;
-        handicapDiff = europeHcp - usaHcp;
       }
 
       if (underdogPlayerId && favoredPlayerId) {
         const underdogName = getPlayerNameById(underdogPlayerId, data.players);
         const favoredName = getPlayerNameById(favoredPlayerId, data.players);
-        messages.push(
-          `🚨 UPSET ALERT! ${underdogName} (Hcp ${handicapDiff > 0 ? '+':''}${data.players.find(p=>p.id === underdogPlayerId)?.averageScore /* quick way to get hcp for display, ideally use actual game hcp */}) overcame the odds to defeat ${favoredName} (Hcp ${data.players.find(p=>p.id === favoredPlayerId)?.averageScore}) despite a ${handicapDiff}-stroke handicap difference!`
-        );
-        // A bit clunky to get handicap for display in the message this way. The game object itself has the handicaps (usaPlayerHandicap, europePlayerHandicap)
-        // Let's refine the message to use those directly.
         const underdogDisplayHcp = underdogPlayerId === game.usaPlayerId ? usaHcp : europeHcp;
         const favoredDisplayHcp = favoredPlayerId === game.usaPlayerId ? usaHcp : europeHcp;
-         messages.pop(); // Remove the previous clunky message
          messages.push(
-           `🚨 UPSET ALERT! ${underdogName} (Hcp ${underdogDisplayHcp}) overcame the odds to defeat ${favoredName} (Hcp ${favoredDisplayHcp}) despite a significant handicap difference!`
+           `🚨 UPSET ALERT! ${underdogName} (Hcp ${underdogDisplayHcp}) overcame the odds to defeat ${favoredName} (Hcp ${favoredDisplayHcp})!`
          );
 
       }
@@ -392,20 +250,14 @@ export function generateFunFacts(analyzableData: AnalyzableTournamentData | null
   const holeInOnes = findHoleInOnes(analyzableData);
   funFacts.push(...holeInOnes);
 
-  const birdieStreaks = findBirdieStreaks(analyzableData);
-  funFacts.push(...birdieStreaks);
+  const allBirdies = findAllBirdies(analyzableData);
+  funFacts.push(...allBirdies);
 
-  const betterThanBirdie = findBetterThanBirdie(analyzableData);
-  funFacts.push(...betterThanBirdie);
-
-  const mostBirdiesRound = findMostBirdiesInARound(analyzableData);
-  if (mostBirdiesRound) funFacts.push(mostBirdiesRound);
+  const tier3Pars = findParsByTier3Players(analyzableData);
+  funFacts.push(...tier3Pars);
   
   const grindMatches = findGrindMatches(analyzableData);
   funFacts.push(...grindMatches);
-
-  const dominatingWins = findDominatingWins(analyzableData);
-  funFacts.push(...dominatingWins);
 
   const upsetAlerts = findUpsetAlerts(analyzableData);
   funFacts.push(...upsetAlerts);
