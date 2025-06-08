@@ -230,13 +230,6 @@ export function useGameData(
   }, [tournamentId, currentUserId, linkedPlayerId, isAdmin]);
 
   const handleGameStatusChange = useCallback(async (game: Game, newStatus: GameStatus) => {
-    console.log('=== HANDLE GAME STATUS CHANGE START ===');
-    console.log('Tournament ID:', tournamentId);
-    console.log('Game ID:', game.id);
-    console.log('Current game status:', game.status);
-    console.log('New status:', newStatus);
-    console.log('Tournament is complete:', tournamentSettings?.isComplete);
-    
     if (!tournamentId) return;
     
     // Check if tournament is complete and prevent status changes
@@ -268,25 +261,15 @@ export function useGameData(
         updateData.isComplete = false;
     }
     
-    console.log('Update data being sent to Firestore:', updateData);
-    
     try {
-      console.log('Updating Firestore document...');
       await updateDoc(gameRef, updateData);
-      console.log('Firestore document updated successfully');
       
       const gamesCollectionRef = collection(db, 'tournaments', tournamentId, 'games');
       await getDocs(gamesCollectionRef);
-      console.log('Re-fetched games collection');
       
-      console.log('Updating tournament scores...');
       await updateTournamentScores(tournamentId);
-      console.log('Tournament scores updated successfully');
-      
-      console.log('=== HANDLE GAME STATUS CHANGE COMPLETED ===');
 
     } catch (error) {
-      console.error('=== ERROR IN HANDLE GAME STATUS CHANGE ===', error);
       console.error('Error updating game status or tournament scores:', error);
       throw error; // Re-throw to allow UI to handle the error
     }

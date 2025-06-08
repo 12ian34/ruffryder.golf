@@ -202,15 +202,6 @@ export default function GameCard({
   // Check if tournament is complete to disable certain actions
   const isTournamentComplete = tournamentSettings?.isComplete || false;
 
-  // Debug: Track when game data changes
-  useEffect(() => {
-    console.log('=== GAME PROP CHANGED ===');
-    console.log('Game ID:', initialGame.id);
-    console.log('Game status:', initialGame.status);
-    console.log('Game isStarted:', initialGame.isStarted);
-    console.log('Game isComplete:', initialGame.isComplete);
-  }, [initialGame.status, initialGame.isStarted, initialGame.isComplete, initialGame.id]);
-
   return (
     <>
       <div 

@@ -82,6 +82,14 @@ This approach gives administrators explicit control over tournament finalization
   - UI provides clear feedback in all scenarios
   - No regressions in existing functionality
 
+### Task 7: Year Selection for Tournament Completion
+- **Description**: Add a year selection modal when marking a tournament as complete
+- **Files**: `src/components/TournamentManagement.tsx`
+- **Success Criteria**:
+  - Admins can select a year when marking a tournament complete
+  - Tournament scores are saved to the selected year in the database
+  - UI provides clear feedback about the action
+
 ## Project Status Board
 
 - [x] Task 1: Update Tournament Type Definition
@@ -89,46 +97,84 @@ This approach gives administrators explicit control over tournament finalization
 - [x] Task 3: Update Game Status Change Logic
 - [x] Task 4: Update Tournament Data Fetching
 - [x] Task 5: Backward Compatibility
-- [ ] Task 6: Testing and Validation
+- [x] Task 6: Testing and Validation
+- [x] Task 7: Year Selection for Tournament Completion
 
 ## Current Status / Progress Tracking
 
-**Status**: Tasks 1-5 completed successfully. Task 6 - Testing and Validation in progress.
+**Status**: Tournament Complete Flag System with Player Yearly Statistics - FULLY IMPLEMENTED! ✅
 
-**Issue Resolution**: User reported "Mark as In Progress" button does nothing, but debugging shows it's working correctly!
+**Latest Major Enhancement**: Player Yearly Statistics Saving
+When marking a tournament as complete, individual player statistics are now saved to their yearly historical records with detailed performance data.
 
-**Debugging Results:**
-- ✅ Button functionality confirmed working via console logs
-- ✅ Tournament completion check working correctly (`isComplete: false`)
-- ✅ Database update completing successfully
-- ✅ No errors in the process
-- 🔍 **Investigating**: User may not be seeing expected visual changes (UI feedback issue)
+**All Features Completed:**
+1. ✅ Tournament completion flag in database and types
+2. ✅ Admin UI to mark tournaments complete/incomplete
+3. ✅ Game status restrictions when tournament is complete
+4. ✅ "Mark as In Progress" functionality fully working
+5. ✅ Year selection modal when completing tournaments
+6. ✅ Player statistics preview before saving
+7. ✅ Individual player yearly statistics saved to database
+8. ✅ Tournament summary statistics saved separately
 
-**Possible Causes:**
-- Real-time listener delay
-- User expectations about visual feedback
-- UI not updating immediately
-- Need to refresh page to see changes
+**Player Statistics Features:**
+- **Individual Player Records**: Each player's performance saved to `playerYearlyStats` collection
+- **Comprehensive Stats**: Games played, total strokes, holes won, points earned, averages
+- **Raw and Adjusted Data**: Both raw and handicap-adjusted statistics preserved
+- **Game-by-Game Detail**: Complete breakdown of each player's games and opponents
+- **Team Identification**: Player team affiliation (USA/EUROPE) tracked
+- **Historical Tracking**: Yearly records for long-term player development
 
-**Next Steps:**
-- Verify visual changes occur after button click
-- Check if changes persist after page refresh
-- Confirm real-time updates are working properly
+**Preview Shows:**
+- Tournament summary (player count, games completed)
+- Individual player statistics that will be saved
+- Raw scores (primary) and adjusted scores (reference)
+- Opponents faced by each player
+- Calculated averages (strokes per game, etc.)
+
+**Database Collections Created:**
+- `playerYearlyStats`: Individual player performance by year
+- `tournamentYearlyStats`: Tournament summaries by year
+
+**Player Statistics Saved Include:**
+- Player identification (ID, name, team)
+- Performance metrics (games, strokes, holes won, points)
+- Calculated averages (per-game statistics)
+- Tournament context (tournament name, year, handicap settings)
+- Detailed game records (opponents, individual game stats)
+
+**Final Implementation Details:**
+- **Tournament Types**: Include `isComplete?: boolean` field
+- **Admin Controls**: Toggle switch with year selection modal and score preview
+- **Game Restrictions**: Prevented when tournament marked complete
+- **Visual Feedback**: Clear UI indicators and error messages
+- **Database Storage**: Raw scores as primary + complete breakdown saved to `tournamentScores` collection
+- **Real-time Updates**: All changes reflect immediately in UI
+- **Backward Compatibility**: Existing tournaments default to incomplete
+
+**Database Structure for Saved Scores:**
+- `finalScore`: Raw tournament totals (primary)
+- `projectedScore`: Raw projected scores
+- `scores.raw`: Complete raw score breakdown
+- `scores.adjusted`: Complete adjusted score breakdown (reference)
+- `gameResults`: Individual game results with both raw and adjusted scores
 
 **Completed Tasks:**
-- ✅ **Task 1**: Added `isComplete?: boolean` field to Tournament interface in `src/types/tournament.ts`
-- ✅ **Task 2**: Updated Tournament Management UI with completion status display and toggle controls
-- ✅ **Task 3**: Updated game status change logic to check tournament completion status and prevent changes when tournament is complete
-- ✅ **Task 4**: Updated all tournament data fetching points to include isComplete field
-- ✅ **Task 5**: Ensured backward compatibility through optional field design and default values
-- 🔍 **Task 6**: Testing and Validation - Button functionality confirmed working, investigating UI feedback
+- ✅ **Task 1**: Update Tournament Type Definition
+- ✅ **Task 2**: Update Tournament Management UI  
+- ✅ **Task 3**: Update Game Status Change Logic
+- ✅ **Task 4**: Update Tournament Data Fetching
+- ✅ **Task 5**: Backward Compatibility
+- ✅ **Task 6**: Testing and Validation
+- ✅ **Task 7**: Year Selection for Tournament Completion
 
-**Technical Verification:**
-- Button click registration: ✅ Working
-- Tournament completion check: ✅ Working  
-- Database update: ✅ Working
-- Error handling: ✅ Working
-- Real-time UI updates: 🔍 Under investigation
+**Technical Implementation:**
+- `isComplete` field prevents game status changes
+- Year selection modal (`TournamentManagement.tsx`)
+- Tournament scores saved to `tournamentScores` collection
+- Complete tournament metadata stored with completion
+- Real-time UI updates working correctly
+- Proper error handling and user feedback
 
 ## Executor's Feedback or Assistance Requests
 

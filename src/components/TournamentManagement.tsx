@@ -39,6 +39,10 @@ export default function TournamentManagement() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
   const [teamAverageHandicaps, setTeamAverageHandicaps] = useState<TeamAverageHandicaps>({ usaAverage: 0, europeAverage: 0 });
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [selectedTournamentToComplete, setSelectedTournamentToComplete] = useState<Tournament | null>(null);
+  const [completionYear, setCompletionYear] = useState<number>(new Date().getFullYear());
+  const [showScorePreview, setShowScorePreview] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -639,50 +643,227 @@ export default function TournamentManagement() {
     try {
       const newIsComplete = !tournament.isComplete;
       
-      // Show confirmation dialog with different messages based on action
-      const message = newIsComplete
-        ? `Mark "${tournament.name}" as complete? This will prevent further changes to game statuses until the tournament is marked as incomplete again.`
-        : `Mark "${tournament.name}" as incomplete? This will allow making changes to game statuses again.`;
+      if (newIsComplete) {
+        // Show year selection modal when marking as complete
+        setSelectedTournamentToComplete(tournament);
+        setCompletionYear(tournament.year || new Date().getFullYear());
+        setShowCompletionModal(true);
+      } else {
+        // Immediately mark as incomplete
+        const message = `Mark "${tournament.name}" as incomplete? This will allow making changes to game statuses again.`;
+          
+        if (!window.confirm(message)) {
+          return;
+        }
+
+        const tournamentRef = doc(db, 'tournaments', tournament.id);
+
+        // Update tournament document
+        await updateDoc(tournamentRef, {
+          isComplete: false,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Also update with server timestamp
+        await updateDoc(tournamentRef, {
+          updatedAt: serverTimestamp()
+        });
+
+        // Update local state for tournaments
+        setTournaments(prev => prev.map(t => 
+          t.id === tournament.id 
+            ? { ...t, isComplete: false }
+            : t
+        ));
+
+        // If this is the selected tournament, update it
+        if (selectedTournament?.id === tournament.id) {
+          setSelectedTournament(prev => prev ? { ...prev, isComplete: false } : null);
+        }
+
+        // Force a re-render
+        setLastUpdated(Date.now());
         
-      if (!window.confirm(message)) {
-        return;
+        setIsLoading(false);
+        toast.success('Tournament marked as incomplete successfully');
       }
-
-      const tournamentRef = doc(db, 'tournaments', tournament.id);
-
-      // Update tournament document
-      await updateDoc(tournamentRef, {
-        isComplete: newIsComplete,
-        updatedAt: new Date().toISOString()
-      });
-
-      // Also update with server timestamp
-      await updateDoc(tournamentRef, {
-        updatedAt: serverTimestamp()
-      });
-
-      // Update local state for tournaments
-      setTournaments(prev => prev.map(t => 
-        t.id === tournament.id 
-          ? { ...t, isComplete: newIsComplete }
-          : t
-      ));
-
-      // If this is the selected tournament, update it
-      if (selectedTournament?.id === tournament.id) {
-        setSelectedTournament(prev => prev ? { ...prev, isComplete: newIsComplete } : null);
-      }
-
-      // Force a re-render
-      setLastUpdated(Date.now());
-      
-      setIsLoading(false);
-      toast.success(`Tournament ${newIsComplete ? 'marked as complete' : 'marked as incomplete'} successfully`);
     } catch (error) {
       console.error('Error toggling tournament completion:', error);
       toast.error('Failed to update tournament completion status');
       throw error;
     }
+  };
+
+  const handleConfirmTournamentCompletion = async () => {
+    if (!selectedTournamentToComplete) return;
+
+    try {
+      setIsLoading(true);
+      const tournament = selectedTournamentToComplete;
+
+      // Calculate individual player statistics for the year
+      const playerStats = new Map();
+      
+      currentMatchups.filter(game => game.isComplete).forEach(game => {
+        // USA Player stats
+        if (game.usaPlayerId && game.usaPlayerName) {
+          if (!playerStats.has(game.usaPlayerId)) {
+            playerStats.set(game.usaPlayerId, {
+              playerId: game.usaPlayerId,
+              playerName: game.usaPlayerName,
+              team: 'USA',
+              gamesPlayed: 0,
+              totalStrokes: 0,
+              totalStrokesAdjusted: 0,
+              holesWon: 0,
+              holesWonAdjusted: 0,
+              pointsEarned: 0,
+              pointsEarnedAdjusted: 0
+            });
+          }
+          const stats = playerStats.get(game.usaPlayerId);
+          stats.gamesPlayed += 1;
+          stats.totalStrokes += game.strokePlayScore?.USA || 0;
+          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedUSA || 0;
+          stats.holesWon += game.matchPlayScore?.USA || 0;
+          stats.holesWonAdjusted += game.matchPlayScore?.adjustedUSA || 0;
+          stats.pointsEarned += game.points?.raw?.USA || 0;
+          stats.pointsEarnedAdjusted += game.points?.adjusted?.USA || 0;
+        }
+
+        // Europe Player stats
+        if (game.europePlayerId && game.europePlayerName) {
+          if (!playerStats.has(game.europePlayerId)) {
+            playerStats.set(game.europePlayerId, {
+              playerId: game.europePlayerId,
+              playerName: game.europePlayerName,
+              team: 'EUROPE',
+              gamesPlayed: 0,
+              totalStrokes: 0,
+              totalStrokesAdjusted: 0,
+              holesWon: 0,
+              holesWonAdjusted: 0,
+              pointsEarned: 0,
+              pointsEarnedAdjusted: 0
+            });
+          }
+          const stats = playerStats.get(game.europePlayerId);
+          stats.gamesPlayed += 1;
+          stats.totalStrokes += game.strokePlayScore?.EUROPE || 0;
+          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedEUROPE || 0;
+          stats.holesWon += game.matchPlayScore?.EUROPE || 0;
+          stats.holesWonAdjusted += game.matchPlayScore?.adjustedEUROPE || 0;
+          stats.pointsEarned += game.points?.raw?.EUROPE || 0;
+          stats.pointsEarnedAdjusted += game.points?.adjusted?.EUROPE || 0;
+        }
+      });
+
+      // Update each player's historicalScores array and recalculate handicaps
+      const playerStatsArray = Array.from(playerStats.values());
+      for (const playerStat of playerStatsArray) {
+        const playerDocRef = doc(db, 'players', playerStat.playerId);
+        
+        // Calculate average scores for this tournament
+        const averageScore = playerStat.gamesPlayed > 0 ? 
+          Math.round((playerStat.totalStrokes / playerStat.gamesPlayed) * 100) / 100 : 0;
+        const averageScoreAdjusted = playerStat.gamesPlayed > 0 ? 
+          Math.round((playerStat.totalStrokesAdjusted / playerStat.gamesPlayed) * 100) / 100 : 0;
+
+        // Create the historical score entry
+        const historicalScoreEntry = {
+          year: completionYear,
+          score: averageScore, // Primary score (raw average)
+          scoreAdjusted: averageScoreAdjusted, // Always save adjusted score
+          tournamentName: tournament.name,
+          tournamentId: tournament.id,
+          gamesPlayed: playerStat.gamesPlayed,
+          totalStrokes: playerStat.totalStrokes,
+          totalStrokesAdjusted: playerStat.totalStrokesAdjusted,
+          holesWon: playerStat.holesWon,
+          holesWonAdjusted: playerStat.holesWonAdjusted,
+          pointsEarned: playerStat.pointsEarned,
+          pointsEarnedAdjusted: playerStat.pointsEarnedAdjusted,
+          completedAt: new Date().toISOString()
+        };
+
+        // Add to player's historicalScores array
+        await updateDoc(playerDocRef, {
+          historicalScores: arrayUnion(historicalScoreEntry)
+        });
+
+        // Recalculate handicap based on last 3 years of scores
+        // First get the updated player document to access all historical scores
+        const updatedPlayerDoc = await getDoc(playerDocRef);
+        if (updatedPlayerDoc.exists()) {
+          const playerData = updatedPlayerDoc.data();
+          const historicalScores = playerData.historicalScores || [];
+          
+          // Filter scores from the last 3 years (including this completion year)
+          const threeYearsAgo = completionYear - 2; // Last 3 years: completionYear-2, completionYear-1, completionYear
+          const recentScores = historicalScores.filter((score: any) => 
+            score.year >= threeYearsAgo && score.year <= completionYear && score.score != null
+          );
+
+          if (recentScores.length > 0) {
+            // Calculate average of recent scores for new handicap
+            const totalRecentScore = recentScores.reduce((sum: number, score: any) => sum + score.score, 0);
+            const newAverageScore = Math.round((totalRecentScore / recentScores.length) * 100) / 100;
+            
+            // Update player's averageScore (handicap)
+            await updateDoc(playerDocRef, {
+              averageScore: newAverageScore
+            });
+            
+            console.log(`Updated ${playerStat.playerName}'s handicap to ${newAverageScore} (based on ${recentScores.length} scores from ${threeYearsAgo}-${completionYear})`);
+          }
+        }
+      }
+
+      // Mark tournament as complete
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      await updateDoc(tournamentRef, {
+        isComplete: true,
+        completedYear: completionYear,
+        completedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      await updateDoc(tournamentRef, {
+        updatedAt: serverTimestamp()
+      });
+
+      // Update local state
+      setTournaments(prev => prev.map(t => 
+        t.id === tournament.id 
+          ? { ...t, isComplete: true }
+          : t
+      ));
+
+      if (selectedTournament?.id === tournament.id) {
+        setSelectedTournament(prev => prev ? { ...prev, isComplete: true } : null);
+      }
+
+      // Close modal and reset state
+      setShowCompletionModal(false);
+      setShowScorePreview(false);
+      setSelectedTournamentToComplete(null);
+      setLastUpdated(Date.now());
+      
+      toast.success(`Tournament completed! Player scores added to ${completionYear} historical records and handicaps updated.`);
+    } catch (error) {
+      console.error('Error completing tournament:', error);
+      toast.error('Failed to complete tournament');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleShowScorePreview = () => {
+    setShowScorePreview(true);
+  };
+
+  const handleBackToYearSelection = () => {
+    setShowScorePreview(false);
   };
 
   // Function to explicitly refetch data for the selected tournament
@@ -1022,6 +1203,238 @@ export default function TournamentManagement() {
           allMatchups={selectedTournament.matchups || []}
           onUnpairComplete={() => fetchDataForSelectedTournament(selectedTournament.id)}
         />
+      )}
+
+      {showCompletionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {!showScorePreview ? (
+              // Year Selection Step
+              <>
+                <h2 className="text-xl font-semibold mb-4 dark:text-white">Complete Tournament</h2>
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
+                  Mark "{selectedTournamentToComplete?.name}" as complete and save scores for the selected year.
+                </p>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Save scores for year:
+                  </label>
+                  <select
+                    value={completionYear}
+                    onChange={(e) => setCompletionYear(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    {/* Generate year options from current year - 5 to current year + 5 */}
+                    {Array.from({ length: 11 }, (_, i) => {
+                      const year = new Date().getFullYear() - 5 + i;
+                      return (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowCompletionModal(false);
+                      setSelectedTournamentToComplete(null);
+                      setShowScorePreview(false);
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleShowScorePreview}
+                    className="px-4 py-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg hover:shadow transition-all duration-200"
+                  >
+                    Preview Scores
+                  </button>
+                </div>
+              </>
+            ) : (
+              // Score Preview Step
+              <>
+                <h2 className="text-xl font-semibold mb-4 dark:text-white">Player Scores Preview</h2>
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
+                  These player scores will be saved to year <strong>{completionYear}</strong> records:
+                </p>
+
+                {selectedTournamentToComplete && (
+                  <div className="space-y-4 mb-6">
+                    {/* Calculate and show player stats preview */}
+                    {(() => {
+                      const playerStats = new Map();
+                      
+                      currentMatchups.filter(game => game.isComplete).forEach(game => {
+                        // USA Player stats
+                        if (game.usaPlayerId && game.usaPlayerName) {
+                          if (!playerStats.has(game.usaPlayerId)) {
+                            playerStats.set(game.usaPlayerId, {
+                              playerId: game.usaPlayerId,
+                              playerName: game.usaPlayerName,
+                              team: 'USA',
+                              gamesPlayed: 0,
+                              totalStrokes: 0,
+                              totalStrokesAdjusted: 0,
+                              holesWon: 0,
+                              holesWonAdjusted: 0,
+                              pointsEarned: 0,
+                              pointsEarnedAdjusted: 0
+                            });
+                          }
+                          const stats = playerStats.get(game.usaPlayerId);
+                          stats.gamesPlayed += 1;
+                          stats.totalStrokes += game.strokePlayScore?.USA || 0;
+                          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedUSA || 0;
+                          stats.holesWon += game.matchPlayScore?.USA || 0;
+                          stats.holesWonAdjusted += game.matchPlayScore?.adjustedUSA || 0;
+                          stats.pointsEarned += game.points?.raw?.USA || 0;
+                          stats.pointsEarnedAdjusted += game.points?.adjusted?.USA || 0;
+                        }
+
+                        // Europe Player stats  
+                        if (game.europePlayerId && game.europePlayerName) {
+                          if (!playerStats.has(game.europePlayerId)) {
+                            playerStats.set(game.europePlayerId, {
+                              playerId: game.europePlayerId,
+                              playerName: game.europePlayerName,
+                              team: 'EUROPE',
+                              gamesPlayed: 0,
+                              totalStrokes: 0,
+                              totalStrokesAdjusted: 0,
+                              holesWon: 0,
+                              holesWonAdjusted: 0,
+                              pointsEarned: 0,
+                              pointsEarnedAdjusted: 0
+                            });
+                          }
+                          const stats = playerStats.get(game.europePlayerId);
+                          stats.gamesPlayed += 1;
+                          stats.totalStrokes += game.strokePlayScore?.EUROPE || 0;
+                          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedEUROPE || 0;
+                          stats.holesWon += game.matchPlayScore?.EUROPE || 0;
+                          stats.holesWonAdjusted += game.matchPlayScore?.adjustedEUROPE || 0;
+                          stats.pointsEarned += game.points?.raw?.EUROPE || 0;
+                          stats.pointsEarnedAdjusted += game.points?.adjusted?.EUROPE || 0;
+                        }
+                      });
+
+                      const playerStatsArray = Array.from(playerStats.values());
+                      
+                      return (
+                        <>
+                          {/* Tournament Summary */}
+                          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Tournament Summary for {completionYear}</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600 dark:text-gray-400">Players:</span>
+                                <span className="ml-2 font-medium">{playerStatsArray.length}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600 dark:text-gray-400">Games Completed:</span>
+                                <span className="ml-2 font-medium">{currentMatchups.filter(game => game.isComplete).length}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Player Statistics Preview */}
+                          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Historical Scores to be Added</h3>
+                            <div className="space-y-3 max-h-60 overflow-y-auto">
+                              {playerStatsArray.map((player) => {
+                                const averageScore = player.gamesPlayed > 0 ? 
+                                  Math.round((player.totalStrokes / player.gamesPlayed) * 100) / 100 : 0;
+                                const averageScoreAdjusted = player.gamesPlayed > 0 ? 
+                                  Math.round((player.totalStrokesAdjusted / player.gamesPlayed) * 100) / 100 : 0;
+                                
+                                return (
+                                  <div key={player.playerId} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <h4 className="font-medium text-gray-900 dark:text-white">{player.playerName}</h4>
+                                      <span className={`px-2 py-1 text-xs rounded-full ${
+                                        player.team === 'USA' 
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                      }`}>
+                                        {player.team}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm">
+                                      <div className="mb-2">
+                                        <span className="text-gray-600 dark:text-gray-400">Primary Score (Average):</span>
+                                        <span className="ml-2 font-bold text-lg">{averageScore}</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div>
+                                          <span className="text-gray-600 dark:text-gray-400">Games:</span>
+                                          <span className="ml-1 font-medium">{player.gamesPlayed}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600 dark:text-gray-400">Total Strokes:</span>
+                                          <span className="ml-1 font-medium">{player.totalStrokes}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600 dark:text-gray-400">Holes Won:</span>
+                                          <span className="ml-1 font-medium">{player.holesWon}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600 dark:text-gray-400">Points:</span>
+                                          <span className="ml-1 font-medium">{player.pointsEarned}</span>
+                                        </div>
+                                        <div className="col-span-2 pt-1 border-t border-gray-200 dark:border-gray-600">
+                                          <span className="text-gray-600 dark:text-gray-400">Adjusted Score:</span>
+                                          <span className="ml-1 font-medium">{averageScoreAdjusted}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Note about data saving and handicap updates */}
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              <strong>Tournament Completion:</strong>
+                            </p>
+                            <ul className="text-sm text-blue-800 dark:text-blue-200 mt-1 ml-4 list-disc space-y-1">
+                              <li>Each player's performance will be added to their <code>historicalScores</code> array</li>
+                              <li>Both raw and adjusted scores will be saved for all players</li>
+                              <li>Player handicaps will be recalculated based on scores from the last 3 years ({completionYear - 2}-{completionYear})</li>
+                            </ul>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={handleBackToYearSelection}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleConfirmTournamentCompletion}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Saving...' : 'Save & Complete Tournament'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
     </div>
