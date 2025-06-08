@@ -113,7 +113,8 @@ export function useGameData(
             id: tournamentDoc.id,
             useHandicaps: tournamentDocData.useHandicaps || false,
             handicapStrokes: tournamentDocData.handicapStrokes || 0,
-            higherHandicapTeam: tournamentDocData.higherHandicapTeam || 'USA'
+            higherHandicapTeam: tournamentDocData.higherHandicapTeam || 'USA',
+            isComplete: tournamentDocData.isComplete || false
           };
           setTournamentSettings(settings);
 
@@ -229,7 +230,20 @@ export function useGameData(
   }, [tournamentId, currentUserId, linkedPlayerId, isAdmin]);
 
   const handleGameStatusChange = useCallback(async (game: Game, newStatus: GameStatus) => {
+    console.log('=== HANDLE GAME STATUS CHANGE START ===');
+    console.log('Tournament ID:', tournamentId);
+    console.log('Game ID:', game.id);
+    console.log('Current game status:', game.status);
+    console.log('New status:', newStatus);
+    console.log('Tournament is complete:', tournamentSettings?.isComplete);
+    
     if (!tournamentId) return;
+    
+    // Check if tournament is complete and prevent status changes
+    if (tournamentSettings?.isComplete) {
+      throw new Error('Cannot change game status: Tournament is marked as complete. Please mark the tournament as incomplete first to make changes.');
+    }
+    
     const gameRef = doc(db, 'tournaments', tournamentId, 'games', game.id);
     const updateData: any = { 
       status: newStatus,
@@ -239,6 +253,9 @@ export function useGameData(
     if (newStatus === 'in_progress' && !game.isStarted) {
       updateData.isStarted = true;
       updateData.startTime = serverTimestamp(); 
+    } else if (newStatus === 'in_progress' && game.isComplete) {
+      // If changing from complete to in_progress, set isComplete to false
+      updateData.isComplete = false;
     } else if (newStatus === 'complete' && !game.isComplete) {
       updateData.isComplete = true;
       updateData.endTime = serverTimestamp();
@@ -251,18 +268,29 @@ export function useGameData(
         updateData.isComplete = false;
     }
     
+    console.log('Update data being sent to Firestore:', updateData);
+    
     try {
+      console.log('Updating Firestore document...');
       await updateDoc(gameRef, updateData);
+      console.log('Firestore document updated successfully');
       
       const gamesCollectionRef = collection(db, 'tournaments', tournamentId, 'games');
       await getDocs(gamesCollectionRef);
+      console.log('Re-fetched games collection');
       
+      console.log('Updating tournament scores...');
       await updateTournamentScores(tournamentId);
+      console.log('Tournament scores updated successfully');
+      
+      console.log('=== HANDLE GAME STATUS CHANGE COMPLETED ===');
 
     } catch (error) {
+      console.error('=== ERROR IN HANDLE GAME STATUS CHANGE ===', error);
       console.error('Error updating game status or tournament scores:', error);
+      throw error; // Re-throw to allow UI to handle the error
     }
-  }, [tournamentId]);
+  }, [tournamentId, tournamentSettings]);
 
   return useMemo(() => ({
     games,

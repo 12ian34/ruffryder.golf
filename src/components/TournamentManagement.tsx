@@ -56,6 +56,7 @@ export default function TournamentManagement() {
             year: data.year || new Date().getFullYear(),
             isActive: data.isActive || false,
             useHandicaps: data.useHandicaps || false,
+            isComplete: data.isComplete || false,
             teamConfig: data.teamConfig || 'USA_VS_EUROPE',
             totalScore: data.totalScore || {
               raw: { USA: 0, EUROPE: 0 },
@@ -188,6 +189,7 @@ export default function TournamentManagement() {
         year: newTournament.year,
         teamConfig: newTournament.teamConfig,
         useHandicaps: newTournament.useHandicaps,
+        isComplete: false,
         matchups: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -633,6 +635,56 @@ export default function TournamentManagement() {
     }
   };
 
+  const handleToggleComplete = async (tournament: Tournament) => {
+    try {
+      const newIsComplete = !tournament.isComplete;
+      
+      // Show confirmation dialog with different messages based on action
+      const message = newIsComplete
+        ? `Mark "${tournament.name}" as complete? This will prevent further changes to game statuses until the tournament is marked as incomplete again.`
+        : `Mark "${tournament.name}" as incomplete? This will allow making changes to game statuses again.`;
+        
+      if (!window.confirm(message)) {
+        return;
+      }
+
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+
+      // Update tournament document
+      await updateDoc(tournamentRef, {
+        isComplete: newIsComplete,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Also update with server timestamp
+      await updateDoc(tournamentRef, {
+        updatedAt: serverTimestamp()
+      });
+
+      // Update local state for tournaments
+      setTournaments(prev => prev.map(t => 
+        t.id === tournament.id 
+          ? { ...t, isComplete: newIsComplete }
+          : t
+      ));
+
+      // If this is the selected tournament, update it
+      if (selectedTournament?.id === tournament.id) {
+        setSelectedTournament(prev => prev ? { ...prev, isComplete: newIsComplete } : null);
+      }
+
+      // Force a re-render
+      setLastUpdated(Date.now());
+      
+      setIsLoading(false);
+      toast.success(`Tournament ${newIsComplete ? 'marked as complete' : 'marked as incomplete'} successfully`);
+    } catch (error) {
+      console.error('Error toggling tournament completion:', error);
+      toast.error('Failed to update tournament completion status');
+      throw error;
+    }
+  };
+
   // Function to explicitly refetch data for the selected tournament
   const fetchDataForSelectedTournament = async (tournamentId: string) => {
     setIsLoading(true);
@@ -648,6 +700,7 @@ export default function TournamentManagement() {
           year: tournamentData.year || new Date().getFullYear(),
           isActive: tournamentData.isActive || false,
           useHandicaps: tournamentData.useHandicaps || false,
+          isComplete: tournamentData.isComplete || false,
           teamConfig: tournamentData.teamConfig || 'USA_VS_EUROPE',
           totalScore: tournamentData.totalScore || { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } },
           projectedScore: tournamentData.projectedScore || { raw: { USA: 0, EUROPE: 0 }, adjusted: { USA: 0, EUROPE: 0 } },
@@ -842,7 +895,13 @@ export default function TournamentManagement() {
                         {tournament.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 col-span-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-500">Completion:</span>
+                      <span className={`font-medium ${tournament.isComplete ? 'text-emerald-600 dark:text-emerald-500' : 'text-orange-600 dark:text-orange-400'}`}>
+                        {tournament.isComplete ? 'Complete' : 'In Progress'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
                       <span className="text-xs text-gray-500">Team Config:</span>
                       <span className="font-medium">{tournament.teamConfig.replace(/_/g, ' ')}</span>
                     </div>
@@ -851,30 +910,58 @@ export default function TournamentManagement() {
                 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 sm:mt-0">
                   {tournament.isActive && (
-                    <div className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
-                      <button
-                        onClick={() => handleToggleHandicaps(tournament)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                          tournament.useHandicaps ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-500'
-                        }`}
-                        role="switch"
-                        aria-checked={tournament.useHandicaps}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            tournament.useHandicaps ? 'translate-x-5' : 'translate-x-0'
+                    <>
+                      <div className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                        <button
+                          onClick={() => handleToggleHandicaps(tournament)}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                            tournament.useHandicaps ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-500'
                           }`}
-                        />
-                      </button>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Handicaps
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {tournament.useHandicaps ? 'Adjusted scores' : 'Raw scores'}
-                        </span>
+                          role="switch"
+                          aria-checked={tournament.useHandicaps}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              tournament.useHandicaps ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Handicaps
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {tournament.useHandicaps ? 'Adjusted scores' : 'Raw scores'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-3 p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
+                          <button
+                            onClick={() => handleToggleComplete(tournament)}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                              tournament.isComplete ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-500'
+                            }`}
+                            role="switch"
+                            aria-checked={tournament.isComplete}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                tournament.isComplete ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Complete
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {tournament.isComplete ? 'Locked' : 'Editable'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                   <button
                     onClick={() => handleToggleActive(tournament)}

@@ -23,6 +23,7 @@ export function useAllActiveTournaments() {
           // For example, if these were made optional in the DB but not in the type:
           // handicapStrokes: doc.data().handicapStrokes || 0, 
           // higherHandicapTeam: doc.data().higherHandicapTeam || 'USA' 
+          isComplete: doc.data().isComplete || false
         })) as Tournament[];
         setActiveTournaments(tournamentsData);
       } catch (err: any) {
@@ -40,6 +41,7 @@ export function useAllActiveTournaments() {
       const tournamentsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
+        isComplete: doc.data().isComplete || false
       })) as Tournament[];
       setActiveTournaments(tournamentsData);
       // setIsLoading(false); // Already handled by initial fetch

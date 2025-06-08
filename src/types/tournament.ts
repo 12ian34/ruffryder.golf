@@ -58,6 +58,7 @@ export interface Tournament {
   teamConfig: TeamConfig;
   handicapStrokes: number;
   higherHandicapTeam: 'USA' | 'EUROPE';
+  isComplete?: boolean;
   totalScore: {
     raw: {
       USA: number;

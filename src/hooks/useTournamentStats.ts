@@ -29,7 +29,11 @@ export function useTournamentStats() {
         }
         // Assuming there's only one active tournament for simplicity
         const activeTournamentDoc = tournamentSnapshot.docs[0];
-        const activeTournament = { id: activeTournamentDoc.id, ...activeTournamentDoc.data() } as Tournament;
+        const activeTournament = { 
+          id: activeTournamentDoc.id, 
+          ...activeTournamentDoc.data(),
+          isComplete: activeTournamentDoc.data().isComplete || false
+        } as Tournament;
 
         // 2. Fetch games for the active tournament
         const gamesSubcollectionPath = `tournaments/${activeTournament.id}/games`;

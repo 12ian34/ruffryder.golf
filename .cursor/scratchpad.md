@@ -1,79 +1,145 @@
-# Project: Player Tier Management and Display
+# Project: Tournament Complete Flag System
 
 ## Background and Motivation
 
-The user wants to introduce a "tier" system for players. Each player will be assigned a tier, which is an integer from 1 to about 4, with 1 being the highest tier. This tier system will serve as a guideline for creating matchups in tournaments, pairing players of similar skill levels (e.g., Tier 1 vs. Tier 1).
+The user has identified an issue with the current tournament/game management system where once all games in a tournament are complete, they cannot mark a game as "in progress" again using the "Mark as In Progress" button. This creates a problem when adjustments need to be made to completed tournaments.
 
-The key requirements are:
-1.  **Admin-only editing**: Only administrators should be able to assign and update player tiers.
-2.  **Visibility**: The player tiers should be visible in the main player list and on the "Create Matchup" screen.
-3.  **Guideline, not a rule**: The tier system should guide matchup creation but not strictly enforce it.
+The proposed solution is to:
+1. Add a tournament complete flag in the admin tournament management screen
+2. Only prevent marking games as "in progress" when the tournament is explicitly marked as complete
+3. Allow tournament administrators to control when a tournament should be locked from further modifications
 
-This feature will help in organizing more balanced and competitive matches.
+This approach gives administrators explicit control over tournament finalization while maintaining the ability to make adjustments until the tournament is formally completed.
 
 ## Key Challenges and Analysis
 
-1.  **Database Schema Modification**: The `players` data structure in **Firestore** needs to be updated to include a `tier` field. This will be handled by updating the player documents directly, so no separate migration is needed. This is now part of Task 3.
-2.  **Admin UI for Tier Management**: A new UI or modification to the existing player management UI is needed for admins to set/update the `tier` for each player. This needs to be protected by role-based access control.
-3.  **Data Fetching**: The application's data fetching logic for players needs to be updated to include the new `tier` field.
-4.  **UI Updates**:
-    *   The main player list/table needs a new column or display element for the tier.
-    *   The "Create Matchup" screen needs to display the tier for each player to assist in pairing.
-5.  **Type Safety**: TypeScript types for players (`Player`) will need to be updated to include the optional `tier` property.
+1. **Database Schema Modification**: The `Tournament` interface and Firestore documents need to be updated to include an `isComplete` boolean field.
+
+2. **Tournament Management UI**: The admin tournament management interface (`TournamentManagement.tsx`) needs to be updated to include:
+   - A toggle/button to mark tournaments as complete/incomplete
+   - Visual indication of tournament completion status
+   - Confirmation dialogs for important state changes
+
+3. **Game Status Change Logic**: The current "Mark as In Progress" functionality in `GameCard.tsx` and related components needs to be updated to:
+   - Check tournament completion status before allowing status changes
+   - Show appropriate user feedback when actions are blocked
+   - Allow all status changes when tournament is not marked complete
+
+4. **Data Flow Updates**: Multiple components and hooks need updates:
+   - `useGameData.ts` - handleGameStatusChange function
+   - `GameCard.tsx` - status change button logic
+   - `GameList.tsx` - game management permissions
+   - Tournament data fetching and state management
+
+5. **User Experience**: Need to provide clear feedback about why certain actions are disabled and how to re-enable them.
 
 ## High-level Task Breakdown
 
-### Task 1: Update Database Schema
-- **Description**: Add a `tier` column of type `integer` to the `players` table in Supabase.
-- **Success Criteria**: The `players` table in Supabase has a new `tier` column. This can be verified in the Supabase table editor.
+### Task 1: Update Tournament Type Definition
+- **Description**: Add `isComplete?: boolean` field to the Tournament interface in TypeScript
+- **Files**: `src/types/tournament.ts`
+- **Success Criteria**: Tournament type includes optional isComplete field that defaults to false for backward compatibility
 
-### Task 2: Update Player Types
-- **Description**: Update the `Player` type definition in the application to include the new `tier` attribute.
-- **Files**: `src/lib/types.ts` (or wherever Player type is defined).
-- **Success Criteria**: The `Player` type in TypeScript includes an optional `tier: number;` property.
+### Task 2: Update Tournament Management UI
+- **Description**: Add tournament completion toggle/controls to the admin tournament management interface
+- **Files**: `src/components/TournamentManagement.tsx`
+- **Success Criteria**: 
+  - Admins can mark tournaments as complete/incomplete
+  - UI shows visual indication of tournament completion status
+  - Confirmation dialog when marking tournament as complete
+  - Tournament completion status is persisted to Firestore
 
-### Task 3: Update Admin Player Management UI
-- **Description**: Modify the player editing interface to allow admins to set or update a player's tier. This will likely involve adding a number input field to the edit player form.
-- **Files**: `src/app/admin/players/edit-player-form.tsx` (or similar).
-- **Success Criteria**: An admin can successfully edit a player's tier and the change is persisted in the database.
-
-### Task 4: Display Tiers in Player List
-- **Description**: Update the main player list to display the tier for each player.
-- **Files**: `src/app/players/page.tsx` or a player table component.
-- **Success Criteria**: The player list/table shows a "Tier" column or displays the tier next to the player's name.
-
-### Task 5: Display Tiers in Create Matchup Screen
-- **Description**: Update the "Create Matchup" screen to show player tiers, helping admins make balanced pairings.
-- **Files**: `src/app/admin/matchups/create/page.tsx` (or similar).
-- **Success Criteria**: When creating a matchup, the tiers of the selectable players are visible.
-
-### Task 6: Testing
-- **Description**: End-to-end testing of the new tier functionality.
+### Task 3: Update Game Status Change Logic
+- **Description**: Modify game status change functionality to respect tournament completion status
+- **Files**: 
+  - `src/hooks/useGameData.ts`
+  - `src/components/GameCard.tsx`
+  - `src/components/GameList.tsx`
 - **Success Criteria**:
-    - Admins can create/update tiers.
-    - Non-admins cannot edit tiers.
-    - Tiers are displayed correctly in all specified locations.
-    - Matchups can still be created with players from different tiers.
+  - "Mark as In Progress" button is disabled when tournament is complete
+  - Clear user feedback when actions are blocked
+  - All game status changes work normally when tournament is not complete
+
+### Task 4: Update Tournament Data Fetching
+- **Description**: Ensure tournament completion flag is properly fetched and managed in state
+- **Files**: 
+  - `src/components/TournamentManagement.tsx`
+  - `src/hooks/useActiveTournament.ts` (if exists)
+  - Any other tournament data fetching logic
+- **Success Criteria**: Tournament completion status is properly loaded and available throughout the application
+
+### Task 5: Backward Compatibility
+- **Description**: Ensure existing tournaments without the isComplete field work properly
+- **Files**: Database queries and tournament data processing
+- **Success Criteria**: Existing tournaments default to incomplete status and function normally
+
+### Task 6: Testing and Validation
+- **Description**: End-to-end testing of the tournament completion functionality
+- **Success Criteria**:
+  - Can mark tournaments as complete/incomplete
+  - Game status changes are properly restricted when tournament is complete
+  - Game status changes work normally when tournament is incomplete
+  - UI provides clear feedback in all scenarios
+  - No regressions in existing functionality
 
 ## Project Status Board
 
-- [ ] ~~Task 1: Update Database Schema~~ (merged with Task 3)
-- [x] Task 2: Update Player Types
-- [x] Task 3: Update Admin Player Management UI
-- [x] Task 4: Display Tiers in Player List
-- [x] Task 5: Display Tiers in Create Matchup Screen
-- [x] Task 6: Testing
+- [x] Task 1: Update Tournament Type Definition
+- [x] Task 2: Update Tournament Management UI  
+- [x] Task 3: Update Game Status Change Logic
+- [x] Task 4: Update Tournament Data Fetching
+- [x] Task 5: Backward Compatibility
+- [ ] Task 6: Testing and Validation
 
 ## Current Status / Progress Tracking
 
-**Status**: All tasks are complete. The player tier system has been implemented and is ready for review.
+**Status**: Tasks 1-5 completed successfully. Task 6 - Testing and Validation in progress.
+
+**Issue Resolution**: User reported "Mark as In Progress" button does nothing, but debugging shows it's working correctly!
+
+**Debugging Results:**
+- ✅ Button functionality confirmed working via console logs
+- ✅ Tournament completion check working correctly (`isComplete: false`)
+- ✅ Database update completing successfully
+- ✅ No errors in the process
+- 🔍 **Investigating**: User may not be seeing expected visual changes (UI feedback issue)
+
+**Possible Causes:**
+- Real-time listener delay
+- User expectations about visual feedback
+- UI not updating immediately
+- Need to refresh page to see changes
+
+**Next Steps:**
+- Verify visual changes occur after button click
+- Check if changes persist after page refresh
+- Confirm real-time updates are working properly
+
+**Completed Tasks:**
+- ✅ **Task 1**: Added `isComplete?: boolean` field to Tournament interface in `src/types/tournament.ts`
+- ✅ **Task 2**: Updated Tournament Management UI with completion status display and toggle controls
+- ✅ **Task 3**: Updated game status change logic to check tournament completion status and prevent changes when tournament is complete
+- ✅ **Task 4**: Updated all tournament data fetching points to include isComplete field
+- ✅ **Task 5**: Ensured backward compatibility through optional field design and default values
+- 🔍 **Task 6**: Testing and Validation - Button functionality confirmed working, investigating UI feedback
+
+**Technical Verification:**
+- Button click registration: ✅ Working
+- Tournament completion check: ✅ Working  
+- Database update: ✅ Working
+- Error handling: ✅ Working
+- Real-time UI updates: 🔍 Under investigation
 
 ## Executor's Feedback or Assistance Requests
 
-*The tier system is fully implemented and tested. Please review the changes and confirm that everything is working as expected. Key areas to check are the player management page for editing tiers, the main player list, and the create matchup screen.*
+*Planning phase complete. Awaiting user approval to proceed with implementation.*
 
 ## Lessons
 
+*Include info useful for debugging in the program output.*
+*Read the file before you try to edit it.*
+*If there are vulnerabilities that appear in the terminal, run npm audit before proceeding*
+*Always ask before using the -force git command*
 *When data isn't appearing as expected, trace it from the initial fetch (hook) through to the component and any utility functions. Granular logging is key.*
 *Verify Firestore query conditions (`where('field', '==', 'value')`) match the exact field names and values in the database.*
-***Crucially, confirm the exact Firestore data structure, including collection/subcollection paths, AND fundamental game parameters (like all holes being Par 3) with the user if there's any ambiguity. Incorrect assumptions here can lead to significant debugging time and incorrect logic.***
+*Crucially, confirm the exact Firestore data structure, including collection/subcollection paths, AND fundamental game parameters with the user if there's any ambiguity. Incorrect assumptions here can lead to significant debugging time and incorrect logic.*

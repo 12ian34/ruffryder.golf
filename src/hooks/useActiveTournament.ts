@@ -28,7 +28,8 @@ export function useActiveTournament(userId: string | undefined) {
             id: tournamentDoc.id, 
             ...tournamentData,
             handicapStrokes: tournamentData.handicapStrokes || 0,
-            higherHandicapTeam: tournamentData.higherHandicapTeam || 'USA'
+            higherHandicapTeam: tournamentData.higherHandicapTeam || 'USA',
+            isComplete: tournamentData.isComplete || false
           } as Tournament);
         } else {
           setActiveTournament(null);

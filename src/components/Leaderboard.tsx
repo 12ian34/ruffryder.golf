@@ -70,7 +70,8 @@ export default function Leaderboard() {
 
       const tournamentData = {
         id: snapshot.docs[0].id,
-        ...snapshot.docs[0].data()
+        ...snapshot.docs[0].data(),
+        isComplete: snapshot.docs[0].data().isComplete || false
       } as Tournament;
 
       setTournament(tournamentData);
@@ -247,7 +248,8 @@ export default function Leaderboard() {
             id: tournament.id,
             useHandicaps: tournament.useHandicaps,
             handicapStrokes: tournament.handicapStrokes,
-            higherHandicapTeam: tournament.higherHandicapTeam
+            higherHandicapTeam: tournament.higherHandicapTeam,
+            isComplete: tournament.isComplete
           }}
           linkedPlayerId={null}
           onGameStatusChange={async () => {}}

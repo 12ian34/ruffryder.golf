@@ -66,4 +66,5 @@ export interface TournamentSettings {
   useHandicaps: boolean;
   handicapStrokes: number;
   higherHandicapTeam: 'USA' | 'EUROPE';
+  isComplete?: boolean;
 }

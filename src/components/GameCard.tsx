@@ -147,10 +147,32 @@ export default function GameCard({
   }, [initialGame.usaPlayerId, initialGame.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
 
   const handleStatusChange = useCallback(async (newStatus: 'not_started' | 'in_progress' | 'complete') => {
+    console.log('=== BEFORE STATUS CHANGE ===');
+    console.log('Game ID:', initialGame.id);
+    console.log('Current game status:', initialGame.status);
+    console.log('Current isStarted:', initialGame.isStarted);
+    console.log('Current isComplete:', initialGame.isComplete);
+    console.log('New status:', newStatus);
+    
     if (onStatusChange) {
-      await onStatusChange(initialGame, newStatus);
+      try {
+        await onStatusChange(initialGame, newStatus);
+        console.log('=== AFTER STATUS CHANGE (database update completed) ===');
+        console.log('Game status after update:', initialGame.status);
+        console.log('Game isStarted after update:', initialGame.isStarted);
+        console.log('Game isComplete after update:', initialGame.isComplete);
+      } catch (error: any) {
+        console.error('=== ERROR IN STATUS CHANGE ===', error);
+        // Show user-friendly error message
+        if (error.message?.includes('Tournament is marked as complete')) {
+          alert('Cannot change game status: Tournament is marked as complete.\n\nTo make changes, an admin must first mark the tournament as incomplete in the Tournament Management section.');
+        } else {
+          console.error('Error changing game status:', error);
+          alert('Failed to change game status. Please try again.');
+        }
+      }
     }
-  }, [initialGame, onStatusChange]);
+  }, [initialGame, onStatusChange, tournamentSettings]);
 
   const handleStartGame = useCallback(() => {
     handleStatusChange('in_progress');
@@ -176,6 +198,18 @@ export default function GameCard({
     ...initialGame,
     ...handicapData
   };
+
+  // Check if tournament is complete to disable certain actions
+  const isTournamentComplete = tournamentSettings?.isComplete || false;
+
+  // Debug: Track when game data changes
+  useEffect(() => {
+    console.log('=== GAME PROP CHANGED ===');
+    console.log('Game ID:', initialGame.id);
+    console.log('Game status:', initialGame.status);
+    console.log('Game isStarted:', initialGame.isStarted);
+    console.log('Game isComplete:', initialGame.isComplete);
+  }, [initialGame.status, initialGame.isStarted, initialGame.isComplete, initialGame.id]);
 
   return (
     <>
@@ -279,13 +313,23 @@ export default function GameCard({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (isTournamentComplete) {
+                            alert('Cannot change game status: Tournament is marked as complete.\n\nTo make changes, an admin must first mark the tournament as incomplete in the Tournament Management section.');
+                            return;
+                          }
                           if (window.confirm('Are you sure you want to mark this game as in progress? This will reset its completion status and remove its points from the tournament total.')) {
                             handleStatusChange('in_progress');
                           }
                         }}
-                        className="w-full px-3 py-2 border border-europe-500 bg-europe-500/10 text-europe-700 dark:text-europe-300 rounded-lg hover:bg-europe-500/20 transition-colors duration-200 text-sm font-medium"
+                        disabled={isTournamentComplete}
+                        className={`w-full px-3 py-2 border rounded-lg transition-colors duration-200 text-sm font-medium ${
+                          isTournamentComplete 
+                            ? 'border-gray-400 bg-gray-200 text-gray-500 cursor-not-allowed dark:border-gray-600 dark:bg-gray-700 dark:text-gray-500' 
+                            : 'border-europe-500 bg-europe-500/10 text-europe-700 dark:text-europe-300 hover:bg-europe-500/20'
+                        }`}
+                        title={isTournamentComplete ? 'Tournament is marked as complete. Cannot change game status.' : ''}
                       >
-                        Mark as In Progress
+                        {isTournamentComplete ? 'Locked (Tournament Complete)' : 'Mark as In Progress'}
                       </button>
                     </>
                   ) : (
