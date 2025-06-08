@@ -76,13 +76,15 @@ service cloud.firestore {
         allow update: if isAdmin() || (
           isSignedIn() && 
           getUserLinkedPlayerId() != null && (
-            // Check if player is directly in the game OR in the allowedEditors list (for four-ball support)
+            // Check if player is directly in the game, in the allowedEditors list (for four-ball support), or in the playerIds list
             (resource.data.usaPlayerId == getUserLinkedPlayerId() ||
              resource.data.europePlayerId == getUserLinkedPlayerId() ||
-             (resource.data.allowedEditors != null && getUserLinkedPlayerId() in resource.data.allowedEditors)) &&
+             (resource.data.allowedEditors != null && getUserLinkedPlayerId() in resource.data.allowedEditors) ||
+             (resource.data.playerIds != null && getUserLinkedPlayerId() in resource.data.playerIds)) &&
             (request.resource.data.usaPlayerId == getUserLinkedPlayerId() ||
              request.resource.data.europePlayerId == getUserLinkedPlayerId() ||
-             (request.resource.data.allowedEditors != null && getUserLinkedPlayerId() in request.resource.data.allowedEditors)) &&
+             (request.resource.data.allowedEditors != null && getUserLinkedPlayerId() in request.resource.data.allowedEditors) ||
+             (request.resource.data.playerIds != null && getUserLinkedPlayerId() in request.resource.data.playerIds)) &&
             // Ensure all required fields are present and unchanged
             request.resource.data.usaPlayerId == resource.data.usaPlayerId &&
             request.resource.data.europePlayerId == resource.data.europePlayerId &&
