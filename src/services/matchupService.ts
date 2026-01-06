@@ -79,13 +79,13 @@ export async function pairMatchups(tournamentId: string, matchup1Id: string, mat
     }
 
     await updateDoc(tournamentRef, { matchups: updatedMatchups });
-    console.log(`Matchups ${matchup1Id} and ${matchup2Id} paired with fourballId ${newFourballId} in tournament ${tournamentId}.`);
+    console.log('Matchups paired:', { matchup1Id, matchup2Id, fourballId: newFourballId, tournamentId });
 
     // Update game permissions for the newly created fourball
     await updateGamePermissionsForFourball(tournamentId, newFourballId);
 
   } catch (error) {
-    console.error(`Error pairing matchups ${matchup1Id}, ${matchup2Id} in tournament ${tournamentId}:`, error);
+    console.error('Error pairing matchups:', { matchup1Id, matchup2Id, tournamentId }, error);
     throw error; 
   }
 }
@@ -122,12 +122,12 @@ export async function unpairFourball(tournamentId: string, fourballIdToUnpair: s
     });
 
     if (matchupsUnpairedCount === 0) {
-      console.warn(`No matchups found with fourballId ${fourballIdToUnpair} in tournament ${tournamentId} to unpair.`);
+      console.warn('No matchups found to unpair:', { fourballId: fourballIdToUnpair, tournamentId });
       return; // No update needed if no matchups were changed
     }
 
     await updateDoc(tournamentRef, { matchups: updatedMatchups });
-    console.log(`${matchupsUnpairedCount} matchup(s) with fourballId ${fourballIdToUnpair} have been unpaired in tournament ${tournamentId}.`);
+    console.log('Matchups unpaired:', { count: matchupsUnpairedCount, fourballId: fourballIdToUnpair, tournamentId });
 
     // Update game permissions only for the games that were just unpaired
     // Remove allowedEditors from these specific games
@@ -141,17 +141,17 @@ export async function unpairFourball(tournamentId: string, fourballIdToUnpair: s
             // Remove the allowedEditors field by updating without it
             const { allowedEditors, ...gameDataWithoutAllowedEditors } = gameData;
             await updateDoc(gameRef, gameDataWithoutAllowedEditors);
-            console.log(`Removed allowedEditors from game ${matchup.id} (unpaired from fourball)`);
+            console.log('Removed allowedEditors from game (unpaired):', matchup.id);
           }
         }
       } catch (error) {
-        console.error(`Error removing allowedEditors from game ${matchup.id}:`, error);
+        console.error('Error removing allowedEditors from game:', matchup.id, error);
         // Continue with other games even if one fails
       }
     }
 
   } catch (error) {
-    console.error(`Error unpairing fourball ${fourballIdToUnpair} in tournament ${tournamentId}:`, error);
+    console.error('Error unpairing fourball:', { fourballId: fourballIdToUnpair, tournamentId }, error);
     throw error;
   }
 }
@@ -174,7 +174,7 @@ export async function getMatchupsByFourballId(tournamentId: string, fourballId: 
     
     return tournamentData.matchups.filter(m => m.fourballId === fourballId);
   } catch (error) {
-    console.error(`Error fetching matchups by fourballId ${fourballId} in tournament ${tournamentId}:`, error);
+    console.error('Error fetching matchups by fourballId:', { fourballId, tournamentId }, error);
     throw error;
   }
 }
@@ -219,7 +219,7 @@ export async function getUserFourballMatchups(tournamentId: string, userId: stri
     return Array.from(matchupsMap.values());
 
   } catch (error) {
-    console.error(`Error fetching user's fourball matchups for tournament ${tournamentId}, user ${userId}:`, error);
+    console.error('Error fetching user fourball matchups:', { tournamentId, userId }, error);
     throw error;
   }
 }
@@ -281,10 +281,10 @@ export async function updateGamePermissionsForFourball(tournamentId: string, fou
               await updateDoc(gameRef, {
                 allowedEditors: allPlayerIds
               });
-              console.log(`Updated allowedEditors for game ${matchup.id} in fourball ${fbId}`);
+              console.log('Updated allowedEditors for game:', { gameId: matchup.id, fourballId: fbId });
             }
           } catch (error) {
-            console.error(`Error updating game ${matchup.id}:`, error);
+            console.error('Error updating game:', matchup.id, error);
             // Continue with other games even if one fails
           }
         }
@@ -303,17 +303,17 @@ export async function updateGamePermissionsForFourball(tournamentId: string, fou
             // Remove the allowedEditors field by updating without it
             const { allowedEditors, ...gameDataWithoutAllowedEditors } = gameData;
             await updateDoc(gameRef, gameDataWithoutAllowedEditors);
-            console.log(`Removed allowedEditors for game ${matchup.id} (no longer in fourball)`);
+            console.log('Removed allowedEditors for game (no longer in fourball):', matchup.id);
           }
         }
       } catch (error) {
-        console.error(`Error removing allowedEditors from game ${matchup.id}:`, error);
+        console.error('Error removing allowedEditors from game:', matchup.id, error);
         // Continue with other games even if one fails
       }
     }
 
   } catch (error) {
-    console.error(`Error updating game permissions for fourball in tournament ${tournamentId}:`, error);
+    console.error('Error updating game permissions for fourball:', { tournamentId }, error);
     throw error;
   }
 } 

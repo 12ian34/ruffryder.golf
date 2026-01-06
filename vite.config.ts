@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import compression from 'vite-plugin-compression';
 
@@ -42,7 +42,7 @@ export default defineConfig({
       format: {
         comments: false,
       },
-    },
+    } as UserConfig['build'] extends { terserOptions?: infer T } ? T : never,
     rollupOptions: {
       output: {
         manualChunks: {
