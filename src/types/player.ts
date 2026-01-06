@@ -9,6 +9,6 @@ export interface Player {
   team: 'USA' | 'EUROPE';
   tier?: number;
   historicalScores: HistoricalScore[];
-  averageScore: number;
+  averageScore?: number;
   customEmoji?: string;
 }

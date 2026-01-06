@@ -88,12 +88,12 @@ describe('Handicap Tests', () => {
 
   describe('Handicap Calculations', () => {
     it('should correctly calculate handicap difference between players', () => {
-      const handicapDiff = Math.abs(mockPlayer1.averageScore - mockPlayer2.averageScore);
+      const handicapDiff = Math.abs(mockPlayer1.averageScore! - mockPlayer2.averageScore!);
       expect(handicapDiff).toBe(10);
     });
 
     it('should correctly identify higher handicap player', () => {
-      const higherHandicapPlayer = mockPlayer1.averageScore > mockPlayer2.averageScore ? mockPlayer1 : mockPlayer2;
+      const higherHandicapPlayer = mockPlayer1.averageScore! > mockPlayer2.averageScore! ? mockPlayer1 : mockPlayer2;
       expect(higherHandicapPlayer).toBe(mockPlayer2);
     });
 
@@ -102,7 +102,7 @@ describe('Handicap Tests', () => {
         ...mockPlayer1,
         averageScore: mockPlayer2.averageScore,
       };
-      const handicapDiff = Math.abs(playerWithEqualHandicap.averageScore - mockPlayer2.averageScore);
+      const handicapDiff = Math.abs(playerWithEqualHandicap.averageScore! - mockPlayer2.averageScore!);
       expect(handicapDiff).toBe(0);
     });
 
@@ -111,7 +111,7 @@ describe('Handicap Tests', () => {
         ...mockPlayer1,
         averageScore: 120,
       };
-      const handicapDiff = Math.abs(playerWithLargeHandicap.averageScore - mockPlayer2.averageScore);
+      const handicapDiff = Math.abs(playerWithLargeHandicap.averageScore! - mockPlayer2.averageScore!);
       expect(handicapDiff).toBe(30);
     });
     
@@ -126,7 +126,7 @@ describe('Handicap Tests', () => {
         averageScore: 100
       };
       
-      const handicapDiff = Math.abs(playerWithNegativeHandicap.averageScore - playerWithHighHandicap.averageScore);
+      const handicapDiff = Math.abs(playerWithNegativeHandicap.averageScore! - playerWithHighHandicap.averageScore!);
       expect(handicapDiff).toBe(30);
     });
     

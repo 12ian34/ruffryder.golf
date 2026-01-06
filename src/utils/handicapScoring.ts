@@ -94,8 +94,8 @@ export function calculateAverageTeamHandicaps(players: Player[]): TeamAverageHan
     p => p.team === 'EUROPE' && typeof p.averageScore === 'number' && !isNaN(p.averageScore)
   );
 
-  const usaTotalHandicap = usaPlayers.reduce((sum, p) => sum + p.averageScore, 0);
-  const europeTotalHandicap = europePlayers.reduce((sum, p) => sum + p.averageScore, 0);
+  const usaTotalHandicap = usaPlayers.reduce((sum, p) => sum + (p.averageScore ?? 0), 0);
+  const europeTotalHandicap = europePlayers.reduce((sum, p) => sum + (p.averageScore ?? 0), 0);
 
   const usaAverage = usaPlayers.length > 0 ? usaTotalHandicap / usaPlayers.length : 0;
   const europeAverage = europePlayers.length > 0 ? europeTotalHandicap / europePlayers.length : 0;

@@ -111,7 +111,7 @@ export function usePlayerData(tournamentId: string | undefined) {
         const bTier = b.tier ?? 999;
         return direction * (aTier - bTier);
       case 'averageScore':
-        return direction * (a.averageScore - b.averageScore);
+        return direction * ((a.averageScore ?? 0) - (b.averageScore ?? 0));
       default:
         const aScore = a.historicalScores.find(s => s.year === sortField)?.score ?? 999;
         const bScore = b.historicalScores.find(s => s.year === sortField)?.score ?? 999;
