@@ -73,6 +73,12 @@ src/
   - `PlayerManagement`: Error toasts for player save/delete failures
   - `UserManagement`: Error toast for user update failures
   - `usePlayerData`: Re-throws errors for proper toast handling in UI
+- Added comprehensive Firebase/Firestore documentation section:
+  - Full document schemas for all collections (users, players, tournaments, games, config)
+  - User ↔ Player linking explanation (`linkedPlayerId`)
+  - Security rules summary table
+  - Firebase CLI commands for deploying rules/indexes
+  - Emulator configuration details
 
 ### Recent Completed Features
 - **Tournament Complete Flag System**: Admin toggle to lock tournaments (`isComplete` field)
@@ -196,17 +202,152 @@ When `tournament.isComplete === true`:
 
 ---
 
-## Database Collections
+## Firebase / Firestore
 
+### Document Schemas
+
+#### `users/{id}`
+```typescript
+User {
+  id: string;                    // Firebase Auth UID
+  email: string;
+  name: string;
+  isAdmin: boolean;
+  linkedPlayerId: string | null; // Links user account → player profile
+  team: 'USA' | 'EUROPE' | null;
+  customEmoji?: string;          // Optional display emoji
+  createdAt: Timestamp;
+}
+```
+
+#### `players/{id}`
+```typescript
+Player {
+  id: string;
+  name: string;
+  team: 'USA' | 'EUROPE';
+  tier?: number;
+  historicalScores: { year: number; score: number }[];
+  averageScore?: number;         // Calculated handicap (avg of last 3 years)
+  customEmoji?: string;
+}
+```
+
+#### `tournaments/{id}`
+```typescript
+Tournament {
+  id: string;
+  name: string;
+  year: number;
+  isActive: boolean;
+  isComplete?: boolean;          // Locks tournament from edits
+  useHandicaps: boolean;
+  teamConfig: 'USA_VS_EUROPE' | 'EUROPE_VS_EUROPE' | 'USA_VS_USA';
+  handicapStrokes: number;
+  higherHandicapTeam: 'USA' | 'EUROPE';
+  matchups: Matchup[];           // Array of matchup objects
+  totalScore: { raw: { USA, EUROPE }, adjusted: { USA, EUROPE } };
+  projectedScore: { raw: { USA, EUROPE }, adjusted: { USA, EUROPE } };
+  progress: TournamentProgress[]; // Timestamped score snapshots
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+#### `tournaments/{id}/games/{gameId}`
+```typescript
+Game {
+  id: string;
+  tournamentId: string;
+  usaPlayerId, europePlayerId: string;
+  usaPlayerName, europePlayerName: string;
+  usaPlayerHandicap?, europePlayerHandicap?: number;
+  handicapStrokes: number;
+  higherHandicapTeam: 'USA' | 'EUROPE';
+  holes: HoleScore[18];
+  strokePlayScore: { USA, EUROPE, adjustedUSA, adjustedEUROPE };
+  matchPlayScore: { USA, EUROPE, adjustedUSA, adjustedEUROPE };
+  points: { raw: { USA, EUROPE }, adjusted: { USA, EUROPE } };
+  status: 'not_started' | 'in_progress' | 'complete';
+  isStarted, isComplete: boolean;
+  playerIds: string[];           // Both player IDs for quick lookup
+  allowedEditors?: string[];     // Player IDs who can edit (for fourballs)
+  useHandicaps?: boolean;
+  startTime?, endTime?: Date;
+  updatedAt?: Timestamp;
+}
+```
+
+#### `config/strokeIndices`
+```typescript
+StrokeIndices {
+  indices: number[];  // Array of 18 numbers (1-18, each used exactly once)
+                      // Index = hole number (0-17), value = stroke index
+}
+```
+
+#### Other Collections
 | Collection | Purpose |
 |------------|---------|
-| `tournaments` | Tournament configs, matchups array, scores |
-| `tournaments/{id}/games` | Individual game scores (18 holes each) |
-| `players` | Player roster with handicaps (`averageScore`) |
 | `playerYearlyStats` | Historical player performance by year |
 | `tournamentYearlyStats` | Tournament summaries by year |
 | `tournamentScores` | Final tournament scores when marked complete |
-| `config/strokeIndices` | Hole stroke index configuration |
+
+### User ↔ Player Linking
+
+The `linkedPlayerId` field on User connects authentication to player profiles:
+- When set, user can edit games where they are a participant
+- Checked via `getUserLinkedPlayerId()` in security rules
+- Set by admin in User Management
+
+### Security Rules Summary
+
+Rules are defined in `firestore.rules`:
+
+| Collection | Read | Create | Update | Delete |
+|------------|------|--------|--------|--------|
+| `users` | All authenticated | Own user only | Own: name/emoji only; Admin: all | Admin only |
+| `players` | All authenticated | Admin only | Admin, or linked user (emoji only) | Admin only |
+| `tournaments` | All authenticated | Admin only | Admin, or any linked player | Admin only |
+| `games` (subcollection) | All authenticated | Admin only | Admin, or player in game/`allowedEditors` | Admin only |
+| `config` | All authenticated | Admin only | Admin only | Admin only |
+
+**Key permission checks:**
+- `isAdmin()` — checks `users/{uid}.isAdmin == true`
+- `getUserLinkedPlayerId()` — returns user's `linkedPlayerId` for game edit checks
+- Game edits by players are restricted to specific fields: `holes`, `strokePlayScore`, `matchPlayScore`, `points`, `status`, `isStarted`, `isComplete`, `endTime`, `updatedAt`
+
+### Firestore Indexes
+
+Defined in `firestore.indexes.json`:
+- Composite index on `tournaments`: `isActive` + `status` + `createdAt DESC`
+
+### Firebase CLI Commands
+
+```bash
+# Deploy Firestore rules (requires firebase-tools)
+npx firebase deploy --only firestore:rules
+
+# Deploy Firestore indexes
+npx firebase deploy --only firestore:indexes
+
+# Deploy both rules and indexes
+npx firebase deploy --only firestore
+
+# Test rules locally with emulator
+npx firebase emulators:start
+```
+
+**Important:** After editing `firestore.rules`, you must deploy to production:
+```bash
+npx firebase deploy --only firestore:rules
+```
+
+Emulator ports (configured in `firebase.json`):
+- Auth: `localhost:9099`
+- Firestore: `localhost:8080`
+- Storage: `localhost:9199`
+- Emulator UI: `localhost:4000`
 
 ---
 
@@ -227,6 +368,8 @@ npm run lint         # ESLint check
 
 | File | Purpose |
 |------|---------|
+| `firestore.rules` | Firestore security rules (deploy with `npx firebase deploy --only firestore:rules`) |
+| `firestore.indexes.json` | Firestore composite indexes |
 | `src/types/player.ts` | Player interface (`averageScore?: number`), `HistoricalScore` type |
 | `src/types/tournament.ts` | Tournament, Matchup interfaces |
 | `src/types/game.ts` | Game, HoleScore interfaces |
