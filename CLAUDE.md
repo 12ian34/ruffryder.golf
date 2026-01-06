@@ -358,9 +358,59 @@ npm install          # Install dependencies
 npm run dev          # Start dev server (port 5173)
 npm run build        # Type-check + production build
 npm run type-check   # TypeScript validation only
-npx vitest run       # Run test suite
 npm run lint         # ESLint check
 ```
+
+### Environment Variables
+
+Create a `.env` file (or set in Netlify dashboard):
+
+```bash
+# Firebase (required)
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+
+# PostHog Analytics (required for tracking)
+VITE_POSTHOG_API_KEY=
+VITE_POSTHOG_HOST=https://eu.i.posthog.com  # optional, defaults to EU
+
+# Local Development (optional)
+VITE_USE_FIREBASE_EMULATOR=true  # connects to local emulators
+VITE_POSTHOG_DEBUG=true          # enables PostHog debug mode
+```
+
+### Deployment
+
+**Netlify** handles deployment automatically:
+- Every merge to `main` triggers a build and deploys to production
+- Build command: `npm install && npx vitest run && npm run build`
+- Tests must pass before deployment succeeds
+- Node.js 22, SPA redirects configured in `netlify.toml`
+
+Live site: https://ruffryder.golf
+
+---
+
+## Testing
+
+Tests are in `src/__tests__/` (21 test files, 301+ tests).
+
+```bash
+npx vitest run              # Run all tests once
+npx vitest                  # Watch mode
+npx vitest run --coverage   # With coverage report
+npx vitest run handicap     # Run tests matching "handicap"
+```
+
+**Test organization:**
+- Unit tests for utils (`gamePoints.test.ts`, `handicapScoring.test.ts`, `statsAnalysis.test.ts`)
+- Component tests with React Testing Library (`Leaderboard.test.tsx`, `GameScoreDisplay.test.tsx`)
+- Hook tests (`useAuth.test.tsx`, `useOnlineStatus.test.ts`, `useHoleDistances.test.ts`)
+- Service tests (`matchupService.test.ts`)
 
 ---
 
