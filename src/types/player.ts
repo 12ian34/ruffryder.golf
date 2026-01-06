@@ -8,6 +8,6 @@ export interface Player {
   name: string;
   team: 'USA' | 'EUROPE';
   historicalScores: HistoricalScore[];
-  averageScore: number;
+  averageScore?: number;
   customEmoji?: string;
 }

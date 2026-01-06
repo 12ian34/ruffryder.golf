@@ -107,7 +107,7 @@ export function usePlayerData(tournamentId: string | undefined) {
       case 'team':
         return direction * a.team.localeCompare(b.team);
       case 'averageScore':
-        return direction * (a.averageScore - b.averageScore);
+        return direction * ((a.averageScore ?? 0) - (b.averageScore ?? 0));
       default:
         const aScore = a.historicalScores.find(s => s.year === sortField)?.score ?? 999;
         const bScore = b.historicalScores.find(s => s.year === sortField)?.score ?? 999;

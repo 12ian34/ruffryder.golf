@@ -286,7 +286,7 @@ export default function TournamentManagement() {
         const player2 = availableUsaPlayers.find(p => p.id === player2Id) || availableEuropePlayers.find(p => p.id === player2Id);
         
         if (player1 && player2) {
-          higherHandicapTeam = player1.averageScore > player2.averageScore ? team1 : team2;
+          higherHandicapTeam = (player1.averageScore ?? 0) > (player2.averageScore ?? 0) ? team1 : team2;
         }
       }
 
@@ -580,7 +580,7 @@ export default function TournamentManagement() {
     const player2 = availableUsaPlayers.find(p => p.id === player2Id) || availableEuropePlayers.find(p => p.id === player2Id);
     
     if (!player1 || !player2) return 0;
-    return Math.abs(player1.averageScore - player2.averageScore);
+    return Math.abs((player1.averageScore ?? 0) - (player2.averageScore ?? 0));
   };
 
   const handleToggleHandicaps = async (tournament: Tournament) => {
