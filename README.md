@@ -27,6 +27,9 @@ web app for live tracking and score keeping for an annual golf tournament with f
 - track tournament progress and completion status
 - real-time tournament leaderboard
 - support for multiple game formats (stroke play and match play)
+- fourball pairing system (pair two matchups together)
+- tournament completion locking (prevent changes after finalization)
+- year selection when completing tournaments
 
 ### real time scoring
 - real-time score tracking and updates
@@ -41,8 +44,10 @@ web app for live tracking and score keeping for an annual golf tournament with f
 ### player management
 - player profiles and statistics
 - team assignments (usa vs europe format)
-- player handicap tracking
+- player handicap tracking (calculated from historical scores)
 - historical performance data
+- player yearly statistics saved on tournament completion
+- score preview before saving
 
 ### game features
 - individual game scorecards
@@ -82,10 +87,13 @@ web app for live tracking and score keeping for an annual golf tournament with f
 
 ## stack
 
-- react
-- typeScript
-- vite
-- tailwind
-- firebase
-- chart.js
-- tiptap
+- react 18
+- typescript 5
+- vite 7
+- tailwind css
+- firebase 12 (firestore, auth, storage)
+- chart.js + react-chartjs-2
+- tiptap (rich text editor)
+- vitest (testing)
+- posthog (analytics)
+- netlify (deployment)
