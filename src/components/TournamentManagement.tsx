@@ -6,7 +6,7 @@ import MatchupCreator from './tournament/MatchupCreator';
 import MatchupList from './tournament/MatchupList';
 import FourballPairing from './tournament/FourballPairing';
 import ExistingFourballsList from './tournament/ExistingFourballsList';
-import type { Player } from '../types/player';
+import type { Player, HistoricalScore } from '../types/player';
 import type { Game } from '../types/game';
 import type { Tournament, TeamConfig, Matchup } from '../types/tournament';
 import { auth } from '../config/firebase';
@@ -19,6 +19,68 @@ interface NewTournamentForm {
   year: number;
   useHandicaps: boolean;
   teamConfig: TeamConfig;
+}
+
+// Base player stats calculated from completed games
+interface BasePlayerStats {
+  playerId: string;
+  playerName: string;
+  team: 'USA' | 'EUROPE';
+  gamesPlayed: number;
+  totalStrokes: number;
+  totalStrokesAdjusted: number;
+}
+
+// Extended stats for score preview with handicap calculations
+interface PreviewPlayerStats extends BasePlayerStats {
+  currentHandicap: number;
+  newHandicap: number;
+  historicalScoresUsed: HistoricalScore[];
+}
+
+// Helper function to calculate base player statistics from completed games
+function calculateBasePlayerStats(games: Game[]): Map<string, BasePlayerStats> {
+  const playerStats = new Map<string, BasePlayerStats>();
+  
+  games.filter(game => game.isComplete).forEach(game => {
+    // USA Player stats
+    if (game.usaPlayerId && game.usaPlayerName) {
+      if (!playerStats.has(game.usaPlayerId)) {
+        playerStats.set(game.usaPlayerId, {
+          playerId: game.usaPlayerId,
+          playerName: game.usaPlayerName,
+          team: 'USA',
+          gamesPlayed: 0,
+          totalStrokes: 0,
+          totalStrokesAdjusted: 0,
+        });
+      }
+      const stats = playerStats.get(game.usaPlayerId)!;
+      stats.gamesPlayed += 1;
+      stats.totalStrokes += game.strokePlayScore?.USA || 0;
+      stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedUSA || 0;
+    }
+
+    // Europe Player stats
+    if (game.europePlayerId && game.europePlayerName) {
+      if (!playerStats.has(game.europePlayerId)) {
+        playerStats.set(game.europePlayerId, {
+          playerId: game.europePlayerId,
+          playerName: game.europePlayerName,
+          team: 'EUROPE',
+          gamesPlayed: 0,
+          totalStrokes: 0,
+          totalStrokesAdjusted: 0,
+        });
+      }
+      const stats = playerStats.get(game.europePlayerId)!;
+      stats.gamesPlayed += 1;
+      stats.totalStrokes += game.strokePlayScore?.EUROPE || 0;
+      stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedEUROPE || 0;
+    }
+  });
+
+  return playerStats;
 }
 
 export default function TournamentManagement() {
@@ -43,7 +105,7 @@ export default function TournamentManagement() {
   const [selectedTournamentToComplete, setSelectedTournamentToComplete] = useState<Tournament | null>(null);
   const [completionYear, setCompletionYear] = useState<number>(new Date().getFullYear());
   const [showScorePreview, setShowScorePreview] = useState(false);
-  const [previewPlayerStats, setPreviewPlayerStats] = useState<any[]>([]);
+  const [previewPlayerStats, setPreviewPlayerStats] = useState<PreviewPlayerStats[]>([]);
   const [updateHandicaps, setUpdateHandicaps] = useState<boolean>(false);
   const [saveScoresToHistory, setSaveScoresToHistory] = useState<boolean>(false);
 
@@ -705,55 +767,37 @@ export default function TournamentManagement() {
       const tournament = selectedTournamentToComplete;
 
       // Calculate individual player statistics for the year
-      const playerStats = new Map();
+      const baseStats = calculateBasePlayerStats(currentMatchups);
       
+      // Extend with match play and points data for completion
+      const playerStats = new Map<string, BasePlayerStats & {
+        holesWon: number;
+        holesWonAdjusted: number;
+        pointsEarned: number;
+        pointsEarnedAdjusted: number;
+      }>();
+      
+      baseStats.forEach((stats, playerId) => {
+        playerStats.set(playerId, {
+          ...stats,
+          holesWon: 0,
+          holesWonAdjusted: 0,
+          pointsEarned: 0,
+          pointsEarnedAdjusted: 0,
+        });
+      });
+      
+      // Add match play and points data
       currentMatchups.filter(game => game.isComplete).forEach(game => {
-        // USA Player stats
-        if (game.usaPlayerId && game.usaPlayerName) {
-          if (!playerStats.has(game.usaPlayerId)) {
-            playerStats.set(game.usaPlayerId, {
-              playerId: game.usaPlayerId,
-              playerName: game.usaPlayerName,
-              team: 'USA',
-              gamesPlayed: 0,
-              totalStrokes: 0,
-              totalStrokesAdjusted: 0,
-              holesWon: 0,
-              holesWonAdjusted: 0,
-              pointsEarned: 0,
-              pointsEarnedAdjusted: 0
-            });
-          }
-          const stats = playerStats.get(game.usaPlayerId);
-          stats.gamesPlayed += 1;
-          stats.totalStrokes += game.strokePlayScore?.USA || 0;
-          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedUSA || 0;
+        if (game.usaPlayerId && playerStats.has(game.usaPlayerId)) {
+          const stats = playerStats.get(game.usaPlayerId)!;
           stats.holesWon += game.matchPlayScore?.USA || 0;
           stats.holesWonAdjusted += game.matchPlayScore?.adjustedUSA || 0;
           stats.pointsEarned += game.points?.raw?.USA || 0;
           stats.pointsEarnedAdjusted += game.points?.adjusted?.USA || 0;
         }
-
-        // Europe Player stats
-        if (game.europePlayerId && game.europePlayerName) {
-          if (!playerStats.has(game.europePlayerId)) {
-            playerStats.set(game.europePlayerId, {
-              playerId: game.europePlayerId,
-              playerName: game.europePlayerName,
-              team: 'EUROPE',
-              gamesPlayed: 0,
-              totalStrokes: 0,
-              totalStrokesAdjusted: 0,
-              holesWon: 0,
-              holesWonAdjusted: 0,
-              pointsEarned: 0,
-              pointsEarnedAdjusted: 0
-            });
-          }
-          const stats = playerStats.get(game.europePlayerId);
-          stats.gamesPlayed += 1;
-          stats.totalStrokes += game.strokePlayScore?.EUROPE || 0;
-          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedEUROPE || 0;
+        if (game.europePlayerId && playerStats.has(game.europePlayerId)) {
+          const stats = playerStats.get(game.europePlayerId)!;
           stats.holesWon += game.matchPlayScore?.EUROPE || 0;
           stats.holesWonAdjusted += game.matchPlayScore?.adjustedEUROPE || 0;
           stats.pointsEarned += game.points?.raw?.EUROPE || 0;
@@ -809,13 +853,13 @@ export default function TournamentManagement() {
               
               // Filter scores from the last 3 years (including this completion year)
               const threeYearsAgo = completionYear - 2; // Last 3 years: completionYear-2, completionYear-1, completionYear
-              const recentScores = historicalScores.filter((score: any) => 
+              const recentScores = historicalScores.filter((score: HistoricalScore) => 
                 score.year >= threeYearsAgo && score.year <= completionYear && score.score != null
               );
 
               if (recentScores.length > 0) {
                 // Calculate average of recent scores for new handicap
-                const totalRecentScore = recentScores.reduce((sum: number, score: any) => sum + score.score, 0);
+                const totalRecentScore = recentScores.reduce((sum: number, score: HistoricalScore) => sum + score.score, 0);
                 const newAverageScore = Math.round(totalRecentScore / recentScores.length);
                 
                 // Update player's averageScore (handicap)
@@ -884,51 +928,19 @@ export default function TournamentManagement() {
   const handleShowScorePreview = async () => {
     setIsLoading(true);
     try {
-      // Calculate player stats for preview
-      const playerStats = new Map();
+      // Calculate player stats for preview using shared helper
+      const baseStats = calculateBasePlayerStats(currentMatchups);
       
-      currentMatchups.filter(game => game.isComplete).forEach(game => {
-        // USA Player stats
-        if (game.usaPlayerId && game.usaPlayerName) {
-          if (!playerStats.has(game.usaPlayerId)) {
-            playerStats.set(game.usaPlayerId, {
-              playerId: game.usaPlayerId,
-              playerName: game.usaPlayerName,
-              team: 'USA',
-              gamesPlayed: 0,
-              totalStrokes: 0,
-              totalStrokesAdjusted: 0,
-              currentHandicap: 0,
-              newHandicap: 0,
-              historicalScoresUsed: []
-            });
-          }
-          const stats = playerStats.get(game.usaPlayerId);
-          stats.gamesPlayed += 1;
-          stats.totalStrokes += game.strokePlayScore?.USA || 0;
-          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedUSA || 0;
-        }
-
-        // Europe Player stats
-        if (game.europePlayerId && game.europePlayerName) {
-          if (!playerStats.has(game.europePlayerId)) {
-            playerStats.set(game.europePlayerId, {
-              playerId: game.europePlayerId,
-              playerName: game.europePlayerName,
-              team: 'EUROPE',
-              gamesPlayed: 0,
-              totalStrokes: 0,
-              totalStrokesAdjusted: 0,
-              currentHandicap: 0,
-              newHandicap: 0,
-              historicalScoresUsed: []
-            });
-          }
-          const stats = playerStats.get(game.europePlayerId);
-          stats.gamesPlayed += 1;
-          stats.totalStrokes += game.strokePlayScore?.EUROPE || 0;
-          stats.totalStrokesAdjusted += game.strokePlayScore?.adjustedEUROPE || 0;
-        }
+      // Extend with handicap preview data
+      const playerStats = new Map<string, PreviewPlayerStats>();
+      
+      baseStats.forEach((stats, playerId) => {
+        playerStats.set(playerId, {
+          ...stats,
+          currentHandicap: 0,
+          newHandicap: 0,
+          historicalScoresUsed: [],
+        });
       });
 
       // Fetch current player data and calculate new handicaps
@@ -961,15 +973,15 @@ export default function TournamentManagement() {
             
             // Filter scores from the last 3 years (including completion year)
             const threeYearsAgo = completionYear - 2;
-            const recentScores = allScores.filter((score: any) => 
+            const recentScores = allScores.filter((score: HistoricalScore) => 
               score.year >= threeYearsAgo && score.year <= completionYear && score.score != null
             );
 
             // Store the historical scores being used for display
-            playerStat.historicalScoresUsed = recentScores.sort((a: any, b: any) => b.year - a.year);
+            playerStat.historicalScoresUsed = recentScores.sort((a: HistoricalScore, b: HistoricalScore) => b.year - a.year);
 
             if (recentScores.length > 0) {
-              const totalRecentScore = recentScores.reduce((sum: number, score: any) => sum + score.score, 0);
+              const totalRecentScore = recentScores.reduce((sum: number, score: HistoricalScore) => sum + score.score, 0);
               playerStat.newHandicap = Math.round(totalRecentScore / recentScores.length);
             } else {
               playerStat.newHandicap = Math.round(tournamentAverageScore);
@@ -1546,7 +1558,7 @@ export default function TournamentManagement() {
                                           Based on scores from {completionYear - 2}-{completionYear}
                                         </div>
                                         <div className="flex flex-wrap gap-1 justify-center">
-                                          {player.historicalScoresUsed.map((score: any, index: number) => (
+                                          {player.historicalScoresUsed.map((score: HistoricalScore, index: number) => (
                                             <span 
                                               key={`${score.year}-${index}`}
                                               className={`text-xs px-2 py-1 rounded ${

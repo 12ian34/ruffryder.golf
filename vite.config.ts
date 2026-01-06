@@ -48,7 +48,6 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-          editor: ['@tiptap/react', '@tiptap/starter-kit'],
           charts: ['chart.js', 'react-chartjs-2'],
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',

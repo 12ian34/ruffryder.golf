@@ -5,6 +5,7 @@ import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 import { track } from '../utils/analytics';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface GameCompletionModalProps {
   game: Game;
@@ -71,9 +72,11 @@ export default function GameCompletionModal({ game, tournamentId, onClose, isOnl
       // Update tournament scores after marking the game as complete
       await updateTournamentScores(tournamentId);
 
+      showSuccessToast('Game marked as complete!');
       onClose();
     } catch (err: any) {
       setError(err.message);
+      showErrorToast('Failed to complete game');
     } finally {
       setIsLoading(false);
     }

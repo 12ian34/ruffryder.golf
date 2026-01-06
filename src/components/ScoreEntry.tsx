@@ -6,7 +6,6 @@ import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 import { useHoleDistances } from '../hooks/useHoleDistances';
 import { track } from '../utils/analytics';
-// import HandicapDisplay from './shared/HandicapDisplay';
 
 interface ScoreEntryProps {
   gameId: string;

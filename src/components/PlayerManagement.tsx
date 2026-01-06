@@ -3,7 +3,7 @@ import type { Player } from '../types/player';
 import PlayerTable from './player/PlayerTable';
 import PlayerEditModal from './player/PlayerEditModal';
 import { usePlayerData } from '../hooks/usePlayerData';
-import { showSuccessToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 export default function PlayerManagement() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -20,14 +20,22 @@ export default function PlayerManagement() {
   } = usePlayerData(undefined);
 
   const onSaveModal = async (playerId: string | null, updates: Partial<Player>) => {
-    await handleSavePlayer(playerId, updates);
-    showSuccessToast(`Player data ${playerId ? 'updated' : 'created'} successfully!`);
-    setShowEditModal(false);
+    try {
+      await handleSavePlayer(playerId, updates);
+      showSuccessToast(`Player data ${playerId ? 'updated' : 'created'} successfully!`);
+      setShowEditModal(false);
+    } catch (err: any) {
+      showErrorToast(err.message || `Failed to ${playerId ? 'update' : 'create'} player`);
+    }
   };
 
   const onDeletePlayer = async (playerId: string) => {
-    await handleDeletePlayer(playerId);
-    showSuccessToast('Player deleted successfully!');
+    try {
+      await handleDeletePlayer(playerId);
+      showSuccessToast('Player deleted successfully!');
+    } catch (err: any) {
+      showErrorToast(err.message || 'Failed to delete player');
+    }
   };
 
   if (isLoading) {

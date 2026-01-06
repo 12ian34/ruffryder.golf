@@ -35,17 +35,3 @@ export const showErrorToast = (message: string) => {
     },
   });
 };
-
-export const showInfoToast = (message: string) => {
-  toast(message, {
-    id: message,
-    duration: 3000,
-    position: 'bottom-center',
-    style: {
-      background: '#333',
-      color: '#fff',
-      maxWidth: '500px',
-      padding: '12px 24px',
-    },
-  });
-};

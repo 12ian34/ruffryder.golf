@@ -3,6 +3,7 @@ import { Game, GameStatus, TournamentSettings } from '../types/game';
 import GameCard from './GameCard';
 import GameCompletionModal from './GameCompletionModal';
 import StatusFilter from './filters/StatusFilter';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface GameListProps {
   games: Game[];
@@ -71,9 +72,12 @@ export function GameList({
       } else {
         await onGameStatusChange(game, newStatus);
         setModalKey(prev => prev + 1);
+        const statusLabel = newStatus === 'in_progress' ? 'started' : newStatus === 'not_started' ? 'reset' : newStatus;
+        showSuccessToast(`Game ${statusLabel} successfully`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating game status:', error);
+      showErrorToast(error.message || 'Failed to update game status');
     }
   };
 

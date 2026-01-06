@@ -147,22 +147,10 @@ export default function GameCard({
   }, [initialGame.usaPlayerId, initialGame.europePlayerId, tournamentSettings, effectiveUseHandicaps]);
 
   const handleStatusChange = useCallback(async (newStatus: 'not_started' | 'in_progress' | 'complete') => {
-    console.log('=== BEFORE STATUS CHANGE ===');
-    console.log('Game ID:', initialGame.id);
-    console.log('Current game status:', initialGame.status);
-    console.log('Current isStarted:', initialGame.isStarted);
-    console.log('Current isComplete:', initialGame.isComplete);
-    console.log('New status:', newStatus);
-    
     if (onStatusChange) {
       try {
         await onStatusChange(initialGame, newStatus);
-        console.log('=== AFTER STATUS CHANGE (database update completed) ===');
-        console.log('Game status after update:', initialGame.status);
-        console.log('Game isStarted after update:', initialGame.isStarted);
-        console.log('Game isComplete after update:', initialGame.isComplete);
       } catch (error: any) {
-        console.error('=== ERROR IN STATUS CHANGE ===', error);
         // Show user-friendly error message
         if (error.message?.includes('Tournament is marked as complete')) {
           alert('Cannot change game status: Tournament is marked as complete.\n\nTo make changes, an admin must first mark the tournament as incomplete in the Tournament Management section.');

@@ -73,11 +73,6 @@ web app for live tracking and score keeping for an annual golf tournament with f
 - game completion validation
 - tournament progress tracking
 
-### blogging
-- tournament news and updates
-- rich text editor support
-- media embedding capabilities
-
 ### technical features
 - user authentication and authorization
 - real-time data synchronization
@@ -86,14 +81,12 @@ web app for live tracking and score keeping for an annual golf tournament with f
 - cross-platform compatibility
 
 ## stack
-
 - react 18
 - typescript 5
 - vite 7
 - tailwind css
 - firebase 12 (firestore, auth, storage)
 - chart.js + react-chartjs-2
-- tiptap (rich text editor)
 - vitest (testing)
 - posthog (analytics)
 - netlify (deployment)

@@ -140,17 +140,12 @@ export function useGameData(
               setIsLoading(false);
             });
           } else if (currentUserId && linkedPlayerId) {
-            console.log(`[useGameData] Non-admin. Tournament ID: ${tournamentId}, Current User ID (Auth): ${currentUserId}, Linked Player ID (DB): ${linkedPlayerId}`); // DEBUG LOG
             try {
               const userFourballMatchups = await getUserFourballMatchups(tournamentId, linkedPlayerId);
-              console.log('[useGameData] userFourballMatchups:', userFourballMatchups); // DEBUG LOG
-
               const gameIdsToFetch = userFourballMatchups.map(m => m.id);
               setUserFourballMatchupIds(gameIdsToFetch);
-              console.log('[useGameData] gameIdsToFetch (and userFourballMatchupIds):', gameIdsToFetch); // DEBUG LOG
 
               if (gameIdsToFetch.length === 0) {
-                console.log('[useGameData] No game IDs to fetch for user.'); // DEBUG LOG
                 setGames([]);
                 setIsLoading(false);
                 return;
@@ -164,19 +159,16 @@ export function useGameData(
                 .filter(snap => snap.exists())
                 .map(snap => formatGameData(snap.id, snap.data(), tournamentId));
               
-              console.log('[useGameData] Fetched games for user:', fetchedGames); // DEBUG LOG
-              
               setGames(sortGames(fetchedGames));
               setIsLoading(false);
 
             } catch (error) {
-              console.error('[useGameData] Error fetching user fourball games:', error); // DEBUG LOG with prefix
+              console.error('Error fetching user fourball games:', error);
               setGames([]);
               setUserFourballMatchupIds([]);
               setIsLoading(false);
             }
           } else {
-            console.log('[useGameData] Not admin, or missing currentUserId or linkedPlayerId.'); // DEBUG LOG
             setGames([]);
             setUserFourballMatchupIds([]);
             setIsLoading(false);

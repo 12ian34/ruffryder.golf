@@ -12,7 +12,6 @@
 - **Testing**: Vitest, React Testing Library
 - **Analytics**: PostHog
 - **Deployment**: Netlify
-- **Editor**: TipTap (rich text for blogging)
 - **Charts**: Chart.js + react-chartjs-2
 
 ### Key Features
@@ -56,6 +55,24 @@ src/
 - Upgraded Firebase from 10.x → 12.7.0 (fixes undici vulnerability)
 - Fixed CodeQL "tainted format string" alert in `matchupService.ts`
 - Fixed Vite 7 terserOptions type error
+- Removed unused dependencies (TipTap packages, react-dropzone)
+- Cleaned up debug console.log statements across codebase
+- Extracted duplicate player stats calculation into `calculateBasePlayerStats` helper
+- Added `PreviewPlayerStats` interface with proper `HistoricalScore` types
+- Removed unused `showInfoToast` export from toast utils
+- Added 28 unit tests for `statsAnalysis.ts` (fun facts generation)
+- Added 17 unit tests for `gamePoints.ts` (all 9 point table combinations)
+- Added 33 unit tests for `matchupService.ts` (fourball pairing, unpair, permissions)
+- Added 11 unit tests for `toast.ts` (success/error toast utilities)
+- Added 12 unit tests for `analytics.ts` (PostHog tracking, user identification)
+- Test count: 301 total tests across 21 test files
+- Coverage improvements: `matchupService.ts` 0%→96%, `toast.ts` 0%→100%, `analytics.ts` 0%→90%
+- Added toast notifications for better user feedback:
+  - `GameCompletionModal`: Success/error toasts when completing games
+  - `GameList`: Success toast on game status change, error toast surfacing tournament lock messages
+  - `PlayerManagement`: Error toasts for player save/delete failures
+  - `UserManagement`: Error toast for user update failures
+  - `usePlayerData`: Re-throws errors for proper toast handling in UI
 
 ### Recent Completed Features
 - **Tournament Complete Flag System**: Admin toggle to lock tournaments (`isComplete` field)
@@ -210,14 +227,16 @@ npm run lint         # ESLint check
 
 | File | Purpose |
 |------|---------|
-| `src/types/player.ts` | Player interface (`averageScore?: number`) |
+| `src/types/player.ts` | Player interface (`averageScore?: number`), `HistoricalScore` type |
 | `src/types/tournament.ts` | Tournament, Matchup interfaces |
 | `src/types/game.ts` | Game, HoleScore interfaces |
 | `src/utils/handicapScoring.ts` | `calculateHandicapAdjustedScores()` — per-hole handicap logic |
 | `src/utils/gamePoints.ts` | `calculateGamePoints()` — stroke/match play → points |
 | `src/utils/tournamentScores.ts` | `updateTournamentScores()` — aggregate tournament totals |
+| `src/utils/statsAnalysis.ts` | `generateFunFacts()` — tournament statistics and highlights |
 | `src/services/matchupService.ts` | Fourball pairing operations |
 | `src/hooks/useGameData.ts` | Game fetching, status changes, fourball permissions |
+| `src/utils/toast.ts` | `showSuccessToast()`, `showErrorToast()` — user feedback notifications |
 | `src/components/TournamentManagement.tsx` | Admin tournament controls |
 | `src/components/player/PlayerEditModal.tsx` | Handicap calculation from historical scores |
 
@@ -231,6 +250,7 @@ npm run lint         # ESLint check
 - **Tournament Lock**: `isComplete: true` prevents game status changes
 - **Game Status**: `'not_started' | 'in_progress' | 'complete'`
 - **Teams**: `'USA' | 'EUROPE'`
+- **Toast Notifications**: Use `showSuccessToast()`/`showErrorToast()` from `utils/toast.ts` for user feedback on CRUD operations
 
 ---
 

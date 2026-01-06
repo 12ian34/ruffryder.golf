@@ -57,23 +57,16 @@ export function findMostStrokesOnHole(data: AnalyzableTournamentData): string | 
 export function findHoleInOnes(data: AnalyzableTournamentData): string[] {
   const holeInOneMessages: string[] = [];
   if (!data || !data.games || !data.players || data.games.length === 0) {
-    // console.log('[findHoleInOnes] No data or empty games/players list.');
     return [];
   }
-  // console.log('[findHoleInOnes] Processing games:', data.games);
 
   data.games.forEach(game => {
-    // console.log(`[findHoleInOnes] Checking game: ${game.id}, USA Player: ${game.usaPlayerId}, Europe Player: ${game.europePlayerId}`);
     game.holes.forEach(holeScore => {
-      // console.log(`[findHoleInOnes] Hole ${holeScore.holeNumber}, Par: ${holeScore.parScore}, USA Score: ${holeScore.usaPlayerScore}, Europe Score: ${holeScore.europePlayerScore}`);
       const addHoleInOneMessage = (score: number | null, playerId: string) => {
-        // A true hole-in-one is 1 stroke on a par > 1 hole.
+        // A true hole-in-one is 1 stroke on a par > 1 hole
         if (score === 1 && holeScore.parScore > 1) {
           const playerName = getPlayerNameById(playerId, data.players);
-          // console.log(`[findHoleInOnes] HOLE IN ONE DETECTED for ${playerName} on hole ${holeScore.holeNumber}`);
           holeInOneMessages.push(`🎯 HOLE-IN-ONE! ${playerName} got an ace on hole ${holeScore.holeNumber}!`);
-        } else if (score === 1) {
-          // console.log(`[findHoleInOnes] Score of 1 detected for player ${playerId} on hole ${holeScore.holeNumber}, but par is ${holeScore.parScore}. Not a HIO.`);
         }
       };
 

@@ -60,6 +60,7 @@ export default function UserManagement() {
       showSuccessToast('User updated successfully!');
     } catch (err: any) {
       setError(err.message);
+      showErrorToast('Failed to update user');
     } finally {
       setIsLoading(false);
     }

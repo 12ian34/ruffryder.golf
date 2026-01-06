@@ -71,6 +71,7 @@ export function usePlayerData(tournamentId: string | undefined) {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message);
+      throw err;
     }
   };
 
@@ -86,6 +87,7 @@ export function usePlayerData(tournamentId: string | undefined) {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message);
+      throw err;
     }
   };
 
