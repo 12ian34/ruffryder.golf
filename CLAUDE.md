@@ -671,39 +671,27 @@ const rawHoles = games.reduce((total, game) => ({
 
 ---
 
-### Nobody Can Start Game Bug
+### Nobody Can Start Game Bug (FIXED)
 
 **GitHub Issue**: [#18 - Nobody can start game](https://github.com/12ian34/ruffryder.golf/issues/18)
 
-**Problem**: Users (including admins) cannot start games. This is a permissions/UI flow issue.
+**Status**: ✅ Fixed in [commit a712b85](https://github.com/12ian34/ruffryder.golf/commit/a712b85fa802564fd9a6bb62ea3efca39d949950)
 
-**Analysis of game start flow**:
+**Problem**: Players in a 2-ball (regular matchup, not a fourball) couldn't start their games.
 
-1. `GameCard.tsx` shows "Start Game" button when `!initialGame.isStarted && onStatusChange`
-2. `GameList.tsx` passes `onStatusChange` only if `canManageThisGame` is true
-3. `canManageThisGame` = `isAdmin || (userFourballMatchupIds?.includes(game.id) ?? false)`
-4. `userFourballMatchupIds` comes from `GameManagement.tsx` via `useGameData` hook
+**Root cause**: Firestore security rules were only checking `allowedEditors` array (which is only populated for fourballs), not the `playerIds` array (which contains both players in every game).
 
-**Potential root causes**:
-1. `userFourballMatchupIds` not being populated correctly
-2. `linkedPlayerId` not set on user, so they're not recognized as a player
-3. `isAdmin` flag not being passed correctly through component tree
-4. Firestore security rules blocking the update
+**Fix**: Updated `firestore.rules` to also check the `playerIds` array:
+```
+// Before: only checked allowedEditors (fourball-only)
+(resource.data.allowedEditors != null && getUserLinkedPlayerId() in resource.data.allowedEditors)
 
-**Files to investigate**:
+// After: also checks playerIds (all games)
+(resource.data.allowedEditors != null && getUserLinkedPlayerId() in resource.data.allowedEditors) ||
+(resource.data.playerIds != null && getUserLinkedPlayerId() in resource.data.playerIds)
+```
 
-| File | Investigation Needed |
-|------|----------------------|
-| `src/components/GameManagement.tsx` | Check how `userFourballMatchupIds` is populated |
-| `src/hooks/useGameData.ts` | Check `getUserFourballMatchups` logic |
-| `src/components/GameList.tsx` | Verify `canManageThisGame` logic |
-| `firestore.rules` | Check game update permissions (line 76-101) |
-
-**Firestore rules check**: Players can update games if:
-- They are admin, OR
-- Their `linkedPlayerId` matches `usaPlayerId`, `europePlayerId`, or is in `allowedEditors`/`playerIds`
-
-**Effort estimate**: ~1-2 hours (debugging)
+This allows players who are directly in a game (via `playerIds`) to start/update it, regardless of whether it's part of a fourball
 
 ---
 
