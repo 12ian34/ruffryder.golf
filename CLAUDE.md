@@ -510,3 +510,466 @@ if (game.higherHandicapTeam === 'USA') {
 **Effort estimate**: ~2-3 hours (core logic simple, most work is updating tests and UI text)
 
 **No database migration needed**: Stored raw scores remain unchanged; only display/calculation logic changes
+
+---
+
+### Player Tiering by Year
+
+**GitHub Issue**: [#22 - Make tiering associated to player and year](https://github.com/12ian34/ruffryder.golf/issues/22)
+
+**Problem**: Player `tier` is currently a static field on the Player document. Tiers should be associated with a specific year since player skill levels change over time.
+
+**Current structure** (`src/types/player.ts`):
+```typescript
+Player {
+  tier?: number;  // Static tier, not year-specific
+  historicalScores: { year: number; score: number }[];
+}
+```
+
+**Proposed structure**:
+```typescript
+Player {
+  // Option A: Add tiers to historicalScores
+  historicalScores: { year: number; score: number; tier?: number }[];
+  
+  // Option B: Separate tierHistory array
+  tierHistory?: { year: number; tier: number }[];
+}
+```
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/types/player.ts` | Add year-specific tier structure |
+| `src/components/player/PlayerEditModal.tsx` | UI to set tier per year |
+| `src/components/player/PlayerTable.tsx` | Display tier for current/selected year |
+| `src/utils/statsAnalysis.ts` | `findParsByTier3Players()` needs year context |
+| `src/components/tournament/MatchupCreator.tsx` | Tier display with year context |
+| `firestore.rules` | Update validation if schema changes |
+
+**Effort estimate**: ~3-4 hours
+
+**Database migration**: Existing `tier` values would need migration to new structure
+
+---
+
+### Matchup-Level Handicap Toggle
+
+**GitHub Issue**: [#21 - Allow handicapping to be turned on/off at matchup level](https://github.com/12ian34/ruffryder.golf/issues/21)
+
+**Problem**: Handicapping is currently a tournament-wide setting (`tournament.useHandicaps`). Some matchups should be able to opt-out of handicapping even when the tournament has it enabled.
+
+**Current structure** (`src/types/tournament.ts`):
+```typescript
+Tournament { useHandicaps: boolean; }  // Tournament-wide
+Matchup { handicapStrokes?: number; }  // Stores calculated strokes, no toggle
+```
+
+**Proposed structure**:
+```typescript
+Matchup {
+  handicapStrokes?: number;
+  useHandicaps?: boolean;  // Override tournament setting (default: inherit from tournament)
+}
+
+Game {
+  useHandicaps?: boolean;  // Already exists, would be set from matchup
+}
+```
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/types/tournament.ts` | Add `useHandicaps?: boolean` to `Matchup` interface |
+| `src/components/tournament/MatchupCreator.tsx` | Add toggle per matchup |
+| `src/components/tournament/MatchupList.tsx` | Display handicap status |
+| `src/hooks/useGameData.ts` | Use matchup-level setting when creating games |
+| `src/components/GameCard.tsx` | Already uses `game.useHandicaps`, no change needed |
+| `src/components/ScoreEntry.tsx` | Already uses `game.useHandicaps`, no change needed |
+
+**Effort estimate**: ~2-3 hours
+
+**No database migration needed**: New optional field with backwards-compatible default
+
+---
+
+### Fix Fourball Pairing Functionality
+
+**GitHub Issue**: [#20 - fix "Pair Matchups into Fourballs" functionality](https://github.com/12ian34/ruffryder.golf/issues/20)
+
+**Problem**: The fourball pairing feature in `FourballPairing.tsx` may have bugs. Need to investigate the specific issue.
+
+**Current implementation** (`src/services/matchupService.ts`):
+- `pairMatchups()` assigns shared `fourballId` to two matchups
+- `unpairFourball()` removes `fourballId` from matchups
+- `updateGamePermissionsForFourball()` syncs `allowedEditors` arrays
+
+**Known potential issues**:
+1. Race conditions when pairing/unpairing quickly
+2. `allowedEditors` field removal uses spread operator which may not properly delete the field
+3. UI state not refreshing after pairing operation
+
+**Files to investigate**:
+
+| File | Investigation Needed |
+|------|----------------------|
+| `src/components/tournament/FourballPairing.tsx` | UI state management, callback handling |
+| `src/services/matchupService.ts` | `updateDoc` with spread operator for field removal |
+| `src/components/tournament/ExistingFourballsList.tsx` | Unpair functionality |
+| `src/hooks/useGameData.ts` | Data refresh after pairing |
+
+**Effort estimate**: ~2-4 hours (depends on root cause)
+
+---
+
+### Show Raw Score on Holes Won Display
+
+**GitHub Issue**: [#19 - Show Raw Score in brackets on Holes Won on homepage](https://github.com/12ian34/ruffryder.golf/issues/19)
+
+**Problem**: When handicaps are enabled, the "Holes Won" display on the homepage only shows adjusted values. Users want to see raw values in brackets like the strokes display does.
+
+**Current code** (`src/components/Leaderboard.tsx`, lines 223-232):
+```typescript
+<div>
+  Strokes Hit: USA {totalStrokes.USA}
+  {tournament.useHandicaps && ` (Raw: ${rawStrokes.USA})`}  // ✓ Has raw in brackets
+  {' '}| EUR {totalStrokes.EUROPE}
+  {tournament.useHandicaps && ` (Raw: ${rawStrokes.EUROPE})`}
+</div>
+<div>
+  Holes Won: USA {totalHoles.USA} | EUR {totalHoles.EUROPE}  // ✗ Missing raw in brackets
+</div>
+```
+
+**Proposed change**:
+```typescript
+// Add rawHoles calculation (already have code pattern for this)
+const rawHoles = games.reduce((total, game) => ({
+  USA: total.USA + game.holes.reduce((sum, hole) => sum + (hole.usaPlayerMatchPlayScore ?? 0), 0),
+  EUROPE: total.EUROPE + game.holes.reduce((sum, hole) => sum + (hole.europePlayerMatchPlayScore ?? 0), 0)
+}), { USA: 0, EUROPE: 0 });
+
+// Update display
+<div>
+  Holes Won: USA {totalHoles.USA}
+  {tournament.useHandicaps && ` (Raw: ${rawHoles.USA})`}
+  | EUR {totalHoles.EUROPE}
+  {tournament.useHandicaps && ` (Raw: ${rawHoles.EUROPE})`}
+</div>
+```
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/components/Leaderboard.tsx` | Add `rawHoles` calculation, update display |
+
+**Effort estimate**: ~30 minutes
+
+---
+
+### Nobody Can Start Game Bug
+
+**GitHub Issue**: [#18 - Nobody can start game](https://github.com/12ian34/ruffryder.golf/issues/18)
+
+**Problem**: Users (including admins) cannot start games. This is a permissions/UI flow issue.
+
+**Analysis of game start flow**:
+
+1. `GameCard.tsx` shows "Start Game" button when `!initialGame.isStarted && onStatusChange`
+2. `GameList.tsx` passes `onStatusChange` only if `canManageThisGame` is true
+3. `canManageThisGame` = `isAdmin || (userFourballMatchupIds?.includes(game.id) ?? false)`
+4. `userFourballMatchupIds` comes from `GameManagement.tsx` via `useGameData` hook
+
+**Potential root causes**:
+1. `userFourballMatchupIds` not being populated correctly
+2. `linkedPlayerId` not set on user, so they're not recognized as a player
+3. `isAdmin` flag not being passed correctly through component tree
+4. Firestore security rules blocking the update
+
+**Files to investigate**:
+
+| File | Investigation Needed |
+|------|----------------------|
+| `src/components/GameManagement.tsx` | Check how `userFourballMatchupIds` is populated |
+| `src/hooks/useGameData.ts` | Check `getUserFourballMatchups` logic |
+| `src/components/GameList.tsx` | Verify `canManageThisGame` logic |
+| `firestore.rules` | Check game update permissions (line 76-101) |
+
+**Firestore rules check**: Players can update games if:
+- They are admin, OR
+- Their `linkedPlayerId` matches `usaPlayerId`, `europePlayerId`, or is in `allowedEditors`/`playerIds`
+
+**Effort estimate**: ~1-2 hours (debugging)
+
+---
+
+### Create a Dev Database
+
+**GitHub Issue**: [#15 - Create a Dev DB](https://github.com/12ian34/ruffryder.golf/issues/15)
+
+**Problem**: Need a separate development database to avoid affecting production data during testing.
+
+**Current setup** (`src/config/firebase.ts`):
+- Single Firebase project configured via env vars
+- Emulator support exists (`VITE_USE_FIREBASE_EMULATOR=true`)
+
+**Proposed solutions**:
+
+**Option A: Use Firebase Emulators (Recommended for local dev)**
+- Already configured in `firebase.json`
+- Run `npx firebase emulators:start`
+- Set `VITE_USE_FIREBASE_EMULATOR=true` in `.env.local`
+
+**Option B: Separate Firebase Project**
+- Create new Firebase project (e.g., `ruffryder-golf-dev`)
+- Add `VITE_FIREBASE_*_DEV` env vars
+- Modify `firebase.ts` to use dev config based on `VITE_ENV` or similar
+
+**Option C: Netlify Branch Deploys with different env vars**
+- Deploy preview branches with dev Firebase credentials
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/config/firebase.ts` | Add dev/prod config switching logic |
+| `.env.example` | Document dev environment variables |
+| `netlify.toml` | Configure branch-specific env vars |
+| `firebase.json` | Already has emulator config ✓ |
+
+**Effort estimate**: ~1-2 hours (Option A already works, Option B needs Firebase console setup)
+
+---
+
+### Dormie / Game Over Feature
+
+**GitHub Issue**: [#14 - Add in Dormie/Game Over feature on Match Play](https://github.com/12ian34/ruffryder.golf/issues/14)
+
+**Problem**: In match play, when one player is ahead by more holes than remain, the match is mathematically over. The app should detect and display "Dormie" (tied with holes to play) and "X & Y" (won X up with Y holes remaining) states.
+
+**Match play terminology**:
+- **Dormie**: Player is up by exactly the number of holes remaining (must win or halve remaining holes)
+- **X & Y**: Player wins X up with Y holes to play (e.g., "3 & 2" = won 3 up with 2 to play)
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/utils/matchPlayStatus.ts` | New file: calculate dormie/game-over status |
+| `src/components/GameCard.tsx` | Display dormie/game-over badge |
+| `src/components/ScoreEntry.tsx` | Show when match is decided early |
+| `src/components/shared/GameScoreDisplay.tsx` | Display final "X & Y" result |
+
+**Implementation logic**:
+```typescript
+function getMatchPlayStatus(game: Game, useHandicaps: boolean) {
+  const holesPlayed = game.holes.filter(h => h.usaPlayerScore !== null).length;
+  const holesRemaining = 18 - holesPlayed;
+  const usaHoles = useHandicaps ? game.matchPlayScore.adjustedUSA : game.matchPlayScore.USA;
+  const europeHoles = useHandicaps ? game.matchPlayScore.adjustedEUROPE : game.matchPlayScore.EUROPE;
+  const lead = Math.abs(usaHoles - europeHoles);
+  
+  if (lead > holesRemaining) return { status: 'won', margin: lead, remaining: holesRemaining };
+  if (lead === holesRemaining && holesRemaining > 0) return { status: 'dormie', margin: lead };
+  return { status: 'in_progress' };
+}
+```
+
+**Effort estimate**: ~3-4 hours
+
+---
+
+### Improvements to Highlights Reel
+
+**GitHub Issue**: [#13 - Improvements to Highlights reel](https://github.com/12ian34/ruffryder.golf/issues/13)
+
+**Problem**: The "highlights" / "Fun Tournament Facts" feature needs improvements. Currently displays in `TournamentFunStats.tsx` using `generateFunFacts()` from `statsAnalysis.ts`.
+
+**Current fun facts generated**:
+- 💣 Blow-up alert (most strokes on a hole, ≥6)
+- 🎯 Hole-in-ones
+- 🕊️ Birdies (score of 2)
+- 👀 Tier 3 pars
+- 🤝 Grind matches (3+ consecutive tied holes)
+- 🚨 Upset alerts (higher handicap player wins)
+
+**Potential improvements** (need issue details for specifics):
+1. Add more fact types (eagles, comebacks, closest matches)
+2. Better formatting/styling of facts
+3. Limit number of facts shown / pagination
+4. Real-time updates as games progress
+5. Historical comparison ("Best round ever", "Worst hole in tournament history")
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/utils/statsAnalysis.ts` | Add new fact generators |
+| `src/components/TournamentFunStats.tsx` | UI improvements |
+| `src/__tests__/statsAnalysis.test.ts` | Tests for new facts |
+
+**Effort estimate**: ~2-4 hours (depends on scope)
+
+---
+
+### Colour Scheme Changes
+
+**GitHub Issue**: [#11 - Colour scheme changes](https://github.com/12ian34/ruffryder.golf/issues/11)
+
+**Problem**: Need to update the app's color scheme. Current colors defined in `tailwind.config.cjs`.
+
+**Current color scheme**:
+- **USA**: Amber/gold (`#fbbf24` main)
+- **Europe**: Purple (`#a78bfa` main)
+- **Success**: Green (`#22c55e` main)
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `tailwind.config.cjs` | Update color palette values |
+| `src/index.css` | Any CSS custom properties |
+| Various components | If hardcoded colors exist (grep for hex codes) |
+
+**Considerations**:
+- Dark mode compatibility (currently uses `dark:` variants)
+- Contrast ratios for accessibility
+- Consistency across all components
+
+**Effort estimate**: ~1-2 hours (simple palette swap) to ~4-6 hours (comprehensive redesign)
+
+---
+
+### User Activity Logging / Monitoring
+
+**GitHub Issue**: [#10 - Add user activity logging (/monitoring)](https://github.com/12ian34/ruffryder.golf/issues/10)
+
+**Problem**: Need better visibility into user actions for debugging and analytics.
+
+**Current analytics** (`src/utils/analytics.ts`):
+- PostHog integration exists
+- `track()` function captures events with user context
+- `identifyUser()` links Firebase auth to PostHog
+
+**Current tracked events** (grep for `track(`):
+- `leaderboard_viewed`
+- `tab_viewed`
+- `score_entry_modal_viewed`
+- `score_saved`
+- `score_deleted`
+
+**Proposed additions**:
+1. Game status changes (start, complete, reset)
+2. Admin actions (tournament create/edit, player management)
+3. Fourball pairing/unpairing
+4. Login/logout events
+5. Error events
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/utils/analytics.ts` | Add new tracking helper functions |
+| `src/components/GameList.tsx` | Track status changes |
+| `src/components/TournamentManagement.tsx` | Track admin actions |
+| `src/services/matchupService.ts` | Track fourball operations |
+| `src/contexts/AuthContext.tsx` | Track auth events |
+
+**Alternative**: Firebase Analytics + Cloud Functions for server-side logging
+
+**Effort estimate**: ~2-4 hours
+
+---
+
+### History & Archive Tab
+
+**GitHub Issue**: [#9 - Add a History & Archive Tab](https://github.com/12ian34/ruffryder.golf/issues/9)
+
+**Problem**: No way to view past tournaments. Only the active tournament is shown.
+
+**Current state**:
+- Dashboard tabs: Leaderboard, My games, Stats, About, Admin
+- Only queries `tournaments` where `isActive == true`
+- Historical data exists in `tournamentYearlyStats`, `playerYearlyStats`, `tournamentScores`
+
+**Proposed implementation**:
+
+1. **New "History" tab** in `Dashboard.tsx`
+2. **Tournament list component** showing all past tournaments
+3. **Tournament detail view** with final scores, game results, player stats
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/pages/Dashboard.tsx` | Add "History" tab |
+| `src/components/TournamentHistory.tsx` | New: list past tournaments |
+| `src/components/TournamentArchiveDetail.tsx` | New: view single past tournament |
+| `src/hooks/useTournamentHistory.ts` | New: fetch past tournament data |
+
+**Data queries needed**:
+```typescript
+// Get all tournaments (not just active)
+const tournamentsQuery = query(
+  collection(db, 'tournaments'),
+  orderBy('year', 'desc')
+);
+
+// Get tournament scores
+const scoresDoc = await getDoc(doc(db, 'tournamentScores', tournamentId));
+```
+
+**Effort estimate**: ~4-6 hours
+
+---
+
+### Prediction Model
+
+**GitHub Issue**: [#8 - Add Prediction Model](https://github.com/12ian34/ruffryder.golf/issues/8)
+
+**Problem**: Users want to predict tournament outcomes based on player handicaps and historical performance.
+
+**Potential approaches**:
+
+**Option A: Simple Handicap-Based Prediction**
+- Compare average scores of matched players
+- Calculate expected point distribution
+
+**Option B: Historical Performance Model**
+- Factor in head-to-head history
+- Weight recent performance more heavily
+- Consider home/away or first/second tee advantage
+
+**Option C: Monte Carlo Simulation**
+- Run thousands of simulated tournaments
+- Generate win probability percentages
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/utils/predictions.ts` | New: prediction algorithms |
+| `src/components/PredictionDisplay.tsx` | New: show predictions UI |
+| `src/hooks/usePredictions.ts` | New: generate predictions |
+| `src/pages/Dashboard.tsx` | Add predictions to a tab |
+
+**Data needed**:
+- Player `historicalScores` (already available)
+- Player `averageScore` / handicap (already available)
+- Past game results (need query from tournaments)
+
+**Example simple prediction**:
+```typescript
+function predictMatchResult(usaHandicap: number, europeHandicap: number) {
+  // Lower handicap = better player = more likely to win
+  const diff = europeHandicap - usaHandicap;
+  const usaWinProb = 0.5 + (diff * 0.02); // 2% per stroke difference
+  return { usa: usaWinProb, europe: 1 - usaWinProb };
+}
+```
+
+**Effort estimate**: ~4-8 hours (depends on complexity)
