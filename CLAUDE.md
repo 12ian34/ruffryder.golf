@@ -456,3 +456,57 @@ npx vitest run handicap     # Run tests matching "handicap"
 - Game `allowedEditors` array controls who can edit scores in fourballs
 - Historical scores sorted by year descending; only last 3 used for handicap calculation
 - Handicap strokes favor the weaker player by adding to opponent's adjusted score
+
+---
+
+## 2026 Changes
+
+### Handicap Scoring Logic Change
+
+**GitHub Issue**: [#6 - Change handicap scoring logic](https://github.com/12ian34/ruffryder.golf/issues/6)
+
+**Problem**: The current system **adds** strokes to the better player's score, but standard golf handicap practice **subtracts** strokes from the higher handicap (weaker) player's score. Both approaches determine the same winner, but the display differs:
+
+| Scenario | Current Behavior | Proposed (Standard) |
+|----------|------------------|---------------------|
+| Ian (95 hcp) scores 5 | Shows **5** | Shows **3** (net score) |
+| Tommy (80 hcp) scores 3 | Shows **5** (3+2 strokes added) | Shows **3** |
+| Result | Tie (5 vs 5) | Tie (3 vs 3) |
+
+The proposed approach shows Ian's "net par" which is how golfers conventionally think about handicaps.
+
+**Files requiring changes**:
+
+| File | Changes Needed |
+|------|----------------|
+| `src/utils/handicapScoring.ts` | Core logic: subtract strokes from higher handicap player instead of adding to opponent |
+| `src/components/ScoreEntry.tsx` | Multiple handicap calculation sections (~lines 298-304, 510-517, 725-733, 989-998) + UI text |
+| `src/components/shared/GameScoreTable.tsx` | Display text: "gets X strokes" → shows subtraction; stroke indicator UI |
+| `src/__tests__/handicapScoring.test.ts` | ~70+ assertions need expected values flipped |
+| `CLAUDE.md` | Update Handicap System documentation section |
+
+**Key code change** in `handicapScoring.ts`:
+
+```typescript
+// Current (lines 42-48):
+if (game.higherHandicapTeam === 'USA') {
+  result.usaAdjustedScore = scores.usaScore;
+  result.europeAdjustedScore = scores.europeScore + strokesForHole;  // adds to opponent
+} else {
+  result.usaAdjustedScore = scores.usaScore + strokesForHole;
+  result.europeAdjustedScore = scores.europeScore;
+}
+
+// Proposed:
+if (game.higherHandicapTeam === 'USA') {
+  result.usaAdjustedScore = scores.usaScore - strokesForHole;  // subtract from higher hcp
+  result.europeAdjustedScore = scores.europeScore;
+} else {
+  result.usaAdjustedScore = scores.usaScore;
+  result.europeAdjustedScore = scores.europeScore - strokesForHole;
+}
+```
+
+**Effort estimate**: ~2-3 hours (core logic simple, most work is updating tests and UI text)
+
+**No database migration needed**: Stored raw scores remain unchanged; only display/calculation logic changes
