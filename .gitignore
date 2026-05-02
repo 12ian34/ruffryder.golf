@@ -52,6 +52,10 @@ lerna-debug.log*
 .firebase/
 firebase-debug.log*
 firebase-debug.*.log*
+firebase-export*.json
+firebase-service-account*.json
+service-account*.json
+secrets/
 
 # Environment variables
 .env

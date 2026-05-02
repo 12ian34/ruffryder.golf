@@ -149,6 +149,8 @@ RLS should be stricter than the old Firestore tournament update rules.
 
 Migrate historical Firebase data into Supabase once the schema is stable:
 
+- Use `npm run export:firebase -- --out firebase-export.json` to create the JSON export expected by the importer.
+- The Firebase export script needs either `FIREBASE_SERVICE_ACCOUNT_PATH` in `.env`, `GOOGLE_APPLICATION_CREDENTIALS`, or application default credentials.
 - Use `npm run migrate:firebase-export -- <firebase-export.json>` for a dry run.
 - Use `npm run migrate:firebase-export -- <firebase-export.json> --apply` only when ready to write to Supabase.
 - Preserve player IDs or store legacy Firebase IDs for traceability.

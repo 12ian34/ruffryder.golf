@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
@@ -100,7 +101,9 @@ const statsRows = exportData.players.flatMap((player) => {
 });
 
 if (statsRows.length > 0) {
-  const { error: statsError } = await supabase.from('player_tournament_stats').insert(statsRows);
+  const { error: statsError } = await supabase
+    .from('player_tournament_stats')
+    .upsert(statsRows, { onConflict: 'id' });
   throwIfError(statsError, 'Failed to import player tournament stats');
 }
 
@@ -233,9 +236,12 @@ function mapGame(doc, legacyTournamentId, playerIdByLegacyId) {
 function mapHistoricalScores(playerDoc, playerId, tournamentIdByLegacyId) {
   return (playerDoc.data.historicalScores ?? [])
     .filter((score) => typeof score.year === 'number' && typeof score.score === 'number')
-    .map((score) => ({
+    .map((score, index) => ({
+      id: createDeterministicUuid(
+        `player-stat:${playerDoc.id}:${index}:${score.year}:${score.tournamentId ?? 'none'}`
+      ),
       player_id: playerId,
-      tournament_id: score.tournamentId ? tournamentIdByLegacyId.get(score.tournamentId) ?? null : null,
+      tournament_id: null,
       source: 'migrated_firestore',
       completion_year: score.year,
       singles_strokes: score.totalStrokes ?? 0,
@@ -243,8 +249,26 @@ function mapHistoricalScores(playerDoc, playerId, tournamentIdByLegacyId) {
       holes_won: score.holesWon ?? 0,
       cpi_after: score.score,
       legacy_payload: score,
-      completed_at: toIsoString(score.completedAt) ?? undefined,
+      completed_at: getHistoricalScoreCompletedAt(score),
     }));
+}
+
+function getHistoricalScoreCompletedAt(score) {
+  return toIsoString(score.completedAt) ?? `${score.year}-12-31T00:00:00.000Z`;
+}
+
+function createDeterministicUuid(value) {
+  const hex = createHash('sha256').update(value).digest('hex').slice(0, 32).split('');
+  hex[12] = '4';
+  hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+
+  return [
+    hex.slice(0, 8).join(''),
+    hex.slice(8, 12).join(''),
+    hex.slice(12, 16).join(''),
+    hex.slice(16, 20).join(''),
+    hex.slice(20, 32).join(''),
+  ].join('-');
 }
 
 function toIsoString(value) {

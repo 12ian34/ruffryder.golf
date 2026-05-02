@@ -168,14 +168,16 @@ describe('Firebase export migration mapping', () => {
 
     expect(stats).toHaveLength(2);
     expect(stats[1]).toMatchObject({
+      id: expect.any(String),
       player_id: 'player-1',
-      tournament_id: 'tournament-1',
+      tournament_id: null,
       source: 'migrated_firestore',
       completion_year: 2025,
       singles_strokes: 172,
       singles_average: 86,
       holes_won: 10,
       cpi_after: 86,
+      completed_at: '2025-12-31T00:00:00.000Z',
     });
   });
 

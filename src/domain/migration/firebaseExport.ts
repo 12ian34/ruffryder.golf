@@ -211,13 +211,16 @@ export function mapFirebaseGame(
 export function mapHistoricalScoresToStats(
   playerDoc: FirebaseDocument<LegacyPlayer>,
   playerId: string,
-  tournamentIdByLegacyId: Map<string, string>
+  _tournamentIdByLegacyId: Map<string, string>
 ): PlayerTournamentStatsInsert[] {
   return (playerDoc.data.historicalScores ?? [])
     .filter((score) => typeof score.year === 'number' && typeof score.score === 'number')
-    .map((score) => ({
+    .map((score, index) => ({
+      id: createDeterministicUuid(
+        `player-stat:${playerDoc.id}:${index}:${score.year}:${score.tournamentId ?? 'none'}`
+      ),
       player_id: playerId,
-      tournament_id: score.tournamentId ? tournamentIdByLegacyId.get(score.tournamentId) ?? null : null,
+      tournament_id: null,
       source: 'migrated_firestore',
       completion_year: score.year as number,
       singles_holes_played: 0,
@@ -227,7 +230,7 @@ export function mapHistoricalScoresToStats(
       holes_halved: 0,
       cpi_after: score.score ?? null,
       legacy_payload: toJson(score),
-      completed_at: toIsoString(score.completedAt) ?? undefined,
+      completed_at: getHistoricalScoreCompletedAt(score),
     }));
 }
 
@@ -277,6 +280,32 @@ function toIsoString(value: unknown): string | null {
   }
 
   return null;
+}
+
+function getHistoricalScoreCompletedAt(score: LegacyHistoricalScore): string {
+  return toIsoString(score.completedAt) ?? `${score.year}-12-31T00:00:00.000Z`;
+}
+
+function createDeterministicUuid(value: string): string {
+  const encoder = new TextEncoder();
+  const bytes = Array.from(encoder.encode(value));
+  const hash = bytes.reduce((parts, byte, index) => {
+    parts[index % parts.length] = (parts[index % parts.length] + byte + index) % 256;
+    return parts;
+  }, Array.from({ length: 16 }, () => 0));
+
+  hash[6] = (hash[6] & 0x0f) | 0x40;
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+
+  const hex = hash.map((byte) => byte.toString(16).padStart(2, '0')).join('');
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join('-');
 }
 
 function toJson(value: unknown): Json {
