@@ -32,9 +32,11 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 - Handicap is renamed Course Performance Index (CPI).
 - Default CPI threshold is 7 strokes.
 - CPI applies only when singles opponents differ by 7 or more CPI strokes.
+- CPI is configurable per singles pairing. Admins can disable it for a singles match even when the CPI gap qualifies.
 - When CPI applies, strokes are removed from the higher-CPI player. In plain terms: the weaker player gets strokes taken off their score.
 - CPI threshold remains configurable per tournament/admin for future years.
 - CPI never affects front-nine foursomes scoring, display, or totals.
+- Stroke index is course-defined and not editable during score entry.
 
 ## Hole Results
 

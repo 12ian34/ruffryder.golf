@@ -537,6 +537,7 @@ export type Database = {
       }
       segments: {
         Row: {
+          cpi_enabled: boolean
           created_at: string
           europe_player_id: string | null
           fixture_id: string
@@ -550,6 +551,7 @@ export type Database = {
           usa_player_id: string | null
         }
         Insert: {
+          cpi_enabled?: boolean
           created_at?: string
           europe_player_id?: string | null
           fixture_id: string
@@ -563,6 +565,7 @@ export type Database = {
           usa_player_id?: string | null
         }
         Update: {
+          cpi_enabled?: boolean
           created_at?: string
           europe_player_id?: string | null
           fixture_id?: string

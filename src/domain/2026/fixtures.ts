@@ -24,6 +24,7 @@ export interface BaseSegmentSetup {
   sortOrder: number;
   holeStart: number;
   holeEnd: number;
+  cpiEnabled?: boolean;
 }
 
 export interface FoursomesSegmentSetup extends BaseSegmentSetup {
@@ -126,6 +127,7 @@ function buildFoursomesSegmentInsert(
       hole_start: segment.holeStart,
       hole_end: segment.holeEnd,
       sort_order: segment.sortOrder,
+      cpi_enabled: segment.cpiEnabled ?? false,
       usa_player_id: null,
       europe_player_id: null,
     },
@@ -154,6 +156,7 @@ function buildSinglesSegmentInsert(
       hole_start: segment.holeStart,
       hole_end: segment.holeEnd,
       sort_order: segment.sortOrder,
+      cpi_enabled: segment.cpiEnabled ?? true,
       usa_player_id: usaParticipant.playerId,
       europe_player_id: europeParticipant.playerId,
     },

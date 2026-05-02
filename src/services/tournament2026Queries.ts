@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { buildHoleScorePayload } from '../domain/2026/persistence';
 import type { FixtureParticipant, SegmentSetup } from '../domain/2026/fixtures';
 import { createFixtureSetup, createSupabaseFixtureSetupRepository } from './tournament2026Service';
+import { getCourseStrokeIndex } from '../domain/2026/course';
 import { getSupabaseClient } from '../lib/supabase';
 import type { Database } from '../types/supabase';
 
@@ -76,6 +77,14 @@ export interface SaveHoleScoreInput {
   strokeIndex: number;
   usaScore: number | null;
   europeScore: number | null;
+  updatedBy: string | null;
+}
+
+export interface UpdateSegmentCpiInput {
+  tournament: TournamentRow;
+  segment: SegmentView;
+  players: PlayerRow[];
+  enabled: boolean;
   updatedBy: string | null;
 }
 
@@ -247,13 +256,6 @@ export async function saveHoleScore2026(
   input: SaveHoleScoreInput,
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<void> {
-  const playerLookup = new Map(input.players.map((player) => [player.id, player]));
-  const usaPlayer = input.segment.usa_player_id
-    ? playerLookup.get(input.segment.usa_player_id)
-    : undefined;
-  const europePlayer = input.segment.europe_player_id
-    ? playerLookup.get(input.segment.europe_player_id)
-    : undefined;
   const payload = buildHoleScorePayload({
     segmentId: input.segment.id,
     segmentKind: input.segment.kind,
@@ -264,12 +266,8 @@ export async function saveHoleScore2026(
       europeScore: input.europeScore,
     },
     cpi:
-      input.segment.kind === 'singles'
-        ? {
-            usaCpi: usaPlayer?.current_cpi,
-            europeCpi: europePlayer?.current_cpi,
-            threshold: input.tournament.cpi_threshold,
-          }
+      input.segment.kind === 'singles' && input.segment.cpi_enabled
+        ? getSegmentCpiInput(input.tournament, input.segment, input.players)
         : undefined,
     updatedBy: input.updatedBy,
   });
@@ -279,6 +277,67 @@ export async function saveHoleScore2026(
     .upsert(payload.row, { onConflict: 'segment_id,hole_number' });
 
   throwIfSupabaseError(error, 'Failed to save score');
+}
+
+export async function updateSegmentCpiEnabled(
+  input: UpdateSegmentCpiInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client
+    .from('segments')
+    .update({ cpi_enabled: input.enabled })
+    .eq('id', input.segment.id);
+
+  throwIfSupabaseError(error, 'Failed to update CPI setting');
+
+  if (input.segment.holeScores.length === 0) {
+    return;
+  }
+
+  const effectiveSegment = { ...input.segment, cpi_enabled: input.enabled };
+  const rows = input.segment.holeScores.map((score) =>
+    buildHoleScorePayload({
+      segmentId: input.segment.id,
+      segmentKind: input.segment.kind,
+      hole: {
+        holeNumber: score.hole_number,
+        strokeIndex: getCourseStrokeIndex(score.hole_number),
+        usaScore: score.usa_score,
+        europeScore: score.europe_score,
+      },
+      cpi:
+        effectiveSegment.kind === 'singles' && effectiveSegment.cpi_enabled
+          ? getSegmentCpiInput(input.tournament, effectiveSegment, input.players)
+          : undefined,
+      updatedBy: input.updatedBy,
+    }).row
+  );
+
+  const { error: scoresError } = await client
+    .from('hole_scores')
+    .upsert(rows, { onConflict: 'segment_id,hole_number' });
+
+  throwIfSupabaseError(scoresError, 'Failed to recalculate scores after CPI update');
+}
+
+function getSegmentCpiInput(
+  tournament: TournamentRow,
+  segment: SegmentRow,
+  players: PlayerRow[]
+) {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const usaPlayer = segment.usa_player_id
+    ? playerLookup.get(segment.usa_player_id)
+    : undefined;
+  const europePlayer = segment.europe_player_id
+    ? playerLookup.get(segment.europe_player_id)
+    : undefined;
+
+  return {
+    usaCpi: usaPlayer?.current_cpi,
+    europeCpi: europePlayer?.current_cpi,
+    threshold: tournament.cpi_threshold,
+  };
 }
 
 async function fetchProfile(

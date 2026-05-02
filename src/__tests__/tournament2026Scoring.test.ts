@@ -6,9 +6,16 @@ import {
   scoreSinglesHole,
   summarizeFixtureHoles,
 } from '../domain/2026/scoring';
+import { getCourseStrokeIndex } from '../domain/2026/course';
 
 describe('2026 tournament scoring', () => {
   describe('CPI threshold', () => {
+    it('uses the configured course stroke indices for back-nine holes', () => {
+      expect(getCourseStrokeIndex(10)).toBe(6);
+      expect(getCourseStrokeIndex(11)).toBe(2);
+      expect(getCourseStrokeIndex(18)).toBe(12);
+    });
+
     it('does not apply CPI below the default 7-stroke threshold', () => {
       const result = calculateCpiStrokesForHole(
         { usaCpi: 86, europeCpi: 80 },

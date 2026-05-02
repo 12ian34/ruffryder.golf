@@ -77,12 +77,14 @@ describe('2026 fixture setup builder', () => {
     expect(payload.segments[0]).toMatchObject({
       id: 'front-9',
       kind: 'foursomes',
+      cpi_enabled: false,
       usa_player_id: null,
       europe_player_id: null,
     });
     expect(payload.segments[1]).toMatchObject({
       id: 'singles-1',
       kind: 'singles',
+      cpi_enabled: true,
       usa_player_id: 'usa-1',
       europe_player_id: 'europe-1',
     });

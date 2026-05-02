@@ -18,28 +18,11 @@ The current Firebase implementation should be used as a reference, not extended 
 
 The design system source of truth lives in `DESIGN.md`. Read it before building or changing UI.
 
-New 2026 screens should use the dark-first clubhouse scoreboard direction, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI; new 2026 UI should prefer `team-usa` and `team-europe`.
+New 2026 screens should use the dark terminal scoreboard direction, compact mono typography, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI; new 2026 UI should prefer `team-usa` and `team-europe`.
 
 ## 2026 Tournament Rules
 
-The standalone rules spec lives in `docs/2026-rules-spec.md`. Keep that file and this summary in sync when product rules change.
-
-- Tournament format is match-play-only.
-- Holes 1-9 are foursomes / alternate shot: one USA pair against one Europe pair.
-- In foursomes, the selected pair's combined/team score is entered for each side, and the lowest combined/team score wins the hole.
-- Holes 10-18 are singles: normally two individual matches inside the same four-player fixture.
-- The app must support flexible fixture groups, including possible 6-ball fixtures when numbers do not divide cleanly into 4-balls.
-- Admins configure scoring segments and segment membership inside each fixture.
-- Handicaps are renamed Course Performance Index (CPI).
-- CPI applies only to singles matches.
-- Default CPI threshold is 7 strokes: CPI applies only when singles opponents differ by 7 or more.
-- When CPI applies, subtract strokes from the higher-CPI player. In product language, the weaker player gets strokes taken off their score.
-- CPI threshold should remain configurable per tournament/admin.
-- Tied holes are displayed as halved holes. They are equivalent to no hole being won for team totals.
-- Front-nine foursomes scores do not count toward player history or future CPI updates.
-- Only back-nine singles scores count toward player history and CPI updates.
-- Any player in a fixture can enter scores for that fixture.
-- Captains/admins choose fixtures, front-nine pairs, back-nine singles matchups, and any extra segment configuration needed for 6-ball fixtures.
+The standalone rules spec lives in `docs/2026-rules-spec.md` and is the single source of truth for product rules. Do not duplicate tournament rules here. When product rules change, update the rules spec first, then update only implementation guidance in this file if needed.
 
 ## Backend Direction
 
@@ -97,27 +80,49 @@ Prefer new 2026 concepts over adapting legacy `Game` fields:
 
 Avoid new code that hard-codes legacy fields like `usaPlayerScore`, `europePlayerScore`, `strokePlayScore`, or `handicapStrokes` unless working on migration or compatibility.
 
+The current Supabase schema is managed through migrations in `supabase/migrations/`:
+
+- `20260502175000_initial_2026_schema.sql` creates the 2026 live tables, RLS helpers, and base policies.
+- `20260502191000_legacy_history_archive.sql` creates legacy archive tables for Firebase-era tournaments and games.
+- `20260502193000_flexible_fixture_segments.sql` adds `segment_players` and widens fixture slots to support flexible fixtures such as 6-balls.
+- `20260502202000_enable_realtime_publication.sql` adds live tables to the Supabase Realtime publication.
+
+When adding tables that should update the `/2026` console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
+
 ## Implementation Guidance
 
 - Read `DESIGN.md` before building or changing UI.
-- Put pure 2026 scoring logic in a focused module such as `src/domain/2026/` or `src/features/tournament2026/`.
+- Put pure 2026 scoring logic in `src/domain/2026/`; keep React formatting and display helpers in `src/features/tournament2026/`.
 - Build scoring utilities before UI or persistence code depends on them.
 - Keep score derivation pure and well-tested.
 - Prefer deriving standings from hole scores through SQL views/RPC or pure functions before storing duplicate totals.
 - Store timeline snapshots only if needed for historical charts.
 - Treat `src/components/ScoreEntry.tsx` and `src/components/TournamentManagement.tsx` as legacy references, not files to keep expanding.
+- Keep imports at the top of files. Use exhaustive switch handling for 2026 unions such as segment kind and hole outcome.
 
 ## 2026 Supabase UI
 
-The fresh Supabase-backed console lives at `/2026` in `src/pages/Tournament2026.tsx`. The legacy Firebase dashboard links to it from the `2026` tab, but the new route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS.
+The fresh Supabase-backed console lives at `/2026`. The legacy Firebase dashboard links to it from the `2026` tab, but the new route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS.
 
 Current 2026 UI/service layout:
 
 - `src/lib/supabase.ts` lazily creates the browser Supabase client so the legacy app can still load when Supabase env vars are absent.
+- `src/pages/Tournament2026.tsx` is the route-level orchestrator. It handles Supabase config checks, OTP sign-in, profile creation flow, auth state refresh, realtime subscription setup, and section composition.
+- `src/features/tournament2026/components/AuthPanels.tsx` contains sign-in and profile creation panels. The sign-in panel supports a resend cooldown and surfaces Supabase rate-limit guidance from the route.
+- `src/features/tournament2026/components/Layout.tsx` contains shared shell, panel, form, and status-card primitives for the 2026 console.
+- `src/features/tournament2026/components/Hero.tsx` shows active tournament/profile context.
+- `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
+- `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture/segment score entry and saves each hole through the 2026 query service.
+- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and currently creates active tournaments, players, and quick normal 4-ball fixtures.
+- `src/features/tournament2026/components/HistorySection.tsx` currently shows summary cards from `legacy_tournaments`; detailed legacy game drill-down is not built yet.
+- `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
+- `src/features/tournament2026/viewUtils.ts` holds UI-only formatting, totals, hole-range, and parsing helpers.
 - `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/quick 4-ball fixtures, and upserts hole scores through the pure scoring core.
-- `src/pages/Tournament2026.tsx` contains the initial admin setup, score entry, leaderboard, and historical archive screens.
-- Foursomes score entry uses one combined/team score per side per hole; the lower combined/team score wins that foursomes hole.
-- Quick fixture setup currently covers the normal 4-ball path. Flexible 6-ball support exists in the schema/domain builder and should get a richer admin UI when the exact event numbers are known.
+- `src/services/tournament2026Service.ts` owns fixture setup persistence orchestration and rollback around fixture, fixture-player, segment, and segment-player inserts.
+- `src/domain/2026/scoring.ts` is the pure scoring core for CPI, foursomes, singles, halved/unplayed outcomes, and fixture summaries.
+- `src/domain/2026/persistence.ts` maps scored holes into Supabase `hole_scores` insert/upsert payloads.
+- `src/domain/2026/fixtures.ts` builds and validates fixture/segment setup payloads for normal 4-balls and flexible fixtures.
+- Quick fixture setup currently covers the normal 4-ball path. Flexible 6-ball support exists in the schema/domain builder and tests, but still needs a richer admin UI when the exact event numbers are known.
 
 ## Testing Expectations
 
@@ -125,6 +130,7 @@ Add focused tests for behavior changes:
 
 - CPI default threshold is 7 strokes.
 - CPI applies only to singles and never to front-nine foursomes.
+- Segment-level CPI toggles disable adjusted scoring and recalculate already-entered hole scores for that segment.
 - Halved holes display correctly and do not incorrectly award holes won.
 - Front-nine foursomes hole winners roll up correctly.
 - Back-nine singles scoring rolls up correctly.
@@ -134,16 +140,25 @@ Add focused tests for behavior changes:
 - Historical Firebase-shaped data migrates into the Supabase schema without changing old results.
 - Historical pages can display raw/no-handicap and legacy adjusted/old-handicap-method results exactly as they were.
 
+Current focused 2026 tests live in:
+
+- `src/__tests__/tournament2026Scoring.test.ts`
+- `src/__tests__/tournament2026Persistence.test.ts`
+- `src/__tests__/tournament2026Fixtures.test.ts`
+- `src/__tests__/tournament2026Service.test.ts`
+
 ## Supabase Permission Model
 
 RLS should be stricter than the old Firestore tournament update rules.
 
-- Authenticated users can read tournament/player/game data as needed by the app.
+- Authenticated users can read tournament, player, fixture, segment, and score data as needed by the app.
 - Admins can manage tournaments, players, fixtures, and all scores.
 - A linked player can update their own display fields where allowed.
 - Any player assigned to a fixture can update that fixture's scores.
 - Unrelated players cannot update fixture scores.
 - Browser clients must never receive service-role privileges.
+
+The schema currently uses helper functions such as `current_profile_is_admin()`, `current_linked_player_id()`, and `can_update_fixture_scores()` to keep RLS policies readable. Client writes must go through browser-safe Supabase credentials and rely on these policies, not service-role privileges.
 
 ## Migration Notes
 

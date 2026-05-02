@@ -9,60 +9,71 @@
 
 ## Aesthetic Direction
 
-- **Direction:** Clubhouse scoreboard.
-- **Decoration level:** Intentional, not ornamental.
-- **Mood:** Crisp, competitive, slightly premium, and legible under pressure. It should feel like a modern digital scorecard, not a generic SaaS dashboard and not golf clip art.
-- **Design principle:** The score is the hero. Everything else should reduce ambiguity.
+- **Direction:** Dark terminal scoreboard.
+- **Reference feel:** Closer to `../miniti/DESIGN.md`: dark-mode-only, monospaced, sharp, compact, system-console energy.
+- **Decoration level:** Minimal, precise, and functional. The product should look engineered, not decorated.
+- **Mood:** Slick, clean, slightly dangerous, and expensive in a quiet way. It should feel like a live scoring terminal for a private tournament, not a generic admin dashboard and not golf clip art.
+- **Design principle:** The active scoring state is the hero. Every surface should answer: what hole, who is playing, what changed, what needs saving?
 
 Avoid:
 
 - Golf cliches like grass textures, flag icons everywhere, argyle patterns, or fake leather.
 - Generic purple-gradient SaaS styling.
+- Rounded bubbly SaaS panels.
+- Big soft shadows.
 - Dense admin screens that require careful reading on mobile.
+- Mixed typography that makes the app feel like a template.
 
 ## Typography
 
-- **Display:** `Satoshi`, fallback `system-ui`, for tournament names, leaderboard scores, and section headers.
-- **Body/UI:** `Geist`, fallback `system-ui`, for forms, labels, cards, and navigation.
-- **Data/Tables:** `Geist Mono` or `JetBrains Mono` for hole numbers, score grids, compact stats, and audit/history rows.
-- **Loading strategy:** Use CSS font-family tokens first; add hosted font loading only when UI implementation begins.
+- **Display:** `Geist Mono`, `SF Mono`, `Menlo`, fallback `monospace`.
+- **Body/UI:** `Geist Mono`, `SF Mono`, `Menlo`, fallback `monospace`.
+- **Data/Tables:** `Geist Mono`, `JetBrains Mono`, `SF Mono`, fallback `monospace`.
+- **Loading strategy:** Use local/system monospace first. Hosted fonts are optional, not required.
+- **Rule:** Use one mono family everywhere for the 2026 console. Weight, scale, color, and spacing create hierarchy.
 
 Type scale:
 
-- `xs`: 0.75rem / 12px
-- `sm`: 0.875rem / 14px
-- `base`: 1rem / 16px
-- `lg`: 1.125rem / 18px
-- `xl`: 1.25rem / 20px
-- `2xl`: 1.5rem / 24px
-- `3xl`: 1.875rem / 30px
-- `score`: 3rem / 48px on mobile, 4rem / 64px on desktop
+- `micro`: 0.625rem / 10px, metadata and machine labels
+- `xs`: 0.75rem / 12px, labels and helper text
+- `sm`: 0.8125rem / 13px, compact body
+- `base`: 0.9375rem / 15px, primary UI text
+- `lg`: 1.125rem / 18px, section titles
+- `xl`: 1.25rem / 20px, compact headers
+- `2xl`: 1.5rem / 24px, page titles
+- `score`: 2.75rem / 44px on mobile, 4rem / 64px on desktop
 
-Use tabular numbers for scores wherever possible.
+Use tabular numbers for all scores, hole numbers, stroke indices, distances, and leaderboard totals.
 
 ## Color
 
 ### Approach
 
-Dark-first, restrained, with team colors used as semantic accents. The UI should feel calm until a team, state, or score needs attention.
+Dark-only for the 2026 console. Restrained terminal palette, GitHub-ish state colors, team colors used surgically. The UI should feel calm until a score, save state, or match state needs attention.
 
 ### Core Palette
 
-- **Ink 950:** `#08110E` — app background, dark mode base
-- **Ink 900:** `#101C18` — dark cards and panels
-- **Ink 800:** `#1A2A24` — borders, elevated dark surfaces
-- **Chalk 50:** `#F8F5EC` — light text/background
-- **Chalk 100:** `#EEE8D8` — muted light surfaces
-- **Fairway 500:** `#1F7A4D` — primary action, active state, live indicators
-- **Fairway 600:** `#17623E` — primary hover/pressed
-- **Pin 500:** `#D9B45F` — highlight, trophy, important neutral accent
-- **Sky 500:** `#3B82F6` — Europe accent
-- **USA 500:** `#F2B84B` — USA accent
+- **Black 980:** `#050506` — page background
+- **Black 950:** `#09090B` — app shell
+- **Panel 900:** `#0C0C0E` — primary panels
+- **Panel 850:** `#0F0F11` — nested panels
+- **Card 800:** `#18181B` — cards and editable rows
+- **Border 700:** `#27272A` — visible structure
+- **Border 600:** `#3F3F46` — hover/focus border
+- **Text 50:** `#FAFAFA` — primary text
+- **Text 200:** `#E6EDF3` — secondary text
+- **Text 400:** `#A1A1AA` — muted metadata
+- **Text 500:** `#8B949E` — machine labels
+- **Terminal Green:** `#3FB950` — primary action, live/save success
+- **Terminal Blue:** `#58A6FF` — information and Europe accent
+- **Terminal Amber:** `#F59E0B` — warning, pending, CPI attention
+- **Terminal Red:** `#F85149` — destructive/error
+- **Terminal Purple:** `#A371F7` — secondary highlight, rare
 
 ### Team Colors
 
 - **USA:** `#F2B84B`
-- **Europe:** `#3B82F6`
+- **Europe:** `#58A6FF`
 
 Keep team colors for team identity, score comparison, badges, and charts. Do not use them as generic button colors.
 
@@ -70,42 +81,40 @@ Tailwind tokens:
 
 - `team-usa`
 - `team-europe`
-- `fairway-500`
-- `pin-500`
+- `fairway-500` should map toward terminal green in the 2026 UI.
+- `pin-500` should map toward terminal amber in the 2026 UI.
 - `ink-950`
 - `chalk-50`
 
 ### Semantic Colors
 
-- **Success:** `#22C55E`
+- **Success:** `#3FB950`
 - **Warning:** `#F59E0B`
-- **Error:** `#EF4444`
-- **Info:** `#38BDF8`
+- **Error:** `#F85149`
+- **Info:** `#58A6FF`
 
 ### Dark Mode
 
-Dark mode is the primary experience. Use high contrast for score entry and leaderboard screens:
+Dark mode is the only 2026 console experience:
 
-- Background: Ink 950
-- Card: Ink 900
-- Border: Ink 800
-- Primary text: Chalk 50
-- Secondary text: Chalk 100 at reduced opacity
+- Background: Black 980 or Black 950
+- Panel: Panel 900
+- Nested panel: Panel 850
+- Editable row: Card 800
+- Border: Border 700
+- Focus: Terminal Green or Terminal Blue
+- Primary text: Text 50
+- Secondary text: Text 200
+- Metadata: Text 400/500
 
 ### Light Mode
 
-Light mode should feel like a clean scorecard:
-
-- Background: Chalk 50
-- Card: white
-- Border: Chalk 100
-- Primary text: Ink 950
-- Secondary text: Ink 800 at reduced opacity
+Do not build light mode for the 2026 console unless explicitly requested. The legacy Firebase UI can keep its existing light/dark behavior.
 
 ## Spacing
 
 - **Base unit:** 4px.
-- **Density:** Comfortable for touch, compact for data.
+- **Density:** Compact terminal by default, with large enough touch targets for score entry.
 
 Scale:
 
@@ -121,38 +130,43 @@ Scale:
 Rules:
 
 - Touch targets should be at least 44px high.
-- Score entry controls should have generous vertical spacing.
+- Score entry rows should be compact but scannable.
 - Data tables can be tighter, but row hit areas must remain touchable on mobile.
+- Prefer `8px`, `12px`, and `16px` gaps over broad `24px+` spacing inside data-heavy panels.
 
 ## Layout
 
-- **Approach:** Hybrid.
-- **App screens:** Grid-disciplined, predictable, and stable.
-- **Leaderboard moments:** More editorial, with large score treatments and strong team contrast.
-- **Max content width:** `1120px` for desktop admin/dashboard pages.
+- **Approach:** Grid-disciplined terminal.
+- **App screens:** Dense, aligned, predictable, and stable.
+- **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
+- **Max content width:** `1180px` for desktop admin/dashboard pages.
 - **Mobile:** Single-column first. Important actions stay near the thumb zone.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:
 
-- `sm`: 4px for small badges and inputs inside dense tables.
-- `md`: 8px for buttons and form controls.
-- `lg`: 12px for cards.
-- `xl`: 16px for major panels/modals.
+- `xs`: 2px for tiny status markers.
+- `sm`: 4px for badges and dense score cells.
+- `md`: 6px for buttons and form controls.
+- `lg`: 8px for cards.
+- `xl`: 12px for major panels/modals.
 - `full`: pills, avatars, status dots.
 
-Borders should be visible but quiet. Prefer `1px` borders with subtle contrast over heavy shadows.
+Borders define the interface. Prefer `1px` borders with clear contrast over shadows. Avoid large radius panels unless the content is a modal or hero surface.
 
 ## Components
 
 ### Buttons
 
-- **Primary:** Fairway background, Chalk text.
-- **Secondary:** transparent or subtle surface, bordered.
+- **Primary:** Terminal Green background, Black text.
+- **Secondary:** Card surface, Text 50, Border 700.
+- **Ghost:** transparent/Black 950 with muted text.
 - **Team actions:** use team colors only when the action belongs clearly to a team.
-- **Danger:** Error color, used sparingly.
+- **Danger:** Terminal Red text or fill, used sparingly.
 
 Button labels should be action-specific: `Save scores`, `Create fixture`, `Complete tournament`.
+
+Primary buttons should be rectangular with `6px-8px` radius. No pill CTAs for the main console.
 
 ### Cards
 
@@ -160,9 +174,10 @@ Cards should group one decision or one score unit. Avoid giant multi-purpose pan
 
 Use:
 
-- Header with title and compact metadata.
+- Terminal-style header with title and compact metadata.
 - Body with one primary task.
 - Footer only when actions need separation.
+- Thin borders, dark nested surfaces, no heavy shadow.
 
 ### Score Entry
 
@@ -173,6 +188,24 @@ Score entry screens must optimize for speed:
 - Large numeric inputs.
 - Clear halved-hole state.
 - CPI explanation only when CPI applies. Do not show CPI controls or copy during front-nine foursomes.
+- Stroke index is fixed course data, not editable.
+- Hole distance should be visible near the hole label when data is available.
+- Save button appears only when that row has unsaved changes.
+- A `Save all` action appears when multiple rows have unsaved changes.
+- Dirty rows should be visually obvious with a subtle amber border or marker.
+- Saved rows should show a compact result chip, not verbose explanatory text.
+- Rows should feel like terminal records: `H10`, distance, SI, USA score, Europe score, result, save state.
+
+### Hole Metadata
+
+Hole metadata should include:
+
+- Hole number.
+- Par, when available.
+- Distance, when available.
+- Stroke index.
+
+Display metadata in a compact row near the score inputs. Do not make users edit metadata during live scoring.
 
 ### Leaderboard
 
@@ -183,6 +216,14 @@ The leaderboard should answer three questions immediately:
 - Where did the score come from: foursomes, singles, or both?
 
 Use large score numerals and keep supporting stats secondary.
+
+Leaderboard surfaces should feel more like a live terminal readout than a card dashboard:
+
+- Compact labels.
+- Big tabular score numbers.
+- Clear USA/EUR color accents.
+- Minimal decoration.
+- Obvious live/update state.
 
 ### History
 
@@ -198,6 +239,8 @@ Do not visually imply that old adjusted results were calculated with 2026 CPI ru
 - **Approach:** Minimal-functional.
 - Use motion to confirm changes, not decorate.
 - Score updates can use a short highlight flash.
+- Save success can use a brief green row pulse.
+- Dirty state can use subtle amber border/left marker.
 - Route/page transitions should be subtle.
 
 Durations:
@@ -221,19 +264,22 @@ Respect reduced-motion preferences.
 - Include text labels for USA/EUR and raw/adjusted history views.
 - Ensure score inputs are reachable and usable by keyboard.
 - Keep contrast high for outdoor mobile use.
+- Save all must be reachable by keyboard and should not trap focus.
 
 ## Implementation Notes
 
 - Prefer Tailwind utility classes backed by this system.
 - Add semantic Tailwind tokens before repeating raw hex values across components.
 - The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI. New 2026 UI should prefer `team-usa` and `team-europe`.
+- New 2026 UI should bias toward mono typography, dark terminal surfaces, tighter radius, and visible borders.
 - Read this file before building new UI.
 - If a component needs to deviate, document the reason in the decisions log.
 
 ## Decisions Log
 
 | Date | Decision | Rationale |
-|------|----------|-----------|
+| ---- | -------- | --------- |
 | 2026-05-02 | Created design system source of truth | Needed before building the 2026 Supabase admin and score-entry UI. |
 | 2026-05-02 | Chose dark-first clubhouse scoreboard direction | The app is used live on course and needs fast score comprehension. |
 | 2026-05-02 | Kept team colors semantic rather than decorative | USA/EUR colors should clarify scores, not dominate every surface. |
+| 2026-05-02 | Shifted 2026 console toward dark terminal scoreboard | The first deployed console looked too generic and soft. The scoring flow needs sharper, cleaner, sexier terminal energy closer to `miniti`. |
