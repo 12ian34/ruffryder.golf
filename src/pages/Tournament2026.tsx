@@ -2,18 +2,28 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CreateProfilePanel, SignInPanel } from '../features/tournament2026/components/AuthPanels';
 import { AdminSetupSection } from '../features/tournament2026/components/AdminSetupSection';
-import { Hero } from '../features/tournament2026/components/Hero';
 import { HistorySection } from '../features/tournament2026/components/HistorySection';
 import { LeaderboardSection } from '../features/tournament2026/components/LeaderboardSection';
-import { PageShell, StatusCard } from '../features/tournament2026/components/Layout';
+import { PageShell, StatusCard, type AppNavItem } from '../features/tournament2026/components/Layout';
+import { ProfileSection } from '../features/tournament2026/components/ProfileSection';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
-import { getErrorMessage } from '../features/tournament2026/viewUtils';
+import { filterFixturesForScoreEntry, getErrorMessage } from '../features/tournament2026/viewUtils';
 import { getSupabaseClient, getSupabaseConfigStatus } from '../lib/supabase';
 import {
   fetchTournament2026Data,
   subscribeToTournament2026Changes,
 } from '../services/tournament2026Queries';
 import type { Tournament2026Data } from '../services/tournament2026Queries';
+
+type Tournament2026Tab = 'score' | 'leaderboard' | 'setup' | 'history' | 'profile';
+
+const APP_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
+  { id: 'score', label: 'Score' },
+  { id: 'leaderboard', label: 'Leaderboard', shortLabel: 'Board' },
+  { id: 'setup', label: 'Setup' },
+  { id: 'history', label: 'History' },
+  { id: 'profile', label: 'Profile', shortLabel: 'Me' },
+];
 
 export default function Tournament2026() {
   const configStatus = useMemo(() => getSupabaseConfigStatus(), []);
@@ -25,6 +35,7 @@ export default function Tournament2026() {
   const [isSignInSubmitting, setIsSignInSubmitting] = useState(false);
   const [signInCooldownSeconds, setSignInCooldownSeconds] = useState(0);
   const [isLoading, setIsLoading] = useState(configStatus.isConfigured);
+  const [activeTab, setActiveTab] = useState<Tournament2026Tab>('score');
 
   const refreshData = useCallback(async () => {
     if (!configStatus.isConfigured) return;
@@ -162,20 +173,43 @@ export default function Tournament2026() {
     );
   }
 
+  const scoreEntryFixtures = filterFixturesForScoreEntry(data.fixtures, data.profile);
+
   return (
-    <PageShell userEmail={user.email} onSignOut={handleSignOut}>
+    <PageShell
+      userEmail={user.email}
+      onSignOut={handleSignOut}
+      activeTab={activeTab}
+      navItems={APP_NAV_ITEMS}
+      onTabChange={setActiveTab}
+    >
       {error && <StatusCard tone="error">{error}</StatusCard>}
-      <Hero tournament={data.activeTournament} profile={data.profile} />
-      <LeaderboardSection fixtures={data.fixtures} />
-      <ScoreEntrySection
-        tournament={data.activeTournament}
-        fixtures={data.fixtures}
-        players={data.players}
-        profile={data.profile}
-        onSaved={refreshData}
-      />
-      <AdminSetupSection data={data} onSaved={refreshData} />
-      <HistorySection history={data.history} />
+      {activeTab === 'score' && (
+        <ScoreEntrySection
+          tournament={data.activeTournament}
+          fixtures={scoreEntryFixtures}
+          players={data.players}
+          profile={data.profile}
+          onSaved={refreshData}
+        />
+      )}
+      {activeTab === 'leaderboard' && <LeaderboardSection fixtures={data.fixtures} />}
+      {activeTab === 'setup' &&
+        (data.profile.is_admin ? (
+          <AdminSetupSection data={data} onSaved={refreshData} />
+        ) : (
+          <StatusCard tone="warning">Setup is admin-only. Use Score during tournament play.</StatusCard>
+        ))}
+      {activeTab === 'history' && <HistorySection history={data.history} />}
+      {activeTab === 'profile' && (
+        <ProfileSection
+          tournament={data.activeTournament}
+          profile={data.profile}
+          profiles={data.profiles}
+          players={data.players}
+          onSaved={refreshData}
+        />
+      )}
     </PageShell>
   );
 }

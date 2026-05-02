@@ -2,6 +2,7 @@ import type {
   FixtureView,
   HoleScoreRow,
   PlayerRow,
+  ProfileRow,
   SegmentView,
 } from '../../services/tournament2026Queries';
 
@@ -35,6 +36,23 @@ export function calculateTotals(fixtures: FixtureView[]): {
   }
 
   return totals;
+}
+
+export function filterFixturesForScoreEntry(
+  fixtures: FixtureView[],
+  profile: ProfileRow
+): FixtureView[] {
+  if (profile.is_admin) {
+    return fixtures;
+  }
+
+  if (!profile.linked_player_id) {
+    return [];
+  }
+
+  return fixtures.filter((fixture) =>
+    fixture.participants.some((participant) => participant.player_id === profile.linked_player_id)
+  );
 }
 
 export function createHoleRange(start: number, end: number): number[] {

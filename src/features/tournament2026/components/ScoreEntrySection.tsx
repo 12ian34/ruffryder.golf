@@ -21,13 +21,15 @@ import {
   getErrorMessage,
   parseOptionalPositiveInteger,
 } from '../viewUtils';
-import { ScoreInput } from './FormControls';
+import { ScorePicker } from './FormControls';
 import { Panel, StatusCard } from './Layout';
 
 interface HoleDraft {
   usaScore: string;
   europeScore: string;
 }
+
+type HoleSaveState = 'dirty' | 'incomplete' | 'saving' | 'saved' | 'error';
 
 export function ScoreEntrySection({
   tournament,
@@ -54,15 +56,23 @@ export function ScoreEntrySection({
 
   return (
     <Panel title="Score Entry" eyebrow="Fixture scores">
-      <div className="space-y-5">
-        {fixtures.length === 0 && <StatusCard tone="warning">No fixtures have been created yet.</StatusCard>}
+      <div className="-mx-4 sm:mx-0">
+        {fixtures.length === 0 && (
+          <StatusCard tone="warning">
+            {profile.is_admin || profile.linked_player_id
+              ? 'No fixtures are available for score entry yet.'
+              : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
+          </StatusCard>
+        )}
         {fixtures.map((fixture) => (
-          <div key={fixture.id} className="rounded-2xl border border-chalk-800 bg-ink-950/70 p-4">
-            <h3 className="font-display text-xl font-semibold">
-              {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
-            </h3>
-            <p className="mt-1 text-sm text-chalk-400">{formatParticipants(fixture.participants)}</p>
-            <div className="mt-4 space-y-4">
+          <div key={fixture.id} className="border-t border-[#27272A] first:border-t-0">
+            <div className="px-4 py-4">
+              <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
+                {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-[#8B949E]">{formatParticipants(fixture.participants)}</p>
+            </div>
+            <div>
               {fixture.segments.map((segment) => (
                 <SegmentScoreCard
                   key={segment.id}
@@ -106,6 +116,7 @@ function SegmentScoreCard({
     createDrafts(holes, scoreByHole)
   );
   const [savingHoles, setSavingHoles] = useState<Set<number>>(new Set());
+  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [saveAllError, setSaveAllError] = useState<string | null>(null);
   const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold);
   const canConfigureCpi = profile.is_admin && segment.kind === 'singles';
@@ -136,6 +147,11 @@ function SegmentScoreCard({
       ...current,
       [holeNumber]: nextDraft,
     }));
+    setRowErrors((current) => {
+      const next = { ...current };
+      delete next[holeNumber];
+      return next;
+    });
   };
 
   const saveHole = async (holeNumber: number) => {
@@ -144,6 +160,11 @@ function SegmentScoreCard({
     if (!draft) return;
 
     setSaveAllError(null);
+    setRowErrors((current) => {
+      const next = { ...current };
+      delete next[holeNumber];
+      return next;
+    });
     setSavingHoles((current) => new Set(current).add(holeNumber));
 
     try {
@@ -157,7 +178,9 @@ function SegmentScoreCard({
       });
       await onSaved();
     } catch (err) {
-      setSaveAllError(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setRowErrors((current) => ({ ...current, [holeNumber]: message }));
+      setSaveAllError(message);
     } finally {
       setSavingHoles((current) => {
         const next = new Set(current);
@@ -171,6 +194,7 @@ function SegmentScoreCard({
     if (dirtyHoles.length === 0) return;
 
     setSaveAllError(null);
+    setRowErrors({});
     setSavingHoles(new Set(dirtyHoles));
 
     try {
@@ -197,13 +221,15 @@ function SegmentScoreCard({
   };
 
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#0F0F11] p-3">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-t border-[#27272A] bg-[#050505]">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h4 className="font-data text-sm font-bold text-[#FAFAFA]">{segment.name ?? formatSegmentKind(segment.kind)}</h4>
-          <p className="mt-1 font-data text-xs text-[#A1A1AA]">{formatSegmentMatchup(segment, players)}</p>
+          <h4 className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
+            {segment.name ?? formatSegmentKind(segment.kind)}
+          </h4>
+          <p className="mt-1 font-data text-sm leading-6 text-[#A1A1AA]">{formatSegmentMatchup(segment, players)}</p>
           {cpiStatus && (
-            <p className="mt-1 font-data text-[11px] text-[#8B949E]">
+            <p className="mt-1 font-data text-xs text-[#8B949E]">
               {cpiStatus}
               {canConfigureCpi && (
                 <button
@@ -228,16 +254,19 @@ function SegmentScoreCard({
               {isSavingAny ? 'Saving...' : `Save all (${dirtyHoles.length})`}
             </button>
           )}
-          <span className="rounded border border-[#27272A] px-3 py-1 font-data text-[10px] uppercase tracking-[0.18em] text-[#A1A1AA]">
+          <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] uppercase tracking-[0.18em] text-[#A1A1AA]">
             Holes {segment.hole_start}-{segment.hole_end}
           </span>
         </div>
       </div>
-      {saveAllError && <p className="mt-2 font-data text-xs text-[#F85149]">{saveAllError}</p>}
-      <div className="mt-3 grid gap-2">
+      {saveAllError && <p className="px-4 pb-3 font-data text-xs text-[#F85149]">{saveAllError}</p>}
+      <div>
         {holes.map((holeNumber) => {
           const score = segment.holeScores.find((row) => row.hole_number === holeNumber) ?? null;
           const draft = drafts[holeNumber] ?? createDraft(score);
+          const isDirty = dirtyHoles.includes(holeNumber);
+          const isSaving = savingHoles.has(holeNumber);
+          const rowError = rowErrors[holeNumber] ?? null;
 
           return (
             <HoleScoreForm
@@ -246,8 +275,8 @@ function SegmentScoreCard({
               distance={distances[holeNumber - 1] ?? null}
               score={score}
               draft={draft}
-              isDirty={dirtyHoles.includes(holeNumber)}
-              isSaving={savingHoles.has(holeNumber)}
+              saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
+              error={rowError}
               onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
               onSave={() => saveHole(holeNumber)}
             />
@@ -263,8 +292,8 @@ function HoleScoreForm({
   distance,
   score,
   draft,
-  isDirty,
-  isSaving,
+  saveState,
+  error,
   onDraftChange,
   onSave,
 }: {
@@ -272,56 +301,59 @@ function HoleScoreForm({
   distance: number | null;
   score: HoleScoreRow | null;
   draft: HoleDraft;
-  isDirty: boolean;
-  isSaving: boolean;
+  saveState: HoleSaveState;
+  error: string | null;
   onDraftChange: (draft: HoleDraft) => void;
   onSave: () => void;
 }) {
   const strokeIndex = getCourseStrokeIndex(holeNumber);
+  const isDirty = saveState === 'dirty' || saveState === 'incomplete';
+  const borderClass =
+    saveState === 'error' ? 'border-[#F85149]' : isDirty ? 'border-[#F59E0B]' : 'border-[#27272A]';
+
+  useEffect(() => {
+    if (saveState !== 'dirty') return undefined;
+
+    const timer = window.setTimeout(() => {
+      onSave();
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [draft.europeScore, draft.usaScore, onSave, saveState]);
 
   return (
-    <div
-      className={`rounded-md border bg-[#18181B] p-3 transition-colors ${
-        isDirty ? 'border-[#F59E0B]' : 'border-[#27272A]'
-      }`}
-    >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[7rem_1fr_1fr_5rem_auto] sm:items-center">
-        <div>
-          <div className="font-data text-lg font-bold text-[#FAFAFA]">H{holeNumber}</div>
-          <div className="mt-1 flex flex-wrap gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#8B949E]">
+    <div className={`border-t bg-[#101012] px-4 py-4 transition-colors ${borderClass}`}>
+      <div className="grid gap-3 lg:grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-center">
+        <div className="flex items-baseline justify-between gap-3 lg:block">
+          <div className="font-data text-3xl font-bold tracking-[-0.08em] text-[#FAFAFA] lg:text-xl">H{holeNumber}</div>
+          <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
             {distance && <span>{distance} yds</span>}
             <span>SI {strokeIndex}</span>
           </div>
         </div>
-        <ScoreInput
+        <ScorePicker
           label="USA"
           value={draft.usaScore}
           onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
         />
-        <ScoreInput
+        <ScorePicker
           label="Europe"
           value={draft.europeScore}
           onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
         />
-        <div className="hidden text-xs uppercase tracking-[0.14em] text-[#8B949E] sm:block">
-          SI
-          <div className="mt-1 rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 font-data text-sm text-[#E6EDF3]">
-            {strokeIndex}
-          </div>
-        </div>
-        {isDirty ? (
+        {saveState === 'saving' ? (
+          <SyncBadge label="Saving" tone="pending" />
+        ) : saveState === 'saved' ? (
+          <SyncBadge label="Saved" tone="saved" />
+        ) : (
           <button
             type="button"
             onClick={onSave}
-            disabled={isSaving}
-            className="col-span-2 rounded-md bg-[#3FB950] px-3 py-2 font-data text-xs font-bold text-[#09090B] disabled:opacity-60 sm:col-span-1"
+            disabled={saveState === 'incomplete'}
+            className="rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
-            {isSaving ? 'Saving' : 'Save'}
+            {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
           </button>
-        ) : (
-          <div className="col-span-2 hidden font-data text-[10px] uppercase tracking-[0.14em] text-[#484F58] sm:block">
-            Saved
-          </div>
         )}
       </div>
       {score && (
@@ -336,6 +368,22 @@ function HoleScoreForm({
           )}
         </div>
       )}
+      {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
+    </div>
+  );
+}
+
+function SyncBadge({ label, tone }: { label: string; tone: 'saved' | 'pending' }) {
+  const className =
+    tone === 'saved'
+      ? 'border-[#27272A] text-[#484F58]'
+      : 'border-[#F59E0B] bg-[#1C1406] text-[#F59E0B]';
+
+  return (
+    <div
+      className={`border px-3 py-2 text-center font-data text-[10px] font-bold uppercase tracking-[0.14em] sm:rounded-md ${className}`}
+    >
+      {label}
     </div>
   );
 }
@@ -384,6 +432,31 @@ function isHoleDirty(draft: HoleDraft | undefined, score: HoleScoreRow | null | 
   const savedDraft = createDraft(score);
 
   return draft.usaScore !== savedDraft.usaScore || draft.europeScore !== savedDraft.europeScore;
+}
+
+function getHoleSaveState({
+  draft,
+  isDirty,
+  isSaving,
+  rowError,
+}: {
+  draft: HoleDraft;
+  isDirty: boolean;
+  isSaving: boolean;
+  rowError: string | null;
+}): HoleSaveState {
+  if (isSaving) return 'saving';
+  if (rowError) return 'error';
+  if (!isDirty) return 'saved';
+
+  return isDraftAutosavable(draft) ? 'dirty' : 'incomplete';
+}
+
+function isDraftAutosavable(draft: HoleDraft): boolean {
+  const hasUsaScore = draft.usaScore.trim().length > 0;
+  const hasEuropeScore = draft.europeScore.trim().length > 0;
+
+  return (hasUsaScore && hasEuropeScore) || (!hasUsaScore && !hasEuropeScore);
 }
 
 function getSegmentCpiStatus(

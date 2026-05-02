@@ -1,6 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { buildHoleScorePayload } from '../domain/2026/persistence';
-import type { FixtureParticipant, SegmentSetup } from '../domain/2026/fixtures';
+import type { FixtureParticipant, FixtureSetupInput, SegmentSetup } from '../domain/2026/fixtures';
 import { createFixtureSetup, createSupabaseFixtureSetupRepository } from './tournament2026Service';
 import { getCourseStrokeIndex } from '../domain/2026/course';
 import { getSupabaseClient } from '../lib/supabase';
@@ -38,6 +38,7 @@ export interface FixtureView extends FixtureRow {
 export interface Tournament2026Data {
   user: User | null;
   profile: ProfileRow | null;
+  profiles: ProfileRow[];
   players: PlayerRow[];
   activeTournament: TournamentRow | null;
   fixtures: FixtureView[];
@@ -69,6 +70,22 @@ export interface CreateQuickFixtureInput {
   sortOrder: number;
 }
 
+export interface CustomSinglesPairInput {
+  usaPlayerId: string;
+  europePlayerId: string;
+  cpiEnabled: boolean;
+}
+
+export interface CreateCustomFixtureInput {
+  tournamentId: string;
+  name: string;
+  sortOrder: number;
+  usaPlayerIds: string[];
+  europePlayerIds: string[];
+  frontNinePlayerIds: string[];
+  singlesPairs: CustomSinglesPairInput[];
+}
+
 export interface SaveHoleScoreInput {
   tournament: TournamentRow;
   segment: SegmentRow;
@@ -88,6 +105,12 @@ export interface UpdateSegmentCpiInput {
   updatedBy: string | null;
 }
 
+export interface UpdateProfilePlayerLinkInput {
+  profileId: string;
+  playerId: string | null;
+  players: PlayerRow[];
+}
+
 export async function fetchTournament2026Data(
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<Tournament2026Data> {
@@ -100,6 +123,7 @@ export async function fetchTournament2026Data(
 
   const user = userData.user;
   const profile = user ? await fetchProfile(client, user.id) : null;
+  const profiles = profile?.is_admin ? await fetchProfiles(client) : [];
   const fixtures = activeTournament
     ? await fetchFixturesForTournament(client, activeTournament.id, players)
     : [];
@@ -107,6 +131,7 @@ export async function fetchTournament2026Data(
   return {
     user,
     profile,
+    profiles,
     players,
     activeTournament,
     fixtures,
@@ -252,6 +277,88 @@ export async function createQuickFourBallFixture(
   );
 }
 
+export async function createCustomFixture2026(
+  input: CreateCustomFixtureInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  await createFixtureSetup(
+    buildCustomFixtureSetupInput(input),
+    createSupabaseFixtureSetupRepository(client)
+  );
+}
+
+export function buildCustomFixtureSetupInput(input: CreateCustomFixtureInput): FixtureSetupInput {
+  const participants = buildFixtureParticipants(input);
+  const participantLookup = new Map(participants.map((participant) => [participant.playerId, participant]));
+  const frontNineParticipants = input.frontNinePlayerIds.map((playerId) => {
+    const participant = participantLookup.get(playerId);
+
+    if (!participant) {
+      throw new Error(`Front-nine player ${playerId} is not assigned to this fixture`);
+    }
+
+    return participant;
+  });
+  const singlesPairs = input.singlesPairs.filter(
+    (pair) => pair.usaPlayerId && pair.europePlayerId
+  );
+  const usedSinglesPlayers = new Set<string>();
+
+  for (const pair of singlesPairs) {
+    for (const playerId of [pair.usaPlayerId, pair.europePlayerId]) {
+      if (usedSinglesPlayers.has(playerId)) {
+        throw new Error(`Duplicate singles player: ${playerId}`);
+      }
+
+      usedSinglesPlayers.add(playerId);
+    }
+  }
+
+  const segments: SegmentSetup[] = [
+    {
+      kind: 'foursomes',
+      name: 'Front 9 Foursomes',
+      sortOrder: 1,
+      holeStart: 1,
+      holeEnd: 9,
+      participants: frontNineParticipants,
+    },
+    ...singlesPairs.map<SegmentSetup>((pair, index) => ({
+      kind: 'singles',
+      name: `Singles ${String.fromCharCode(65 + index)}`,
+      sortOrder: index + 2,
+      holeStart: 10,
+      holeEnd: 18,
+      usaPlayerId: pair.usaPlayerId,
+      europePlayerId: pair.europePlayerId,
+      cpiEnabled: pair.cpiEnabled,
+    })),
+  ];
+
+  return {
+    tournamentId: input.tournamentId,
+    fixtureName: input.name,
+    sortOrder: input.sortOrder,
+    participants,
+    segments,
+  };
+}
+
+function buildFixtureParticipants(input: CreateCustomFixtureInput): FixtureParticipant[] {
+  return [
+    ...input.usaPlayerIds.map((playerId, index) => ({
+      playerId,
+      team: 'USA' as const,
+      slot: index + 1,
+    })),
+    ...input.europePlayerIds.map((playerId, index) => ({
+      playerId,
+      team: 'EUROPE' as const,
+      slot: index + 1,
+    })),
+  ];
+}
+
 export async function saveHoleScore2026(
   input: SaveHoleScoreInput,
   client: SupabaseClient<Database> = getSupabaseClient()
@@ -320,6 +427,24 @@ export async function updateSegmentCpiEnabled(
   throwIfSupabaseError(scoresError, 'Failed to recalculate scores after CPI update');
 }
 
+export async function updateProfilePlayerLink2026(
+  input: UpdateProfilePlayerLinkInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const linkedPlayer = input.playerId
+    ? input.players.find((player) => player.id === input.playerId)
+    : null;
+  const { error } = await client
+    .from('profiles')
+    .update({
+      linked_player_id: input.playerId,
+      team: linkedPlayer?.team ?? null,
+    })
+    .eq('id', input.profileId);
+
+  throwIfSupabaseError(error, 'Failed to update profile player link');
+}
+
 function getSegmentCpiInput(
   tournament: TournamentRow,
   segment: SegmentRow,
@@ -349,6 +474,14 @@ async function fetchProfile(
   throwIfSupabaseError(error, 'Failed to load profile');
 
   return data;
+}
+
+async function fetchProfiles(client: SupabaseClient<Database>): Promise<ProfileRow[]> {
+  const { data, error } = await client.from('profiles').select('*').order('display_name');
+
+  throwIfSupabaseError(error, 'Failed to load profiles');
+
+  return data ?? [];
 }
 
 async function fetchPlayers(client: SupabaseClient<Database>): Promise<PlayerRow[]> {

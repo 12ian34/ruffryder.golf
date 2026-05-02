@@ -18,7 +18,7 @@ The current Firebase implementation should be used as a reference, not extended 
 
 The design system source of truth lives in `DESIGN.md`. Read it before building or changing UI.
 
-New 2026 screens should use the dark terminal scoreboard direction, compact mono typography, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI; new 2026 UI should prefer `team-usa` and `team-europe`.
+New 2026 screens should use the dark terminal scoreboard direction, compact mono typography, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The 2026 console is phone-first, including admin/captain setup. Score entry should avoid keyboard-first numeric fields; prefer tap/scroll score pickers with autosave and visible sync state. The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI; new 2026 UI should prefer `team-usa` and `team-europe`.
 
 ## 2026 Tournament Rules
 

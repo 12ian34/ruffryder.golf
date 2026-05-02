@@ -140,7 +140,7 @@ Rules:
 - **App screens:** Dense, aligned, predictable, and stable.
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
 - **Max content width:** `1180px` for desktop admin/dashboard pages.
-- **Mobile:** Single-column first. Important actions stay near the thumb zone.
+- **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:
@@ -152,7 +152,7 @@ Radius:
 - `xl`: 12px for major panels/modals.
 - `full`: pills, avatars, status dots.
 
-Borders define the interface. Prefer `1px` borders with clear contrast over shadows. Avoid large radius panels unless the content is a modal or hero surface.
+Borders define the interface. Prefer full-width horizontal dividers and section rules over nested cards. Avoid layer-over-layer card hierarchy in the 2026 console. Cards only earn their existence when the card itself is the interaction.
 
 ## Components
 
@@ -185,16 +185,19 @@ Score entry screens must optimize for speed:
 
 - Hole number and segment context always visible.
 - Current match status visible near score inputs.
-- Large numeric inputs.
+- Large mobile score pickers. Avoid keyboard-first numeric entry during tournament play.
+- Score pickers should support thumb-friendly `-` / `+`, quick nearby score chips, and a native/select fallback for accessibility.
 - Clear halved-hole state.
 - CPI explanation only when CPI applies. Do not show CPI controls or copy during front-nine foursomes.
 - Stroke index is fixed course data, not editable.
 - Hole distance should be visible near the hole label when data is available.
-- Save button appears only when that row has unsaved changes.
-- A `Save all` action appears when multiple rows have unsaved changes.
-- Dirty rows should be visually obvious with a subtle amber border or marker.
+- Score entry should be autosave-first with visible sync states: dirty, saving, saved, error.
+- Manual retry/save controls are fallback actions, not the primary path.
+- A `Save all` action can appear when multiple rows have unsaved changes or failed saves need a bulk retry.
+- Dirty rows should be visually obvious with a subtle amber border or marker; failed rows should use red.
 - Saved rows should show a compact result chip, not verbose explanatory text.
 - Rows should feel like terminal records: `H10`, distance, SI, USA score, Europe score, result, save state.
+- Score entry should use the full mobile width. Avoid nested fixture → segment → row boxes that waste horizontal space.
 
 ### Hole Metadata
 
@@ -264,7 +267,7 @@ Respect reduced-motion preferences.
 - Include text labels for USA/EUR and raw/adjusted history views.
 - Ensure score inputs are reachable and usable by keyboard.
 - Keep contrast high for outdoor mobile use.
-- Save all must be reachable by keyboard and should not trap focus.
+- Score pickers and retry/save actions must be reachable by keyboard and should not trap focus.
 
 ## Implementation Notes
 

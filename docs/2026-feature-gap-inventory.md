@@ -7,21 +7,22 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Supabase Auth sign-in and profile creation.
 - Active tournament creation.
 - Player creation with team and current CPI.
-- Quick 4-ball fixture creation.
+- Mobile fixture builder for 2-6 player fixtures, front-nine participants, back-nine singles pairings, CPI toggles, and preview before save.
 - Front-nine foursomes and back-nine singles segments.
 - Match-play-only scoring with halved and unplayed holes separated.
 - CPI on singles only, with per-segment admin enable/disable.
 - Fixed course stroke index display.
 - Hole distance display when Firebase `config/holeDistances` data is available.
-- Row-level dirty state, row Save buttons only when changed, and segment-level `Save all`.
+- Mobile tab navigation for score, leaderboard, setup, history, and profile.
+- Tap-first score picker with row-level dirty state, autosave, sync status, retry fallback, and segment-level `Save all`.
+- Admin profile-to-player linking, profile access display, and player-only Score tab fixture filtering.
 - Live leaderboard totals split by overall, foursomes, and singles.
 - Imported legacy tournament score summary display with raw and legacy adjusted totals.
 
 ## Missing Before Tournament Day
 
-- Full captain/admin fixture builder for arbitrary fixture sizes, including 6-ball setup and custom segment membership.
+- Editing existing fixtures and segments after creation.
 - Admin edit/delete flows for tournaments, players, fixtures, segments, and mistaken hole scores.
-- Player-to-profile linking so non-admin players can only edit their own fixture scores.
 - Completed tournament locking/finalization for the 2026 model.
 - Player history/CPI recalculation from back-nine singles only.
 - Detailed legacy archive view that drills into imported games, not just tournament-level totals.

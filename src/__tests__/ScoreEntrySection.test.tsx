@@ -1,5 +1,5 @@
-import { fireEvent, render, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
 import {
   saveHoleScore2026,
@@ -36,6 +36,10 @@ describe('ScoreEntrySection', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('only shows row save actions for changed rows and can save all dirty rows', async () => {
     const { container } = render(
       <ScoreEntrySection
@@ -49,21 +53,45 @@ describe('ScoreEntrySection', () => {
     const view = within(container);
 
     expect(view.getByText('401 yds')).toBeInTheDocument();
-    expect(view.queryByText('Save')).not.toBeInTheDocument();
+    expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
-    fireEvent.change(view.getAllByLabelText('USA')[0], { target: { value: '6' } });
+    fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
 
-    expect(view.getByText('Save')).toBeInTheDocument();
+    expect(view.getByText('Save now')).toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
-    fireEvent.change(view.getAllByLabelText('Europe')[1], { target: { value: '4' } });
+    fireEvent.change(view.getAllByLabelText('Europe score')[1], { target: { value: '4' } });
 
     fireEvent.click(view.getByText('Save all (2)'));
 
     await waitFor(() => {
       expect(saveHoleScore2026).toHaveBeenCalledTimes(2);
     });
+    expect(onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it('autosaves a complete dirty row after a short debounce', async () => {
+    vi.useFakeTimers();
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[fixture]}
+        players={players}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+      await Promise.resolve();
+    });
+
+    expect(saveHoleScore2026).toHaveBeenCalledTimes(1);
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 });
