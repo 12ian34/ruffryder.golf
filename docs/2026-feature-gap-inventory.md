@@ -8,6 +8,7 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Active tournament creation.
 - Player creation with team and current CPI.
 - Mobile fixture builder for 2-6 player fixtures, front-nine participants, back-nine singles pairings, CPI toggles, and preview before save.
+- Admin correction controls for player details/CPI, clearing mistaken fixture scores, and deleting accidental fixtures.
 - Front-nine foursomes and back-nine singles segments.
 - Match-play-only scoring with halved and unplayed holes separated.
 - CPI on singles only, with per-segment admin enable/disable.
@@ -22,7 +23,7 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 ## Missing Before Tournament Day
 
 - Editing existing fixtures and segments after creation.
-- Admin edit/delete flows for tournaments, players, fixtures, segments, and mistaken hole scores.
+- Admin correction flows for tournaments, segment membership, and more granular single-hole score deletion.
 - Completed tournament locking/finalization for the 2026 model.
 - Player history/CPI recalculation from back-nine singles only.
 - Detailed legacy archive view that drills into imported games, not just tournament-level totals.

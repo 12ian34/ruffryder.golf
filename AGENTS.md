@@ -113,16 +113,16 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/Hero.tsx` shows active tournament/profile context.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
 - `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture/segment score entry and saves each hole through the 2026 query service.
-- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and currently creates active tournaments, players, and quick normal 4-ball fixtures.
+- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and currently creates active tournaments, players, flexible fixtures, and common correction flows for players and fixtures.
 - `src/features/tournament2026/components/HistorySection.tsx` currently shows summary cards from `legacy_tournaments`; detailed legacy game drill-down is not built yet.
 - `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
 - `src/features/tournament2026/viewUtils.ts` holds UI-only formatting, totals, hole-range, and parsing helpers.
-- `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/quick 4-ball fixtures, and upserts hole scores through the pure scoring core.
+- `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/fixtures, handles admin corrections, and upserts hole scores through the pure scoring core.
 - `src/services/tournament2026Service.ts` owns fixture setup persistence orchestration and rollback around fixture, fixture-player, segment, and segment-player inserts.
 - `src/domain/2026/scoring.ts` is the pure scoring core for CPI, foursomes, singles, halved/unplayed outcomes, and fixture summaries.
 - `src/domain/2026/persistence.ts` maps scored holes into Supabase `hole_scores` insert/upsert payloads.
 - `src/domain/2026/fixtures.ts` builds and validates fixture/segment setup payloads for normal 4-balls and flexible fixtures.
-- Quick fixture setup currently covers the normal 4-ball path. Flexible 6-ball support exists in the schema/domain builder and tests, but still needs a richer admin UI when the exact event numbers are known.
+- Fixture setup supports flexible 2-6 player fixtures through the admin UI, schema/domain builder, and tests.
 
 ## Testing Expectations
 
@@ -136,6 +136,7 @@ Add focused tests for behavior changes:
 - Back-nine singles scoring rolls up correctly.
 - Only back-nine singles scores feed player history and CPI updates.
 - Any fixture player can update fixture scores; unrelated players cannot.
+- Admin correction actions update player details, keep linked profile teams in sync, and can clear or delete accidental fixture data.
 - Flexible fixture and segment membership works for normal 4-balls and possible 6-balls.
 - Historical Firebase-shaped data migrates into the Supabase schema without changing old results.
 - Historical pages can display raw/no-handicap and legacy adjusted/old-handicap-method results exactly as they were.

@@ -1,8 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  clearFixtureScores2026,
   createCustomFixture2026,
   createPlayer2026,
   createTournament2026,
+  deleteFixture2026,
+  updatePlayer2026,
+  type FixtureView,
   type PlayerRow,
   type Team,
   type Tournament2026Data,
@@ -35,6 +39,7 @@ export function AdminSetupSection({
           onSaved={onSaved}
         />
       </div>
+      <CorrectionPanel players={data.players} fixtures={data.fixtures} onSaved={onSaved} />
     </Panel>
   );
 }
@@ -121,6 +126,234 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
       <TextField label="Current CPI" value={cpi} onChange={setCpi} type="number" />
       <SubmitButton isSaving={isSaving}>Add player</SubmitButton>
     </SetupForm>
+  );
+}
+
+function CorrectionPanel({
+  players,
+  fixtures,
+  onSaved,
+}: {
+  players: PlayerRow[];
+  fixtures: FixtureView[];
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="mt-5 border-t border-[#27272A] pt-4">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3FB950]">Corrections</p>
+      <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+        Fix setup mistakes from mobile without opening Supabase. Destructive fixture actions require confirmation.
+      </p>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <PlayerCorrections players={players} onSaved={onSaved} />
+        <FixtureCorrections fixtures={fixtures} onSaved={onSaved} />
+      </div>
+    </div>
+  );
+}
+
+function PlayerCorrections({
+  players,
+  onSaved,
+}: {
+  players: PlayerRow[];
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Players</p>
+      </div>
+      {players.length === 0 ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No players yet.</p>
+      ) : (
+        players.map((player) => (
+          <PlayerCorrectionRow key={player.id} player={player} onSaved={onSaved} />
+        ))
+      )}
+    </div>
+  );
+}
+
+function PlayerCorrectionRow({
+  player,
+  onSaved,
+}: {
+  player: PlayerRow;
+  onSaved: () => Promise<void>;
+}) {
+  const [name, setName] = useState(player.name);
+  const [team, setTeam] = useState<Team>(player.team);
+  const [cpi, setCpi] = useState(player.current_cpi?.toString() ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasChanged =
+    name !== player.name ||
+    team !== player.team ||
+    cpi !== (player.current_cpi?.toString() ?? '');
+
+  useEffect(() => {
+    setName(player.name);
+    setTeam(player.team);
+    setCpi(player.current_cpi?.toString() ?? '');
+  }, [player]);
+
+  const savePlayer = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updatePlayer2026({
+        playerId: player.id,
+        name,
+        team,
+        currentCpi: cpi ? Number(cpi) : null,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3">
+      <div className="grid gap-2">
+        <TextField label="Name" value={name} onChange={setName} />
+        <div className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
+          <label className="font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+            Team
+            <select
+              value={team}
+              onChange={(event) => setTeam(event.target.value as Team)}
+              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+            >
+              <option value="USA">USA</option>
+              <option value="EUROPE">Europe</option>
+            </select>
+          </label>
+          <TextField label="CPI" value={cpi} onChange={setCpi} type="number" />
+          <button
+            type="button"
+            onClick={savePlayer}
+            disabled={!hasChanged || isSaving}
+            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          >
+            {isSaving ? 'Saving' : 'Save'}
+          </button>
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
+  );
+}
+
+function FixtureCorrections({
+  fixtures,
+  onSaved,
+}: {
+  fixtures: FixtureView[];
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Fixtures</p>
+      </div>
+      {fixtures.length === 0 ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No fixtures yet.</p>
+      ) : (
+        fixtures.map((fixture) => (
+          <FixtureCorrectionRow key={fixture.id} fixture={fixture} onSaved={onSaved} />
+        ))
+      )}
+    </div>
+  );
+}
+
+function FixtureCorrectionRow({
+  fixture,
+  onSaved,
+}: {
+  fixture: FixtureView;
+  onSaved: () => Promise<void>;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scoreCount = fixture.segments.reduce(
+    (total, segment) => total + segment.holeScores.length,
+    0
+  );
+
+  const clearScores = async () => {
+    if (!window.confirm(`Clear all saved scores for ${fixture.name ?? 'this fixture'}?`)) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await clearFixtureScores2026(fixture);
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteFixture = async () => {
+    if (!window.confirm(`Delete ${fixture.name ?? 'this fixture'} and all its scores?`)) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await deleteFixture2026(fixture.id);
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
+            {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
+          </p>
+          <p className="mt-1 text-xs text-[#8B949E]">
+            {fixture.participants.length} players · {fixture.segments.length} segments · {scoreCount} saved holes
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={clearScores}
+            disabled={isSaving || scoreCount === 0}
+            className="min-h-10 rounded-md border border-[#F59E0B] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+          >
+            Clear scores
+          </button>
+          <button
+            type="button"
+            onClick={deleteFixture}
+            disabled={isSaving}
+            className="min-h-10 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F85149] disabled:opacity-60"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
   );
 }
 

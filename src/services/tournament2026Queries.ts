@@ -62,6 +62,13 @@ export interface CreatePlayerInput {
   currentCpi: number | null;
 }
 
+export interface UpdatePlayerInput {
+  playerId: string;
+  name: string;
+  team: Team;
+  currentCpi: number | null;
+}
+
 export interface CreateQuickFixtureInput {
   tournamentId: string;
   name: string;
@@ -224,6 +231,53 @@ export async function createPlayer2026(
   });
 
   throwIfSupabaseError(error, 'Failed to create player');
+}
+
+export async function updatePlayer2026(
+  input: UpdatePlayerInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client
+    .from('players')
+    .update({
+      name: input.name,
+      team: input.team,
+      current_cpi: input.currentCpi,
+    })
+    .eq('id', input.playerId);
+
+  throwIfSupabaseError(error, 'Failed to update player');
+
+  const { error: profileError } = await client
+    .from('profiles')
+    .update({ team: input.team })
+    .eq('linked_player_id', input.playerId);
+
+  throwIfSupabaseError(profileError, 'Failed to update linked profile teams');
+}
+
+export async function deleteFixture2026(
+  fixtureId: string,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client.from('fixtures').delete().eq('id', fixtureId);
+
+  throwIfSupabaseError(error, 'Failed to delete fixture');
+}
+
+export async function clearFixtureScores2026(
+  fixture: FixtureView,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const segmentIds = fixture.segments.map((segment) => segment.id);
+
+  if (segmentIds.length === 0) {
+    return;
+  }
+
+  const { error } = await client.from('hole_scores').delete().in('segment_id', segmentIds);
+
+  throwIfSupabaseError(error, 'Failed to clear fixture scores');
 }
 
 export async function createQuickFourBallFixture(
