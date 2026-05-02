@@ -5,14 +5,11 @@
 https://ruffryder.golf
 
 web app for live tracking and score keeping for an annual golf tournament with friends
- 
-> check **[CLAUDE.md](./CLAUDE.md)** for detailed documentation on:
-> - app logic (handicaps, scoring, points system)
-> - db structure and collections
-> - code architecture and key files
-> - dev conventions
-> 
-> **Always keep it updated** when making meaningful changes to the codebase.
+
+> check **[AGENTS.md](./AGENTS.md)** for the current 2026 Supabase rebuild context.
+> `CLAUDE.md` is legacy Firebase/current-state context and may be outdated.
+>
+> For UI work, read **[DESIGN.md](./DESIGN.md)** before building screens.
 
 ## screens
 

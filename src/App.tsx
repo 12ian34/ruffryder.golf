@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import About from './pages/About';
 import PasswordResetComplete from './pages/PasswordResetComplete';
 import ScoreEntryPage from './pages/ScoreEntryPage';
+import Tournament2026 from './pages/Tournament2026';
 import { clearLocalStorage } from './utils/storage';
 
 export default function App() {
@@ -41,6 +42,7 @@ function AppContent() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/password-reset-complete" element={<PasswordResetComplete />} />
           <Route path="/about" element={<About />} />
+          <Route path="/2026" element={<Tournament2026 />} />
           <Route path="/score-entry/:tournamentId/:gameId" element={<ScoreEntryPage />} />
         </Routes>
       </Router>

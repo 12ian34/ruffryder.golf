@@ -106,6 +106,7 @@ export default function Dashboard() {
 
   const tabs = [
     { id: 'leaderboard', label: 'Leaderboard' },
+    { id: 'tournament-2026', label: '2026' },
     { id: 'games', label: 'My games' },
     { id: 'players', label: 'Stats' },
     { id: 'about', label: 'About' },
@@ -168,6 +169,24 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         {activeTab === 'leaderboard' && <Leaderboard />}
+        {activeTab === 'tournament-2026' && (
+          <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              2026 Tournament Console
+            </h2>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">
+              The fresh Supabase-backed 2026 admin, scoring, leaderboard, and history screens
+              live in their own console during the rebuild.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/2026')}
+              className="mt-4 rounded-lg bg-purple-500 px-4 py-2 font-medium text-white hover:bg-purple-600"
+            >
+              Open 2026 console
+            </button>
+          </div>
+        )}
         {activeTab === 'players' && <PlayerStats />}
         {activeTab === 'games' && (
           <GameManagement

@@ -7,14 +7,58 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Satoshi', 'system-ui', 'sans-serif'],
+        sans: ['Geist', 'system-ui', 'sans-serif'],
+        data: ['Geist Mono', 'JetBrains Mono', 'monospace'],
+      },
       colors: {
+        ink: {
+          700: '#22352E',
+          800: '#1A2A24',
+          900: '#101C18',
+          950: '#08110E',
+        },
+        chalk: {
+          50: '#F8F5EC',
+          100: '#EEE8D8',
+          200: '#DDD2B8',
+          300: '#CFC19F',
+          400: '#B4A581',
+          500: '#928566',
+          700: '#5C5547',
+          800: '#3B362D',
+        },
+        fairway: {
+          300: '#7BCFA5',
+          500: '#1F7A4D',
+          600: '#17623E',
+          700: '#124D33',
+          950: '#062015',
+        },
+        pin: {
+          200: '#F6E5B6',
+          300: '#E9CC7D',
+          500: '#D9B45F',
+          950: '#2D210D',
+        },
+        'team-usa': {
+          300: '#F8D489',
+          500: '#F2B84B',
+          700: '#A96E12',
+        },
+        'team-europe': {
+          300: '#93C5FD',
+          500: '#3B82F6',
+          700: '#1D4ED8',
+        },
         usa: {
           50: '#fefce8',
           100: '#fef9c3',
           200: '#fef08a',
           300: '#fde047',
           400: '#facc15',
-          500: '#fbbf24',  // Main USA color (amber)
+          500: '#fbbf24',  // Legacy USA color (amber)
           600: '#d97706',
           700: '#b45309',
           800: '#92400e',
@@ -26,7 +70,7 @@ module.exports = {
           200: '#e9d5ff',
           300: '#d8b4fe',
           400: '#c084fc',
-          500: '#a78bfa',  // Main Europe color (purple)
+          500: '#a78bfa',  // Legacy Europe color (purple)
           600: '#9333ea',
           700: '#7e22ce',
           800: '#6b21a8',

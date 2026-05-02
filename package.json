@@ -10,11 +10,14 @@
     "start": "vite",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "supabase:types": "node scripts/generate-supabase-types.mjs",
+    "migrate:firebase-export": "node scripts/migrate-firebase-export.mjs",
     "prebuild": "npm run type-check"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
+    "@supabase/supabase-js": "^2.105.1",
     "chart.js": "^4.4.1",
     "date-fns": "^2.30.0",
     "firebase": "^12.7.0",
