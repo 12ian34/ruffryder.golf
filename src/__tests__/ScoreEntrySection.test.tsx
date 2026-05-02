@@ -1,21 +1,15 @@
 import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
+import type { CourseHoleMetadata } from '../domain/2026/course';
 import {
+  clearHoleScore2026,
   saveHoleScore2026,
   type FixtureView,
   type PlayerRow,
   type ProfileRow,
   type TournamentRow,
 } from '../services/tournament2026Queries';
-
-vi.mock('../hooks/useHoleDistances', () => ({
-  useHoleDistances: () => ({
-    distances: [401, 388],
-    isLoading: false,
-    error: null,
-  }),
-}));
 
 vi.mock('../services/tournament2026Queries', async () => {
   const actual = await vi.importActual<typeof import('../services/tournament2026Queries')>(
@@ -24,6 +18,7 @@ vi.mock('../services/tournament2026Queries', async () => {
 
   return {
     ...actual,
+    clearHoleScore2026: vi.fn().mockResolvedValue(undefined),
     saveHoleScore2026: vi.fn().mockResolvedValue(undefined),
     updateSegmentCpiEnabled: vi.fn().mockResolvedValue(undefined),
   };
@@ -46,6 +41,7 @@ describe('ScoreEntrySection', () => {
         tournament={tournament}
         fixtures={[fixture]}
         players={players}
+        courseHoles={courseHoles}
         profile={profile}
         onSaved={onSaved}
       />
@@ -53,6 +49,12 @@ describe('ScoreEntrySection', () => {
     const view = within(container);
 
     expect(view.getByText('401 yds')).toBeInTheDocument();
+    expect(view.getAllByText('Par 4')).toHaveLength(2);
+    expect(view.getByText('1/2')).toBeInTheDocument();
+    expect(view.getByText('USA dormie 1')).toBeInTheDocument();
+    expect(view.getByText('1/2 played')).toBeInTheDocument();
+    expect(view.getByText(/Saved \d/)).toBeInTheDocument();
+    expect(view.getByText('By Ian')).toBeInTheDocument();
     expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
@@ -78,6 +80,7 @@ describe('ScoreEntrySection', () => {
         tournament={tournament}
         fixtures={[fixture]}
         players={players}
+        courseHoles={courseHoles}
         profile={profile}
         onSaved={onSaved}
       />
@@ -94,6 +97,31 @@ describe('ScoreEntrySection', () => {
     expect(saveHoleScore2026).toHaveBeenCalledTimes(1);
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
+
+  it('lets admins clear one saved hole score', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[fixture]}
+        players={players}
+        courseHoles={courseHoles}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Clear'));
+
+    await waitFor(() => {
+      expect(clearHoleScore2026).toHaveBeenCalledWith({
+        tournament,
+        scoreId: 'score-1',
+      });
+    });
+    expect(onSaved).toHaveBeenCalledTimes(1);
+  });
 });
 
 const tournament = {
@@ -107,6 +135,11 @@ const profile = {
 } as ProfileRow;
 
 const players = [] as PlayerRow[];
+
+const courseHoles: CourseHoleMetadata[] = [
+  { holeNumber: 1, yardage: 401, par: 4, strokeIndex: 3 },
+  { holeNumber: 2, yardage: 388, par: 4, strokeIndex: 7 },
+];
 
 const fixture = {
   id: 'fixture-1',
@@ -141,6 +174,7 @@ const fixture = {
           cpi_strokes_usa: 0,
           cpi_strokes_europe: 0,
           updated_by: 'profile-1',
+          updatedByProfile: { id: 'profile-1', display_name: 'Ian' },
           updated_at: '2026-05-02T20:00:00.000Z',
         },
       ],

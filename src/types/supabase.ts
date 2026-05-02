@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_holes: {
+        Row: {
+          created_at: string
+          hole_number: number
+          par: number | null
+          stroke_index: number
+          updated_at: string
+          yardage: number | null
+        }
+        Insert: {
+          created_at?: string
+          hole_number: number
+          par?: number | null
+          stroke_index: number
+          updated_at?: string
+          yardage?: number | null
+        }
+        Update: {
+          created_at?: string
+          hole_number?: number
+          par?: number | null
+          stroke_index?: number
+          updated_at?: string
+          yardage?: number | null
+        }
+        Relationships: []
+      }
       fixture_players: {
         Row: {
           created_at: string

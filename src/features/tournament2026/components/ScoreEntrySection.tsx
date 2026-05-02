@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { calculateCpiStrokesForHole } from '../../../domain/2026/scoring';
-import { getCourseStrokeIndex } from '../../../domain/2026/course';
-import { useHoleDistances } from '../../../hooks/useHoleDistances';
 import {
+  calculateFixtureProgress,
+  calculateSegmentMatchPlayStatus,
+} from '../../../domain/2026/matchPlayStatus';
+import { calculateCpiStrokesForHole } from '../../../domain/2026/scoring';
+import {
+  getCourseStrokeIndex,
+  getDefaultCourseHole,
+  type CourseHoleMetadata,
+} from '../../../domain/2026/course';
+import {
+  clearHoleScore2026,
   saveHoleScore2026,
   updateSegmentCpiEnabled,
   type FixtureView,
-  type HoleScoreRow,
+  type HoleScoreView,
   type PlayerRow,
   type ProfileRow,
   type SegmentView,
@@ -35,21 +43,31 @@ export function ScoreEntrySection({
   tournament,
   fixtures,
   players,
+  courseHoles,
   profile,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   fixtures: FixtureView[];
   players: PlayerRow[];
+  courseHoles: CourseHoleMetadata[];
   profile: ProfileRow;
   onSaved: () => Promise<void>;
 }) {
-  const { distances } = useHoleDistances();
-
   if (!tournament) {
     return (
       <Panel title="Score Entry" eyebrow="Fixture scores">
         <StatusCard tone="warning">Create an active tournament before entering scores.</StatusCard>
+      </Panel>
+    );
+  }
+
+  if (tournament.is_complete) {
+    return (
+      <Panel title="Score Entry" eyebrow="Fixture scores">
+        <StatusCard tone="warning">
+          This tournament is complete. Score entry and CPI settings are locked.
+        </StatusCard>
       </Panel>
     );
   }
@@ -64,29 +82,43 @@ export function ScoreEntrySection({
               : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
           </StatusCard>
         )}
-        {fixtures.map((fixture) => (
-          <div key={fixture.id} className="border-t border-[#27272A] first:border-t-0">
-            <div className="px-4 py-4">
-              <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
-                {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
-              </h3>
-              <p className="mt-1 text-xs leading-5 text-[#8B949E]">{formatParticipants(fixture.participants)}</p>
+        {fixtures.map((fixture) => {
+          const progress = calculateFixtureProgress(fixture.segments);
+
+          return (
+            <div key={fixture.id} className="border-t border-[#27272A] first:border-t-0">
+              <div className="px-4 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
+                      {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-[#8B949E]">{formatParticipants(fixture.participants)}</p>
+                  </div>
+                  <span className="shrink-0 border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
+                    {progress.completedHoles}/{progress.totalHoles}
+                  </span>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#18181B]">
+                  <div className="h-full bg-[#3FB950]" style={{ width: `${progress.percent}%` }} />
+                </div>
+              </div>
+              <div>
+                {fixture.segments.map((segment) => (
+                  <SegmentScoreCard
+                    key={segment.id}
+                    tournament={tournament}
+                    segment={segment}
+                    players={players}
+                    profile={profile}
+                    courseHoles={courseHoles}
+                    onSaved={onSaved}
+                  />
+                ))}
+              </div>
             </div>
-            <div>
-              {fixture.segments.map((segment) => (
-                <SegmentScoreCard
-                  key={segment.id}
-                  tournament={tournament}
-                  segment={segment}
-                  players={players}
-                  profile={profile}
-                  distances={distances}
-                  onSaved={onSaved}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Panel>
   );
@@ -97,17 +129,21 @@ function SegmentScoreCard({
   segment,
   players,
   profile,
-  distances,
+  courseHoles,
   onSaved,
 }: {
   tournament: TournamentRow;
   segment: SegmentView;
   players: PlayerRow[];
   profile: ProfileRow;
-  distances: number[];
+  courseHoles: CourseHoleMetadata[];
   onSaved: () => Promise<void>;
 }) {
   const holes = createHoleRange(segment.hole_start, segment.hole_end);
+  const courseHoleLookup = useMemo(
+    () => new Map(courseHoles.map((hole) => [hole.holeNumber, hole])),
+    [courseHoles]
+  );
   const scoreByHole = useMemo(
     () => new Map(segment.holeScores.map((score) => [score.hole_number, score])),
     [segment.holeScores]
@@ -119,6 +155,7 @@ function SegmentScoreCard({
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [saveAllError, setSaveAllError] = useState<string | null>(null);
   const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold);
+  const matchStatus = calculateSegmentMatchPlayStatus(segment);
   const canConfigureCpi = profile.is_admin && segment.kind === 'singles';
   const dirtyHoles = holes.filter((holeNumber) =>
     isHoleDirty(drafts[holeNumber], scoreByHole.get(holeNumber))
@@ -173,6 +210,7 @@ function SegmentScoreCard({
         segment,
         players,
         profile,
+        courseHole: courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber),
         holeNumber,
         draft,
       });
@@ -208,6 +246,7 @@ function SegmentScoreCard({
           segment,
           players,
           profile,
+          courseHole: courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber),
           holeNumber,
           draft,
         });
@@ -220,6 +259,31 @@ function SegmentScoreCard({
     }
   };
 
+  const clearHole = async (holeNumber: number, scoreId: string) => {
+    if (!window.confirm(`Clear saved scores for H${holeNumber}?`)) return;
+
+    setSaveAllError(null);
+    setRowErrors((current) => {
+      const next = { ...current };
+      delete next[holeNumber];
+      return next;
+    });
+    setSavingHoles((current) => new Set(current).add(holeNumber));
+
+    try {
+      await clearHoleScore2026({ tournament, scoreId });
+      await onSaved();
+    } catch (err) {
+      setRowErrors((current) => ({ ...current, [holeNumber]: getErrorMessage(err) }));
+    } finally {
+      setSavingHoles((current) => {
+        const next = new Set(current);
+        next.delete(holeNumber);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="border-t border-[#27272A] bg-[#050505]">
       <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -228,6 +292,12 @@ function SegmentScoreCard({
             {segment.name ?? formatSegmentKind(segment.kind)}
           </h4>
           <p className="mt-1 font-data text-sm leading-6 text-[#A1A1AA]">{formatSegmentMatchup(segment, players)}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <MatchStatusBadge status={matchStatus.state} label={matchStatus.label} />
+            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
+              {matchStatus.completedHoles}/{matchStatus.totalHoles} played
+            </span>
+          </div>
           {cpiStatus && (
             <p className="mt-1 font-data text-xs text-[#8B949E]">
               {cpiStatus}
@@ -267,18 +337,24 @@ function SegmentScoreCard({
           const isDirty = dirtyHoles.includes(holeNumber);
           const isSaving = savingHoles.has(holeNumber);
           const rowError = rowErrors[holeNumber] ?? null;
+          const courseHole = courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber);
 
           return (
             <HoleScoreForm
               key={holeNumber}
               holeNumber={holeNumber}
-              distance={distances[holeNumber - 1] ?? null}
+              courseHole={courseHole}
               score={score}
               draft={draft}
               saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
               error={rowError}
+              canClear={profile.is_admin && Boolean(score)}
               onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
               onSave={() => saveHole(holeNumber)}
+              onClear={() => {
+                if (!score) return Promise.resolve();
+                return clearHole(holeNumber, score.id);
+              }}
             />
           );
         })}
@@ -289,24 +365,27 @@ function SegmentScoreCard({
 
 function HoleScoreForm({
   holeNumber,
-  distance,
+  courseHole,
   score,
   draft,
   saveState,
   error,
+  canClear,
   onDraftChange,
   onSave,
+  onClear,
 }: {
   holeNumber: number;
-  distance: number | null;
-  score: HoleScoreRow | null;
+  courseHole: CourseHoleMetadata;
+  score: HoleScoreView | null;
   draft: HoleDraft;
   saveState: HoleSaveState;
   error: string | null;
+  canClear: boolean;
   onDraftChange: (draft: HoleDraft) => void;
   onSave: () => void;
+  onClear: () => Promise<void>;
 }) {
-  const strokeIndex = getCourseStrokeIndex(holeNumber);
   const isDirty = saveState === 'dirty' || saveState === 'incomplete';
   const borderClass =
     saveState === 'error' ? 'border-[#F85149]' : isDirty ? 'border-[#F59E0B]' : 'border-[#27272A]';
@@ -327,8 +406,9 @@ function HoleScoreForm({
         <div className="flex items-baseline justify-between gap-3 lg:block">
           <div className="font-data text-3xl font-bold tracking-[-0.08em] text-[#FAFAFA] lg:text-xl">H{holeNumber}</div>
           <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
-            {distance && <span>{distance} yds</span>}
-            <span>SI {strokeIndex}</span>
+            {courseHole.yardage && <span>{courseHole.yardage} yds</span>}
+            {courseHole.par && <span>Par {courseHole.par}</span>}
+            <span>SI {courseHole.strokeIndex}</span>
           </div>
         </div>
         <ScorePicker
@@ -341,20 +421,33 @@ function HoleScoreForm({
           value={draft.europeScore}
           onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
         />
-        {saveState === 'saving' ? (
-          <SyncBadge label="Saving" tone="pending" />
-        ) : saveState === 'saved' ? (
-          <SyncBadge label="Saved" tone="saved" />
-        ) : (
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saveState === 'incomplete'}
-            className="rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
-          >
-            {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
-          </button>
-        )}
+        <div className="grid gap-2">
+          {saveState === 'saving' ? (
+            <SyncBadge label="Saving" tone="pending" />
+          ) : saveState === 'saved' ? (
+            <SyncBadge label="Saved" tone="saved" />
+          ) : (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saveState === 'incomplete'}
+              className="rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+            >
+              {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
+            </button>
+          )}
+          {canClear && (
+            <button
+              type="button"
+              onClick={() => {
+                void onClear();
+              }}
+              className="rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold text-[#F85149]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       {score && (
         <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
@@ -364,6 +457,14 @@ function HoleScoreForm({
           {score.cpi_applied && (
             <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
               CPI gap {score.cpi_difference}, USA {score.cpi_strokes_usa}, EUR {score.cpi_strokes_europe}
+            </span>
+          )}
+          <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+            Saved {formatAuditTime(score.updated_at)}
+          </span>
+          {score.updatedByProfile && (
+            <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+              By {score.updatedByProfile.display_name}
             </span>
           )}
         </div>
@@ -388,11 +489,33 @@ function SyncBadge({ label, tone }: { label: string; tone: 'saved' | 'pending' }
   );
 }
 
+function MatchStatusBadge({
+  status,
+  label,
+}: {
+  status: ReturnType<typeof calculateSegmentMatchPlayStatus>['state'];
+  label: string;
+}) {
+  const className =
+    status === 'won'
+      ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+      : status === 'dormie'
+        ? 'border-[#F59E0B] bg-[#1C1406] text-[#F59E0B]'
+        : 'border-[#27272A] bg-[#0C0C0E] text-[#A1A1AA]';
+
+  return (
+    <span className={`border px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 async function saveHoleDraft({
   tournament,
   segment,
   players,
   profile,
+  courseHole,
   holeNumber,
   draft,
 }: {
@@ -400,6 +523,7 @@ async function saveHoleDraft({
   segment: SegmentView;
   players: PlayerRow[];
   profile: ProfileRow;
+  courseHole: CourseHoleMetadata;
   holeNumber: number;
   draft: HoleDraft;
 }) {
@@ -408,25 +532,25 @@ async function saveHoleDraft({
     segment,
     players,
     holeNumber,
-    strokeIndex: getCourseStrokeIndex(holeNumber),
+    strokeIndex: courseHole.strokeIndex,
     usaScore: parseOptionalPositiveInteger(draft.usaScore),
     europeScore: parseOptionalPositiveInteger(draft.europeScore),
     updatedBy: profile.id,
   });
 }
 
-function createDrafts(holes: number[], scoreByHole: Map<number, HoleScoreRow>): Record<number, HoleDraft> {
+function createDrafts(holes: number[], scoreByHole: Map<number, HoleScoreView>): Record<number, HoleDraft> {
   return Object.fromEntries(holes.map((holeNumber) => [holeNumber, createDraft(scoreByHole.get(holeNumber))]));
 }
 
-function createDraft(score: HoleScoreRow | null | undefined): HoleDraft {
+function createDraft(score: HoleScoreView | null | undefined): HoleDraft {
   return {
     usaScore: score?.usa_score?.toString() ?? '',
     europeScore: score?.europe_score?.toString() ?? '',
   };
 }
 
-function isHoleDirty(draft: HoleDraft | undefined, score: HoleScoreRow | null | undefined): boolean {
+function isHoleDirty(draft: HoleDraft | undefined, score: HoleScoreView | null | undefined): boolean {
   if (!draft) return false;
 
   const savedDraft = createDraft(score);
@@ -457,6 +581,10 @@ function isDraftAutosavable(draft: HoleDraft): boolean {
   const hasEuropeScore = draft.europeScore.trim().length > 0;
 
   return (hasUsaScore && hasEuropeScore) || (!hasUsaScore && !hasEuropeScore);
+}
+
+function formatAuditTime(value: string): string {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function getSegmentCpiStatus(

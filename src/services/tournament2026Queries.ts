@@ -1,8 +1,13 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { buildTournamentFinalizationDraft } from '../domain/2026/finalization';
 import { buildHoleScorePayload } from '../domain/2026/persistence';
 import type { FixtureParticipant, FixtureSetupInput, SegmentSetup } from '../domain/2026/fixtures';
 import { createFixtureSetup, createSupabaseFixtureSetupRepository } from './tournament2026Service';
-import { getCourseStrokeIndex } from '../domain/2026/course';
+import {
+  DEFAULT_COURSE_HOLES,
+  getCourseStrokeIndex,
+  type CourseHoleMetadata,
+} from '../domain/2026/course';
 import { getSupabaseClient } from '../lib/supabase';
 import type { Database } from '../types/supabase';
 
@@ -15,7 +20,17 @@ export type FixturePlayerRow = Database['public']['Tables']['fixture_players']['
 export type SegmentRow = Database['public']['Tables']['segments']['Row'];
 export type SegmentPlayerRow = Database['public']['Tables']['segment_players']['Row'];
 export type HoleScoreRow = Database['public']['Tables']['hole_scores']['Row'];
+export type CourseHoleRow = Database['public']['Tables']['course_holes']['Row'];
 export type LegacyTournamentRow = Database['public']['Tables']['legacy_tournaments']['Row'];
+export type LegacyGameRow = Database['public']['Tables']['legacy_games']['Row'];
+export type PlayerTournamentStatsInsert =
+  Database['public']['Tables']['player_tournament_stats']['Insert'];
+export type PlayerTournamentStatsRow =
+  Database['public']['Tables']['player_tournament_stats']['Row'];
+
+export interface LegacyTournamentView extends LegacyTournamentRow {
+  games: LegacyGameRow[];
+}
 
 export interface FixturePlayerView extends FixturePlayerRow {
   player: PlayerRow | null;
@@ -25,8 +40,17 @@ export interface SegmentPlayerView extends SegmentPlayerRow {
   player: PlayerRow | null;
 }
 
+export interface ScoreEditorProfile {
+  id: string;
+  display_name: string;
+}
+
+export interface HoleScoreView extends HoleScoreRow {
+  updatedByProfile: ScoreEditorProfile | null;
+}
+
 export interface SegmentView extends SegmentRow {
-  holeScores: HoleScoreRow[];
+  holeScores: HoleScoreView[];
   players: SegmentPlayerView[];
 }
 
@@ -40,9 +64,10 @@ export interface Tournament2026Data {
   profile: ProfileRow | null;
   profiles: ProfileRow[];
   players: PlayerRow[];
+  courseHoles: CourseHoleMetadata[];
   activeTournament: TournamentRow | null;
   fixtures: FixtureView[];
-  history: LegacyTournamentRow[];
+  history: LegacyTournamentView[];
 }
 
 export interface CreateProfileInput {
@@ -56,6 +81,16 @@ export interface CreateTournamentInput {
   isActive: boolean;
 }
 
+export interface UpdateTournamentInput {
+  tournament: TournamentRow;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+  name: string;
+  year: number;
+  cpiThreshold: number;
+  updatedBy: string | null;
+}
+
 export interface CreatePlayerInput {
   name: string;
   team: Team;
@@ -67,6 +102,30 @@ export interface UpdatePlayerInput {
   name: string;
   team: Team;
   currentCpi: number | null;
+}
+
+export interface UpdateFixtureInput {
+  tournament: TournamentRow;
+  fixtureId: string;
+  name: string | null;
+}
+
+export interface UpdateCourseHoleInput {
+  holeNumber: number;
+  strokeIndex: number;
+  par: number | null;
+  yardage: number | null;
+}
+
+export interface UpdateSegmentInput {
+  tournament: TournamentRow;
+  fixture: FixtureView;
+  segment: SegmentView;
+  name: string | null;
+  usaPlayerId?: string;
+  europePlayerId?: string;
+  participantPlayerIds?: string[];
+  clearScoresOnPlayerChange?: boolean;
 }
 
 export interface CreateQuickFixtureInput {
@@ -118,12 +177,28 @@ export interface UpdateProfilePlayerLinkInput {
   players: PlayerRow[];
 }
 
+export interface CompleteTournamentInput {
+  tournament: TournamentRow;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+}
+
+export interface ReopenTournamentInput {
+  tournament: TournamentRow;
+}
+
+export interface ClearHoleScoreInput {
+  tournament: TournamentRow;
+  scoreId: string;
+}
+
 export async function fetchTournament2026Data(
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<Tournament2026Data> {
-  const [{ data: userData }, players, activeTournament, history] = await Promise.all([
+  const [{ data: userData }, players, courseHoles, activeTournament, history] = await Promise.all([
     client.auth.getUser(),
     fetchPlayers(client),
+    fetchCourseHoles(client),
     fetchActiveTournament(client),
     fetchLegacyHistory(client),
   ]);
@@ -140,6 +215,7 @@ export async function fetchTournament2026Data(
     profile,
     profiles,
     players,
+    courseHoles,
     activeTournament,
     fixtures,
     history,
@@ -154,6 +230,7 @@ export function subscribeToTournament2026Changes(
   const tables = [
     'players',
     'profiles',
+    'course_holes',
     'tournaments',
     'fixtures',
     'fixture_players',
@@ -161,6 +238,7 @@ export function subscribeToTournament2026Changes(
     'segment_players',
     'hole_scores',
     'legacy_tournaments',
+    'legacy_games',
   ];
 
   for (const table of tables) {
@@ -194,6 +272,10 @@ export async function createOwnProfile(
     display_name: input.displayName,
   });
 
+  if (isDuplicateKeyError(error)) {
+    return;
+  }
+
   throwIfSupabaseError(error, 'Failed to create profile');
 }
 
@@ -218,6 +300,30 @@ export async function createTournament2026(
   });
 
   throwIfSupabaseError(error, 'Failed to create tournament');
+}
+
+export async function updateTournament2026(
+  input: UpdateTournamentInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. Tournament details are locked.');
+  }
+
+  const { error } = await client
+    .from('tournaments')
+    .update({
+      name: input.name,
+      year: input.year,
+      cpi_threshold: input.cpiThreshold,
+    })
+    .eq('id', input.tournament.id);
+
+  throwIfSupabaseError(error, 'Failed to update tournament');
+
+  if (input.cpiThreshold !== input.tournament.cpi_threshold) {
+    await recalculateTournamentScoresForCpiThreshold(input, client);
+  }
 }
 
 export async function createPlayer2026(
@@ -256,6 +362,170 @@ export async function updatePlayer2026(
   throwIfSupabaseError(profileError, 'Failed to update linked profile teams');
 }
 
+export async function updateFixture2026(
+  input: UpdateFixtureInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. Fixture details are locked.');
+  }
+
+  const { error } = await client
+    .from('fixtures')
+    .update({ name: input.name })
+    .eq('id', input.fixtureId);
+
+  throwIfSupabaseError(error, 'Failed to update fixture');
+}
+
+export async function updateCourseHole2026(
+  input: UpdateCourseHoleInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client
+    .from('course_holes')
+    .upsert(
+      {
+        hole_number: input.holeNumber,
+        stroke_index: input.strokeIndex,
+        par: input.par,
+        yardage: input.yardage,
+      },
+      { onConflict: 'hole_number' }
+    );
+
+  throwIfSupabaseError(error, 'Failed to update course hole');
+}
+
+export async function updateSegment2026(
+  input: UpdateSegmentInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. Segment details are locked.');
+  }
+
+  const isSinglesPlayerChange =
+    input.segment.kind === 'singles' &&
+    (input.usaPlayerId !== input.segment.usa_player_id ||
+      input.europePlayerId !== input.segment.europe_player_id);
+
+  if (
+    isSinglesPlayerChange &&
+    input.segment.holeScores.length > 0 &&
+    !input.clearScoresOnPlayerChange
+  ) {
+    throw new Error('Clear scores before changing singles players.');
+  }
+
+  if (input.segment.kind === 'singles') {
+    const usaParticipant = getFixturePlayerForTeam(input.fixture, input.usaPlayerId, 'USA');
+    const europeParticipant = getFixturePlayerForTeam(input.fixture, input.europePlayerId, 'EUROPE');
+
+    if (isSinglesPlayerChange && input.clearScoresOnPlayerChange) {
+      await clearSegmentScores(input.segment.id, client);
+    }
+
+    const { error } = await client
+      .from('segments')
+      .update({
+        name: input.name,
+        usa_player_id: usaParticipant.player_id,
+        europe_player_id: europeParticipant.player_id,
+      })
+      .eq('id', input.segment.id);
+
+    throwIfSupabaseError(error, 'Failed to update segment');
+
+    if (isSinglesPlayerChange) {
+      const { error: deleteError } = await client
+        .from('segment_players')
+        .delete()
+        .eq('segment_id', input.segment.id);
+
+      throwIfSupabaseError(deleteError, 'Failed to replace segment players');
+
+      const { error: insertError } = await client.from('segment_players').insert([
+        {
+          segment_id: input.segment.id,
+          player_id: usaParticipant.player_id,
+          team: usaParticipant.team,
+          slot: usaParticipant.slot,
+        },
+        {
+          segment_id: input.segment.id,
+          player_id: europeParticipant.player_id,
+          team: europeParticipant.team,
+          slot: europeParticipant.slot,
+        },
+      ]);
+
+      throwIfSupabaseError(insertError, 'Failed to save segment players');
+    }
+
+    return;
+  }
+
+  const existingFoursomesPlayerIds = input.segment.players
+    .map((segmentPlayer) => segmentPlayer.player_id)
+    .sort();
+  const nextFoursomesPlayerIds = [...(input.participantPlayerIds ?? existingFoursomesPlayerIds)].sort();
+  const isFoursomesPlayerChange =
+    existingFoursomesPlayerIds.join('|') !== nextFoursomesPlayerIds.join('|');
+
+  if (
+    isFoursomesPlayerChange &&
+    input.segment.holeScores.length > 0 &&
+    !input.clearScoresOnPlayerChange
+  ) {
+    throw new Error('Clear scores before changing foursomes players.');
+  }
+
+  if (isFoursomesPlayerChange && input.clearScoresOnPlayerChange) {
+    await clearSegmentScores(input.segment.id, client);
+  }
+
+  const { error } = await client
+    .from('segments')
+    .update({ name: input.name })
+    .eq('id', input.segment.id);
+
+  throwIfSupabaseError(error, 'Failed to update segment');
+
+  if (!isFoursomesPlayerChange) {
+    return;
+  }
+
+  const nextSegmentPlayers = getFixturePlayersForFoursomes(input.fixture, nextFoursomesPlayerIds).map(
+    (participant) => ({
+      segment_id: input.segment.id,
+      player_id: participant.player_id,
+      team: participant.team,
+      slot: participant.slot,
+    })
+  );
+
+  const { error: deleteError } = await client
+    .from('segment_players')
+    .delete()
+    .eq('segment_id', input.segment.id);
+
+  throwIfSupabaseError(deleteError, 'Failed to replace segment players');
+
+  const { error: insertError } = await client.from('segment_players').insert(nextSegmentPlayers);
+
+  throwIfSupabaseError(insertError, 'Failed to save segment players');
+}
+
+async function clearSegmentScores(
+  segmentId: string,
+  client: SupabaseClient<Database>
+): Promise<void> {
+  const { error } = await client.from('hole_scores').delete().eq('segment_id', segmentId);
+
+  throwIfSupabaseError(error, 'Failed to clear segment scores');
+}
+
 export async function deleteFixture2026(
   fixtureId: string,
   client: SupabaseClient<Database> = getSupabaseClient()
@@ -278,6 +548,19 @@ export async function clearFixtureScores2026(
   const { error } = await client.from('hole_scores').delete().in('segment_id', segmentIds);
 
   throwIfSupabaseError(error, 'Failed to clear fixture scores');
+}
+
+export async function clearHoleScore2026(
+  input: ClearHoleScoreInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. Scores are locked.');
+  }
+
+  const { error } = await client.from('hole_scores').delete().eq('id', input.scoreId);
+
+  throwIfSupabaseError(error, 'Failed to clear hole score');
 }
 
 export async function createQuickFourBallFixture(
@@ -417,6 +700,10 @@ export async function saveHoleScore2026(
   input: SaveHoleScoreInput,
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. Scores are locked.');
+  }
+
   const payload = buildHoleScorePayload({
     segmentId: input.segment.id,
     segmentKind: input.segment.kind,
@@ -444,6 +731,10 @@ export async function updateSegmentCpiEnabled(
   input: UpdateSegmentCpiInput,
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is complete. CPI settings are locked.');
+  }
+
   const { error } = await client
     .from('segments')
     .update({ cpi_enabled: input.enabled })
@@ -481,6 +772,44 @@ export async function updateSegmentCpiEnabled(
   throwIfSupabaseError(scoresError, 'Failed to recalculate scores after CPI update');
 }
 
+async function recalculateTournamentScoresForCpiThreshold(
+  input: UpdateTournamentInput,
+  client: SupabaseClient<Database>
+): Promise<void> {
+  const effectiveTournament = { ...input.tournament, cpi_threshold: input.cpiThreshold };
+  const rows = input.fixtures.flatMap((fixture) =>
+    fixture.segments.flatMap((segment) =>
+      segment.holeScores.map((score) =>
+        buildHoleScorePayload({
+          segmentId: segment.id,
+          segmentKind: segment.kind,
+          hole: {
+            holeNumber: score.hole_number,
+            strokeIndex: getCourseStrokeIndex(score.hole_number),
+            usaScore: score.usa_score,
+            europeScore: score.europe_score,
+          },
+          cpi:
+            segment.kind === 'singles' && segment.cpi_enabled
+              ? getSegmentCpiInput(effectiveTournament, segment, input.players)
+              : undefined,
+          updatedBy: input.updatedBy,
+        }).row
+      )
+    )
+  );
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  const { error } = await client.from('hole_scores').upsert(rows, {
+    onConflict: 'segment_id,hole_number',
+  });
+
+  throwIfSupabaseError(error, 'Failed to recalculate scores after tournament update');
+}
+
 export async function updateProfilePlayerLink2026(
   input: UpdateProfilePlayerLinkInput,
   client: SupabaseClient<Database> = getSupabaseClient()
@@ -497,6 +826,121 @@ export async function updateProfilePlayerLink2026(
     .eq('id', input.profileId);
 
   throwIfSupabaseError(error, 'Failed to update profile player link');
+}
+
+export async function reopenTournament2026(
+  input: ReopenTournamentInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (!input.tournament.is_complete) {
+    throw new Error('Tournament is not complete.');
+  }
+
+  const { data: stats, error: statsError } = await client
+    .from('player_tournament_stats')
+    .select('*')
+    .eq('tournament_id', input.tournament.id)
+    .eq('source', 'app');
+
+  throwIfSupabaseError(statsError, 'Failed to load player stats for rollback');
+
+  for (const stat of stats ?? []) {
+    const cpiBefore = getCpiBefore(stat);
+
+    const { error: playerError } = await client
+      .from('players')
+      .update({ current_cpi: cpiBefore })
+      .eq('id', stat.player_id);
+
+    throwIfSupabaseError(playerError, 'Failed to restore player CPI');
+  }
+
+  const { error: deleteStatsError } = await client
+    .from('player_tournament_stats')
+    .delete()
+    .eq('tournament_id', input.tournament.id)
+    .eq('source', 'app');
+
+  throwIfSupabaseError(deleteStatsError, 'Failed to remove generated player stats');
+
+  const { error: tournamentError } = await client
+    .from('tournaments')
+    .update({ is_complete: false, completed_at: null })
+    .eq('id', input.tournament.id);
+
+  throwIfSupabaseError(tournamentError, 'Failed to reopen tournament');
+}
+
+export async function completeTournament2026(
+  input: CompleteTournamentInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.tournament.is_complete) {
+    throw new Error('Tournament is already complete.');
+  }
+
+  const completedAt = new Date().toISOString();
+  const finalization = buildTournamentFinalizationDraft({
+    tournament: input.tournament,
+    players: input.players,
+    fixtures: input.fixtures,
+    completedAt,
+  });
+
+  if (finalization.missingScores.length > 0) {
+    throw new Error(
+      `Cannot complete tournament. Missing scores: ${finalization.missingScores
+        .slice(0, 5)
+        .join(', ')}${finalization.missingScores.length > 5 ? '...' : ''}`
+    );
+  }
+
+  const { error: deleteStatsError } = await client
+    .from('player_tournament_stats')
+    .delete()
+    .eq('tournament_id', input.tournament.id)
+    .eq('source', 'app');
+
+  throwIfSupabaseError(deleteStatsError, 'Failed to replace player stats');
+
+  if (finalization.stats.length > 0) {
+    const { error: insertStatsError } = await client
+      .from('player_tournament_stats')
+      .insert(finalization.stats satisfies PlayerTournamentStatsInsert[]);
+
+    throwIfSupabaseError(insertStatsError, 'Failed to save player stats');
+  }
+
+  for (const update of finalization.playerCpiUpdates) {
+    const { error: playerError } = await client
+      .from('players')
+      .update({ current_cpi: update.currentCpi })
+      .eq('id', update.playerId);
+
+    throwIfSupabaseError(playerError, 'Failed to update player CPI');
+  }
+
+  const { error: tournamentError } = await client
+    .from('tournaments')
+    .update({ is_complete: true, completed_at: completedAt })
+    .eq('id', input.tournament.id);
+
+  throwIfSupabaseError(tournamentError, 'Failed to complete tournament');
+}
+
+function getCpiBefore(stat: PlayerTournamentStatsRow): number | null {
+  if (
+    stat.legacy_payload &&
+    typeof stat.legacy_payload === 'object' &&
+    !Array.isArray(stat.legacy_payload) &&
+    'cpi_before' in stat.legacy_payload
+  ) {
+    const value = stat.legacy_payload.cpi_before;
+
+    return typeof value === 'number' ? value : null;
+  }
+
+  return null;
 }
 
 function getSegmentCpiInput(
@@ -517,6 +961,44 @@ function getSegmentCpiInput(
     europeCpi: europePlayer?.current_cpi,
     threshold: tournament.cpi_threshold,
   };
+}
+
+function getFixturePlayerForTeam(
+  fixture: FixtureView,
+  playerId: string | undefined,
+  team: Team
+): FixturePlayerView {
+  const participant = fixture.participants.find(
+    (fixturePlayer) => fixturePlayer.player_id === playerId && fixturePlayer.team === team
+  );
+
+  if (!participant) {
+    throw new Error(`Select a ${team} player assigned to this fixture.`);
+  }
+
+  return participant;
+}
+
+function getFixturePlayersForFoursomes(
+  fixture: FixtureView,
+  playerIds: string[]
+): FixturePlayerView[] {
+  const playerIdSet = new Set(playerIds);
+  const participants = fixture.participants.filter((participant) =>
+    playerIdSet.has(participant.player_id)
+  );
+
+  if (participants.length !== playerIdSet.size) {
+    throw new Error('Select only players assigned to this fixture.');
+  }
+
+  const teams = new Set(participants.map((participant) => participant.team));
+
+  if (!teams.has('USA') || !teams.has('EUROPE')) {
+    throw new Error('Foursomes segment must include at least one USA player and one Europe player.');
+  }
+
+  return participants;
 }
 
 async function fetchProfile(
@@ -546,6 +1028,37 @@ async function fetchPlayers(client: SupabaseClient<Database>): Promise<PlayerRow
   return data ?? [];
 }
 
+async function fetchCourseHoles(client: SupabaseClient<Database>): Promise<CourseHoleMetadata[]> {
+  const { data, error } = await client.from('course_holes').select('*').order('hole_number');
+
+  if (isMissingTableError(error)) {
+    return DEFAULT_COURSE_HOLES;
+  }
+
+  throwIfSupabaseError(error, 'Failed to load course metadata');
+
+  if (!data?.length) {
+    return DEFAULT_COURSE_HOLES;
+  }
+
+  const rowsByHole = new Map(data.map((row) => [row.hole_number, row]));
+
+  return DEFAULT_COURSE_HOLES.map((defaultHole) => {
+    const row = rowsByHole.get(defaultHole.holeNumber);
+
+    if (!row) {
+      return defaultHole;
+    }
+
+    return {
+      holeNumber: row.hole_number,
+      strokeIndex: row.stroke_index,
+      par: row.par,
+      yardage: row.yardage,
+    };
+  });
+}
+
 async function fetchActiveTournament(
   client: SupabaseClient<Database>
 ): Promise<TournamentRow | null> {
@@ -564,7 +1077,7 @@ async function fetchActiveTournament(
 
 async function fetchLegacyHistory(
   client: SupabaseClient<Database>
-): Promise<LegacyTournamentRow[]> {
+): Promise<LegacyTournamentView[]> {
   const { data, error } = await client
     .from('legacy_tournaments')
     .select('*')
@@ -572,7 +1085,25 @@ async function fetchLegacyHistory(
 
   throwIfSupabaseError(error, 'Failed to load historical tournaments');
 
-  return data ?? [];
+  if (!data?.length) {
+    return [];
+  }
+
+  const tournamentIds = data.map((tournament) => tournament.id);
+  const { data: games, error: gamesError } = await client
+    .from('legacy_games')
+    .select('*')
+    .in('legacy_tournament_id', tournamentIds)
+    .order('legacy_firebase_id');
+
+  throwIfSupabaseError(gamesError, 'Failed to load historical games');
+
+  const gamesByTournament = groupBy(games ?? [], (game) => game.legacy_tournament_id);
+
+  return data.map((tournament) => ({
+    ...tournament,
+    games: gamesByTournament.get(tournament.id) ?? [],
+  }));
 }
 
 async function fetchFixturesForTournament(
@@ -618,11 +1149,21 @@ async function fetchFixturesForTournament(
   throwIfSupabaseError(segmentPlayersResult.error, 'Failed to load segment players');
   throwIfSupabaseError(holeScoresResult.error, 'Failed to load hole scores');
 
+  const scoreEditorLookup = await fetchScoreEditorLookup(
+    client,
+    (holeScoresResult.data ?? []).flatMap((score) => (score.updated_by ? [score.updated_by] : []))
+  );
   const playerLookup = new Map(players.map((player) => [player.id, player]));
   const fixturePlayersByFixture = groupBy(fixturePlayers ?? [], (row) => row.fixture_id);
   const segmentsByFixture = groupBy(segments ?? [], (row) => row.fixture_id);
   const segmentPlayersBySegment = groupBy(segmentPlayersResult.data ?? [], (row) => row.segment_id);
-  const holeScoresBySegment = groupBy(holeScoresResult.data ?? [], (row) => row.segment_id);
+  const holeScoresBySegment = groupBy(
+    (holeScoresResult.data ?? []).map((score) => ({
+      ...score,
+      updatedByProfile: score.updated_by ? (scoreEditorLookup.get(score.updated_by) ?? null) : null,
+    })),
+    (row) => row.segment_id
+  );
 
   return fixtures.map((fixture) => ({
     ...fixture,
@@ -639,6 +1180,26 @@ async function fetchFixturesForTournament(
       holeScores: holeScoresBySegment.get(segment.id) ?? [],
     })),
   }));
+}
+
+async function fetchScoreEditorLookup(
+  client: SupabaseClient<Database>,
+  profileIds: string[]
+): Promise<Map<string, ScoreEditorProfile>> {
+  const uniqueProfileIds = [...new Set(profileIds)];
+
+  if (uniqueProfileIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', uniqueProfileIds);
+
+  throwIfSupabaseError(error, 'Failed to load score editor profiles');
+
+  return new Map((data ?? []).map((profile) => [profile.id, profile]));
 }
 
 function groupBy<T>(items: T[], getKey: (item: T) => string): Map<string, T[]> {
@@ -658,4 +1219,15 @@ function throwIfSupabaseError(error: { message: string } | null, message: string
   if (error) {
     throw new Error(`${message}: ${error.message}`);
   }
+}
+
+function isMissingTableError(error: { message: string } | null): boolean {
+  return Boolean(
+    error?.message.includes("Could not find the table 'public.course_holes'") ||
+      error?.message.includes('relation "public.course_holes" does not exist')
+  );
+}
+
+function isDuplicateKeyError(error: { message: string } | null): boolean {
+  return Boolean(error?.message.includes('duplicate key value violates unique constraint "profiles_pkey"'));
 }

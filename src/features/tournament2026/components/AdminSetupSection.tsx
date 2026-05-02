@@ -1,11 +1,18 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import type { CourseHoleMetadata } from '../../../domain/2026/course';
 import {
   clearFixtureScores2026,
+  completeTournament2026,
   createCustomFixture2026,
   createPlayer2026,
   createTournament2026,
   deleteFixture2026,
+  reopenTournament2026,
+  updateCourseHole2026,
+  updateFixture2026,
   updatePlayer2026,
+  updateSegment2026,
+  updateTournament2026,
   type FixtureView,
   type PlayerRow,
   type Team,
@@ -39,7 +46,20 @@ export function AdminSetupSection({
           onSaved={onSaved}
         />
       </div>
-      <CorrectionPanel players={data.players} fixtures={data.fixtures} onSaved={onSaved} />
+      <FinalizationPanel
+        tournament={data.activeTournament}
+        fixtures={data.fixtures}
+        players={data.players}
+        onSaved={onSaved}
+      />
+      <CorrectionPanel
+        tournament={data.activeTournament}
+        players={data.players}
+        fixtures={data.fixtures}
+        profileId={data.profile.id}
+        courseHoles={data.courseHoles}
+        onSaved={onSaved}
+      />
     </Panel>
   );
 }
@@ -129,13 +149,127 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
   );
 }
 
-function CorrectionPanel({
-  players,
+function FinalizationPanel({
+  tournament,
   fixtures,
+  players,
   onSaved,
 }: {
+  tournament: TournamentRow | null;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const completeTournament = async () => {
+    if (!tournament) return;
+    if (
+      !window.confirm(
+        'Complete this tournament? This locks score entry, saves back-nine singles stats, and updates player CPI.'
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await completeTournament2026({ tournament, fixtures, players });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const reopenTournament = async () => {
+    if (!tournament) return;
+    if (
+      !window.confirm(
+        'Reopen this tournament? This restores player CPI from before finalization, removes generated app stats, and unlocks score entry.'
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await reopenTournament2026({ tournament });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-5 border-t border-[#27272A] pt-4">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3FB950]">Finalization</p>
+      <div className="mt-3 border-y border-[#27272A] bg-[#050505] px-3 py-3 sm:rounded-md sm:border">
+        {!tournament ? (
+          <StatusCard tone="warning">Create an active tournament before finalization.</StatusCard>
+        ) : tournament.is_complete ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">Tournament locked</p>
+              <p className="mt-1 text-sm text-[#8B949E]">
+                Completed {tournament.completed_at ? new Date(tournament.completed_at).toLocaleString() : 'recently'}.
+                Score entry and CPI settings are locked.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={reopenTournament}
+              disabled={isSaving}
+              className="min-h-11 rounded-md border border-[#F59E0B] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+            >
+              {isSaving ? 'Reopening' : 'Reopen'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">Complete tournament</p>
+              <p className="mt-1 text-sm leading-6 text-[#8B949E]">
+                Requires every fixture hole to be scored. Only back-nine singles feed player stats and CPI.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={completeTournament}
+              disabled={isSaving || fixtures.length === 0}
+              className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            >
+              {isSaving ? 'Completing' : 'Finalize'}
+            </button>
+          </div>
+        )}
+        {error && <p className="mt-3 text-xs text-[#F85149]">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function CorrectionPanel({
+  tournament,
+  players,
+  fixtures,
+  profileId,
+  courseHoles,
+  onSaved,
+}: {
+  tournament: TournamentRow | null;
   players: PlayerRow[];
   fixtures: FixtureView[];
+  profileId: string;
+  courseHoles: CourseHoleMetadata[];
   onSaved: () => Promise<void>;
 }) {
   return (
@@ -144,10 +278,192 @@ function CorrectionPanel({
       <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
         Fix setup mistakes from mobile without opening Supabase. Destructive fixture actions require confirmation.
       </p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <TournamentCorrections
+          tournament={tournament}
+          fixtures={fixtures}
+          players={players}
+          profileId={profileId}
+          onSaved={onSaved}
+        />
         <PlayerCorrections players={players} onSaved={onSaved} />
-        <FixtureCorrections fixtures={fixtures} onSaved={onSaved} />
+        <FixtureCorrections tournament={tournament} fixtures={fixtures} players={players} onSaved={onSaved} />
+        <CourseMetadataCorrections courseHoles={courseHoles} onSaved={onSaved} />
       </div>
+    </div>
+  );
+}
+
+function CourseMetadataCorrections({
+  courseHoles,
+  onSaved,
+}: {
+  courseHoles: CourseHoleMetadata[];
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Course</p>
+        <p className="mt-1 text-xs leading-5 text-[#8B949E]">Set par and yardage for score-entry context.</p>
+      </div>
+      <div className="max-h-[32rem] overflow-y-auto border-t border-[#27272A]">
+        {courseHoles.map((hole) => (
+          <CourseHoleCorrectionRow key={hole.holeNumber} hole={hole} onSaved={onSaved} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CourseHoleCorrectionRow({
+  hole,
+  onSaved,
+}: {
+  hole: CourseHoleMetadata;
+  onSaved: () => Promise<void>;
+}) {
+  const [par, setPar] = useState(hole.par?.toString() ?? '');
+  const [yardage, setYardage] = useState(hole.yardage?.toString() ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasChanged = par !== (hole.par?.toString() ?? '') || yardage !== (hole.yardage?.toString() ?? '');
+
+  useEffect(() => {
+    setPar(hole.par?.toString() ?? '');
+    setYardage(hole.yardage?.toString() ?? '');
+  }, [hole]);
+
+  const saveHole = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateCourseHole2026({
+        holeNumber: hole.holeNumber,
+        strokeIndex: hole.strokeIndex,
+        par: par ? Number(par) : null,
+        yardage: yardage ? Number(yardage) : null,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-data text-sm font-bold text-[#FAFAFA]">H{hole.holeNumber}</p>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">SI {hole.strokeIndex}</p>
+        </div>
+        <div className="grid flex-1 grid-cols-2 gap-2">
+          <TextField label="Par" value={par} onChange={setPar} type="number" />
+          <TextField label="Yards" value={yardage} onChange={setYardage} type="number" />
+        </div>
+        <button
+          type="button"
+          onClick={saveHole}
+          disabled={!hasChanged || isSaving}
+          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : 'Save'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
+  );
+}
+
+function TournamentCorrections({
+  tournament,
+  fixtures,
+  players,
+  profileId,
+  onSaved,
+}: {
+  tournament: TournamentRow | null;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+  profileId: string;
+  onSaved: () => Promise<void>;
+}) {
+  const [name, setName] = useState(tournament?.name ?? '');
+  const [year, setYear] = useState(tournament?.year.toString() ?? '');
+  const [threshold, setThreshold] = useState(tournament?.cpi_threshold.toString() ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasChanged =
+    Boolean(tournament) &&
+    (name !== tournament?.name ||
+      year !== tournament?.year.toString() ||
+      threshold !== tournament?.cpi_threshold.toString());
+
+  useEffect(() => {
+    setName(tournament?.name ?? '');
+    setYear(tournament?.year.toString() ?? '');
+    setThreshold(tournament?.cpi_threshold.toString() ?? '');
+  }, [tournament]);
+
+  const saveTournament = async () => {
+    if (!tournament) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateTournament2026({
+        tournament,
+        fixtures,
+        players,
+        name,
+        year: Number(year),
+        cpiThreshold: Number(threshold),
+        updatedBy: profileId,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Tournament</p>
+      </div>
+      {!tournament ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
+          No active tournament yet.
+        </p>
+      ) : (
+        <div className="border-t border-[#27272A] px-3 py-3">
+          {tournament.is_complete && (
+            <p className="mb-3 text-xs text-[#F59E0B]">Tournament is complete, so details are locked.</p>
+          )}
+          <div className="grid gap-2">
+            <TextField label="Name" value={name} onChange={setName} />
+            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <TextField label="Year" value={year} onChange={setYear} type="number" />
+              <TextField label="CPI threshold" value={threshold} onChange={setThreshold} type="number" />
+              <button
+                type="button"
+                onClick={saveTournament}
+                disabled={!hasChanged || isSaving || tournament.is_complete}
+                className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+              >
+                {isSaving ? 'Saving' : 'Save'}
+              </button>
+            </div>
+          </div>
+          {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -250,10 +566,14 @@ function PlayerCorrectionRow({
 }
 
 function FixtureCorrections({
+  tournament,
   fixtures,
+  players,
   onSaved,
 }: {
+  tournament: TournamentRow | null;
   fixtures: FixtureView[];
+  players: PlayerRow[];
   onSaved: () => Promise<void>;
 }) {
   return (
@@ -265,7 +585,13 @@ function FixtureCorrections({
         <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No fixtures yet.</p>
       ) : (
         fixtures.map((fixture) => (
-          <FixtureCorrectionRow key={fixture.id} fixture={fixture} onSaved={onSaved} />
+          <FixtureCorrectionRow
+            key={fixture.id}
+            tournament={tournament}
+            fixture={fixture}
+            players={players}
+            onSaved={onSaved}
+          />
         ))
       )}
     </div>
@@ -273,18 +599,48 @@ function FixtureCorrections({
 }
 
 function FixtureCorrectionRow({
+  tournament,
   fixture,
+  players,
   onSaved,
 }: {
+  tournament: TournamentRow | null;
   fixture: FixtureView;
+  players: PlayerRow[];
   onSaved: () => Promise<void>;
 }) {
+  const [name, setName] = useState(fixture.name ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scoreCount = fixture.segments.reduce(
     (total, segment) => total + segment.holeScores.length,
     0
   );
+  const hasNameChanged = name !== (fixture.name ?? '');
+
+  useEffect(() => {
+    setName(fixture.name ?? '');
+  }, [fixture]);
+
+  const saveFixture = async () => {
+    if (!tournament) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateFixture2026({
+        tournament,
+        fixtureId: fixture.id,
+        name: name.trim() || null,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const clearScores = async () => {
     if (!window.confirm(`Clear all saved scores for ${fixture.name ?? 'this fixture'}?`)) {
@@ -324,16 +680,22 @@ function FixtureCorrectionRow({
 
   return (
     <div className="border-t border-[#27272A] px-3 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="grid gap-3">
         <div>
-          <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
-            {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
-          </p>
+          <TextField label="Fixture name" value={name} onChange={setName} />
           <p className="mt-1 text-xs text-[#8B949E]">
             {fixture.participants.length} players · {fixture.segments.length} segments · {scoreCount} saved holes
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={saveFixture}
+            disabled={!tournament || !hasNameChanged || isSaving || tournament.is_complete}
+            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          >
+            Save
+          </button>
           <button
             type="button"
             onClick={clearScores}
@@ -351,6 +713,166 @@ function FixtureCorrectionRow({
             Delete
           </button>
         </div>
+        {fixture.segments.map((segment) => (
+          <SegmentCorrectionRow
+            key={segment.id}
+            tournament={tournament}
+            fixture={fixture}
+            segment={segment}
+            players={players}
+            onSaved={onSaved}
+          />
+        ))}
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
+  );
+}
+
+function SegmentCorrectionRow({
+  tournament,
+  fixture,
+  segment,
+  players,
+  onSaved,
+}: {
+  tournament: TournamentRow | null;
+  fixture: FixtureView;
+  segment: FixtureView['segments'][number];
+  players: PlayerRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const fixturePlayerIds = new Set(fixture.participants.map((participant) => participant.player_id));
+  const fixturePlayers = players.filter((player) => fixturePlayerIds.has(player.id));
+  const usaPlayers = fixturePlayers.filter((player) => player.team === 'USA');
+  const europePlayers = fixturePlayers.filter((player) => player.team === 'EUROPE');
+  const hasScores = segment.holeScores.length > 0;
+  const [name, setName] = useState(segment.name ?? '');
+  const [usaPlayerId, setUsaPlayerId] = useState(segment.usa_player_id ?? '');
+  const [europePlayerId, setEuropePlayerId] = useState(segment.europe_player_id ?? '');
+  const [frontNinePlayerIds, setFrontNinePlayerIds] = useState<string[]>(
+    segment.players.map((player) => player.player_id)
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const existingFrontNinePlayerIds = segment.players.map((player) => player.player_id).sort();
+  const selectedFrontNinePlayerIds = [...frontNinePlayerIds].sort();
+  const hasFrontNineMembershipChanged =
+    existingFrontNinePlayerIds.join('|') !== selectedFrontNinePlayerIds.join('|');
+  const hasSinglesMembershipChanged =
+    usaPlayerId !== (segment.usa_player_id ?? '') || europePlayerId !== (segment.europe_player_id ?? '');
+  const hasMembershipChanged = hasFrontNineMembershipChanged || hasSinglesMembershipChanged;
+  const hasChanged =
+    name !== (segment.name ?? '') ||
+    hasSinglesMembershipChanged ||
+    hasFrontNineMembershipChanged;
+
+  useEffect(() => {
+    setName(segment.name ?? '');
+    setUsaPlayerId(segment.usa_player_id ?? '');
+    setEuropePlayerId(segment.europe_player_id ?? '');
+    setFrontNinePlayerIds(segment.players.map((player) => player.player_id));
+  }, [segment]);
+
+  const saveSegment = async () => {
+    if (!tournament) return;
+
+    if (
+      hasScores &&
+      hasMembershipChanged &&
+      !window.confirm(
+        `Clear ${segment.holeScores.length} saved score${segment.holeScores.length === 1 ? '' : 's'} for this segment and save the player changes?`
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateSegment2026({
+        tournament,
+        fixture,
+        segment,
+        name: name.trim() || null,
+        usaPlayerId,
+        europePlayerId,
+        participantPlayerIds: frontNinePlayerIds,
+        clearScoresOnPlayerChange: hasScores && hasMembershipChanged,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] pt-3">
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">
+            {segment.kind} · Holes {segment.hole_start}-{segment.hole_end}
+          </p>
+          {hasScores && (
+            <span className="text-[10px] uppercase tracking-[0.14em] text-[#F59E0B]">
+              {segment.holeScores.length} scores
+            </span>
+          )}
+        </div>
+        <TextField label="Segment name" value={name} onChange={setName} />
+        {segment.kind === 'singles' && (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <PlayerSelect
+                label="USA"
+                value={usaPlayerId}
+                players={usaPlayers}
+                onChange={setUsaPlayerId}
+              />
+              <PlayerSelect
+                label="Europe"
+                value={europePlayerId}
+                players={europePlayers}
+                onChange={setEuropePlayerId}
+              />
+            </div>
+            {hasScores && (
+              <p className="text-xs text-[#8B949E]">
+                Changing singles players will clear this segment's saved scores when you save.
+              </p>
+            )}
+          </>
+        )}
+        {segment.kind === 'foursomes' && (
+          <>
+            <FrontNinePicker
+              players={fixturePlayers}
+              selectedPlayerIds={frontNinePlayerIds}
+              onChange={setFrontNinePlayerIds}
+            />
+            {hasScores && (
+              <p className="text-xs text-[#8B949E]">
+                Changing front-nine players will clear this segment's saved scores when you save.
+              </p>
+            )}
+          </>
+        )}
+        <button
+          type="button"
+          onClick={saveSegment}
+          disabled={
+            !tournament ||
+            !hasChanged ||
+            isSaving ||
+            tournament.is_complete
+          }
+          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : hasScores && hasMembershipChanged ? 'Clear scores + save' : 'Save segment'}
+        </button>
       </div>
       {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
     </div>

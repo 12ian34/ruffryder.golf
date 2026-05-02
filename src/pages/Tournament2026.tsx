@@ -189,6 +189,7 @@ export default function Tournament2026() {
           tournament={data.activeTournament}
           fixtures={scoreEntryFixtures}
           players={data.players}
+          courseHoles={data.courseHoles}
           profile={data.profile}
           onSaved={refreshData}
         />
