@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   updateOwnProfile2026,
   updateProfileAdmin2026,
@@ -8,8 +8,11 @@ import {
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
+import { AvatarEmojiPicker } from './AvatarEmojiPicker';
 import { PlayerSelect } from './FormControls';
 import { Panel, StatusCard } from './Layout';
+
+type AvatarSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export function ProfileSection({
   tournament,
@@ -96,7 +99,9 @@ function OwnProfileForm({
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [customEmoji, setCustomEmoji] = useState(profile.custom_emoji ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarSaveState, setAvatarSaveState] = useState<AvatarSaveState>('idle');
   const [error, setError] = useState<string | null>(null);
+  const savedFeedbackTimerRef = useRef<number | null>(null);
   const hasChanged =
     displayName !== profile.display_name || customEmoji !== (profile.custom_emoji ?? '');
 
@@ -104,6 +109,26 @@ function OwnProfileForm({
     setDisplayName(profile.display_name);
     setCustomEmoji(profile.custom_emoji ?? '');
   }, [profile]);
+
+  useEffect(() => {
+    return () => {
+      if (savedFeedbackTimerRef.current !== null) {
+        window.clearTimeout(savedFeedbackTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showSavedAvatarFeedback = () => {
+    if (savedFeedbackTimerRef.current !== null) {
+      window.clearTimeout(savedFeedbackTimerRef.current);
+    }
+
+    setAvatarSaveState('saved');
+    savedFeedbackTimerRef.current = window.setTimeout(() => {
+      setAvatarSaveState('idle');
+      savedFeedbackTimerRef.current = null;
+    }, 2200);
+  };
 
   const saveProfile = async () => {
     setIsSaving(true);
@@ -123,35 +148,68 @@ function OwnProfileForm({
     }
   };
 
+  const saveAvatar = async (nextEmoji: string) => {
+    setCustomEmoji(nextEmoji);
+    setAvatarSaveState('saving');
+    setError(null);
+
+    try {
+      await updateOwnProfile2026({
+        displayName,
+        customEmoji: nextEmoji.trim() || null,
+      });
+      track2026('profile_avatar_updated', { self_service: true });
+      await onSaved();
+      showSavedAvatarFeedback();
+    } catch (err) {
+      setCustomEmoji(profile.custom_emoji ?? '');
+      setAvatarSaveState('error');
+      setError(getErrorMessage(err));
+    }
+  };
+
+  const avatarFeedback =
+    avatarSaveState === 'saving'
+      ? 'Saving...'
+      : avatarSaveState === 'saved'
+        ? 'Saved'
+        : avatarSaveState === 'error'
+          ? 'Save failed'
+          : null;
+  const avatarFeedbackTone =
+    avatarSaveState === 'saved' ? 'success' : avatarSaveState === 'error' ? 'error' : 'muted';
+
   return (
     <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile settings</p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
-        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
-          Display name
-          <input
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-          />
-        </label>
-        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
-          Avatar
-          <input
-            value={customEmoji}
-            onChange={(event) => setCustomEmoji(event.target.value)}
-            placeholder="Optional"
-            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={saveProfile}
-          disabled={!hasChanged || isSaving}
-          className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
-        >
-          {isSaving ? 'Saving' : 'Save'}
-        </button>
+      <div className="mt-3 grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+            Display name
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={saveProfile}
+            disabled={!hasChanged || isSaving}
+            className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          >
+            {isSaving ? 'Saving' : 'Save'}
+          </button>
+        </div>
+        <AvatarEmojiPicker
+          value={customEmoji}
+          onChange={(nextEmoji) => {
+            void saveAvatar(nextEmoji);
+          }}
+          disabled={isSaving || avatarSaveState === 'saving'}
+          feedback={avatarFeedback}
+          feedbackTone={avatarFeedbackTone}
+        />
       </div>
       {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
     </div>
@@ -249,7 +307,7 @@ function ProfileLinkRow({
 
   return (
     <div className="border-t border-[#27272A] px-3 py-3">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem_auto_auto] lg:items-end">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(12rem,0.9fr)_auto_auto] lg:items-end">
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
           <p className="truncate text-xs text-[#8B949E]">{profile.email}</p>
@@ -267,14 +325,13 @@ function ProfileLinkRow({
             className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
           />
         </label>
-        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
-          Avatar
-          <input
-            value={customEmoji}
-            onChange={(event) => setCustomEmoji(event.target.value)}
-            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-          />
-        </label>
+        <AvatarEmojiPicker
+          value={customEmoji}
+          onChange={setCustomEmoji}
+          disabled={isSaving}
+          compact
+          collapsible
+        />
         <div className="flex-1">
           <PlayerSelect label="Linked player" value={playerId} players={players} onChange={setPlayerId} />
         </div>

@@ -172,18 +172,18 @@ export default function Dashboard() {
         {activeTab === 'tournament-2026' && (
           <div className="rounded-lg bg-white p-6 shadow dark:bg-gray-900">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              2026 Tournament Console
+              Ruff Ryders Cup 2026
             </h2>
             <p className="mt-2 text-gray-600 dark:text-gray-300">
               The fresh Supabase-backed 2026 admin, scoring, leaderboard, and history screens
-              live in their own console during the rebuild.
+              live here during the rebuild.
             </p>
             <button
               type="button"
               onClick={() => navigate('/2026')}
               className="mt-4 rounded-lg bg-purple-500 px-4 py-2 font-medium text-white hover:bg-purple-600"
             >
-              Open 2026 console
+              Open 2026
             </button>
           </div>
         )}

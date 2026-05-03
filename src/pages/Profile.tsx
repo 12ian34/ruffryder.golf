@@ -181,12 +181,18 @@ export default function Profile() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Avatar
               </label>
-              <div className="flex flex-wrap justify-center gap-1 max-h-48 overflow-y-auto p-0 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                {availableEmojis.map((emoji, index) => (
+              <div
+                className="grid max-h-64 grid-cols-5 gap-1 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800 sm:grid-cols-7"
+                role="group"
+                aria-label="Avatar emoji options"
+              >
+                {availableEmojis.map((emoji) => (
                   <button
-                    key={`emoji-${index}`}
+                    key={emoji}
                     type="button"
                     onClick={() => setPendingEmoji(emoji === pendingEmoji ? null : emoji)}
+                    aria-label={`Use ${emoji} avatar`}
+                    aria-pressed={pendingEmoji === emoji}
                     className={`text-4xl p-2 rounded-lg transition-all duration-250 ${
                       pendingEmoji === emoji 
                         ? 'bg-purple-300 dark:bg-purple-500 ring-2 ring-purple-500 dark:ring-purple-900' 

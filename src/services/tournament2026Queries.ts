@@ -75,6 +75,7 @@ export interface Tournament2026Data {
 
 export interface CreateProfileInput {
   displayName: string;
+  customEmoji?: string | null;
 }
 
 export interface UpdateOwnProfileInput {
@@ -294,6 +295,7 @@ export async function createOwnProfile(
     id: data.user.id,
     email: data.user.email ?? '',
     display_name: input.displayName,
+    custom_emoji: input.customEmoji ?? null,
   });
 
   if (isDuplicateKeyError(error)) {

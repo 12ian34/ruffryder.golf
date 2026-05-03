@@ -119,7 +119,7 @@ export function identifyUser(user: User | null) {
 export function track2026(eventName: string, properties: Record<string, unknown> = {}) {
   try {
     posthog.capture(eventName, {
-      surface: '2026_console',
+      surface: '2026',
       ...properties,
     });
   } catch {
@@ -140,7 +140,7 @@ export function identifySupabaseUser(user: SupabaseUser | null) {
       supabase_uid: user.id,
     });
     posthog.register({
-      surface: '2026_console',
+      surface: '2026',
       user_email: user.email,
       supabase_uid: user.id,
     });

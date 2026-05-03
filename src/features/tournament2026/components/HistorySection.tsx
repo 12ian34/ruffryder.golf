@@ -1,8 +1,24 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { Tournament2026Data } from '../../../services/tournament2026Queries';
 import { Panel, StatusCard } from './Layout';
 
 type ArchiveView = 'tournaments' | 'players';
+type PlayerArchiveTeamFilter = 'ALL' | 'USA' | 'EUROPE';
+type PlayerArchiveSortField =
+  | 'player'
+  | 'scoreRaw'
+  | 'scoreHandicap'
+  | 'pointsRaw'
+  | 'pointsHandicap'
+  | 'overallHandicap'
+  | 'holesWon';
+type SortDirection = 'asc' | 'desc';
+
+const TEAM_EMOJI = {
+  USA: '🇺🇸',
+  EUROPE: '🇪🇺',
+} as const;
 
 export function ArchiveSection({
   history,
@@ -30,7 +46,7 @@ export function ArchiveSection({
         />
       </div>
       {activeView === 'tournaments' ? (
-        <TournamentArchive history={history} />
+        <TournamentArchive history={history} players={players} />
       ) : (
         <PlayerArchive players={players} playerStats={playerStats} />
       )}
@@ -62,7 +78,15 @@ function ArchiveViewButton({
   );
 }
 
-function TournamentArchive({ history }: { history: Tournament2026Data['history'] }) {
+function TournamentArchive({
+  history,
+  players,
+}: {
+  history: Tournament2026Data['history'];
+  players: Tournament2026Data['players'];
+}) {
+  const playerLookup = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+
   if (history.length === 0) {
     return <StatusCard>No historical tournaments have been imported yet.</StatusCard>;
   }
@@ -70,19 +94,24 @@ function TournamentArchive({ history }: { history: Tournament2026Data['history']
   return (
     <div className="-mx-3 mt-3 sm:mx-0">
       {history.map((tournament) => (
-        <details key={tournament.id} className="border-t border-[#27272A] bg-[#050505] first:border-t-0">
-          <summary className="cursor-pointer list-none px-3 py-3">
+        <details key={tournament.id} className="group border-t border-[#27272A] bg-[#050505] first:border-t-0">
+          <summary className="cursor-pointer list-none px-3 py-3 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]">
             <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B949E]">{tournament.year}</p>
             <div className="mt-1 flex items-center justify-between gap-2">
               <h3 className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{tournament.name}</h3>
-              <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
-                {tournament.games.length} games
+              <span className="flex shrink-0 items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A1A1AA]">
+                <span className="whitespace-nowrap border border-[#27272A] px-2 py-1">{tournament.games.length} games</span>
+                <span className="whitespace-nowrap text-[#3FB950]">
+                  <span className="group-open:hidden">Open</span>
+                  <span className="hidden group-open:inline">Hide</span>
+                  <span className="ml-1 inline-block transition group-open:rotate-90">&gt;</span>
+                </span>
               </span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
               <HistoryScore label="Raw" usa={tournament.total_raw_usa} europe={tournament.total_raw_europe} />
               <HistoryScore
-                label="Legacy adjusted"
+                label="Handicap"
                 usa={tournament.total_legacy_adjusted_usa}
                 europe={tournament.total_legacy_adjusted_europe}
               />
@@ -92,7 +121,9 @@ function TournamentArchive({ history }: { history: Tournament2026Data['history']
             {tournament.games.length === 0 ? (
               <p className="px-3 py-3 text-sm text-[#8B949E]">No legacy game rows imported for this tournament.</p>
             ) : (
-              tournament.games.map((game) => <LegacyGameRow key={game.id} game={game} />)
+              tournament.games.map((game) => (
+                <LegacyGameRow key={game.id} game={game} playerLookup={playerLookup} />
+              ))
             )}
           </div>
         </details>
@@ -108,8 +139,23 @@ function PlayerArchive({
   players: Tournament2026Data['players'];
   playerStats: Tournament2026Data['playerStats'];
 }) {
-  const playerLookup = new Map(players.map((player) => [player.id, player]));
-  const statsByYear = useMemo(() => groupStatsByYear(playerStats, playerLookup), [playerStats, playerLookup]);
+  const [teamFilter, setTeamFilter] = useState<PlayerArchiveTeamFilter>('ALL');
+  const [sortField, setSortField] = useState<PlayerArchiveSortField>('player');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const playerLookup = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+  const statsByYear = useMemo(
+    () => groupStatsByYear(playerStats, playerLookup, teamFilter, sortField, sortDirection),
+    [playerStats, playerLookup, teamFilter, sortField, sortDirection]
+  );
+  const changeSort = (field: PlayerArchiveSortField) => {
+    if (sortField === field) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortField(field);
+    setSortDirection(field === 'player' ? 'asc' : 'desc');
+  };
 
   return (
     <div className="-mx-3 mt-3 border-t border-[#27272A] sm:mx-0">
@@ -118,50 +164,144 @@ function PlayerArchive({
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Finalized 2026 app stats and migrated historical score rows. Historical annual scores are shown as scores, not as 2026 hole-count records.
         </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <PlayerArchiveFilterButton label="All" isActive={teamFilter === 'ALL'} onClick={() => setTeamFilter('ALL')} />
+          <PlayerArchiveFilterButton
+            label={`${TEAM_EMOJI.USA} USA`}
+            isActive={teamFilter === 'USA'}
+            onClick={() => setTeamFilter('USA')}
+          />
+          <PlayerArchiveFilterButton
+            label={`${TEAM_EMOJI.EUROPE} Europe`}
+            isActive={teamFilter === 'EUROPE'}
+            onClick={() => setTeamFilter('EUROPE')}
+          />
+        </div>
       </div>
       {statsByYear.length === 0 ? (
-        <p className="px-3 pb-3 text-sm text-[#8B949E]">No player stat rows have been saved yet.</p>
+        <p className="px-3 pb-3 text-sm text-[#8B949E]">
+          {playerStats.length === 0 ? 'No player stat rows have been saved yet.' : 'No player stat rows match this filter.'}
+        </p>
       ) : (
         statsByYear.map(({ year, stats }, index) => (
-          <details key={year} open={index === 0} className="border-t border-[#27272A] bg-[#050505]">
-            <summary className="cursor-pointer list-none px-3 py-2.5">
+          <details key={year} open={index === 0} className="group border-t border-[#27272A] bg-[#050505]">
+            <summary className="cursor-pointer list-none px-3 py-2.5 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-base font-bold tracking-[-0.03em] text-[#FAFAFA]">{year}</p>
-                <span className="border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
-                  {stats.length} rows
+                <span className="flex shrink-0 items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#A1A1AA]">
+                  <span className="whitespace-nowrap border border-[#27272A] px-2 py-1">{stats.length} rows</span>
+                  <span className="whitespace-nowrap text-[#3FB950]">
+                    <span className="group-open:hidden">Open</span>
+                    <span className="hidden group-open:inline">Hide</span>
+                    <span className="ml-1 inline-block transition group-open:rotate-90">&gt;</span>
+                  </span>
                 </span>
               </div>
             </summary>
             <div className="overflow-x-auto border-t border-[#27272A]">
-              <table className="min-w-full text-left text-xs">
+              <table className="min-w-[46rem] text-left text-xs">
                 <thead className="border-b border-[#27272A] bg-[#0C0C0E] uppercase tracking-[0.16em] text-[#8B949E]">
                   <tr>
-                    <th className="px-3 py-2">Player</th>
-                    <th className="px-3 py-2">Result</th>
-                    <th className="px-3 py-2">Won</th>
-                    <th className="px-3 py-2">CPI / score</th>
-                    <th className="px-3 py-2">Source</th>
+                    <th rowSpan={2} className="sticky left-0 z-20 min-w-44 bg-[#0C0C0E] px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label="Player"
+                        field="player"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                    <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Score</th>
+                    <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Points</th>
+                    <th rowSpan={2} className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label={<>Holes<br />won</>}
+                        field="holesWon"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                    <th rowSpan={2} className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label={<>Overall<br />handicap</>}
+                        field="overallHandicap"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                  </tr>
+                  <tr className="border-t border-[#27272A] text-[10px]">
+                    <th className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label="Raw"
+                        field="scoreRaw"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                    <th className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label="Handicap"
+                        field="scoreHandicap"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                    <th className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label="Raw"
+                        field="pointsRaw"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
+                    <th className="px-3 py-2">
+                      <PlayerArchiveSortButton
+                        label="Handicap"
+                        field="pointsHandicap"
+                        activeField={sortField}
+                        direction={sortDirection}
+                        onClick={changeSort}
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#27272A]">
                   {stats.map((stat) => {
                     const player = playerLookup.get(stat.player_id);
+                    const scoreRaw = getPlayerArchiveScore(stat, 'raw');
+                    const scoreHandicap = getPlayerArchiveScore(stat, 'handicap');
+                    const pointsRaw = getPlayerArchivePoints(stat, 'raw');
+                    const pointsHandicap = getPlayerArchivePoints(stat, 'handicap');
 
                     return (
-                      <tr key={stat.id}>
-                        <td className="whitespace-nowrap px-3 py-2 text-[#FAFAFA]">
-                          {player?.name ?? 'Unknown player'}
+                      <tr key={stat.id} className="bg-[#050505]">
+                        <td className="sticky left-0 z-10 whitespace-nowrap bg-[#050505] px-3 py-2 text-[#FAFAFA]">
+                          <PlayerArchiveName player={player} />
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
-                          {formatPlayerResult(stat)}
+                          {scoreRaw}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                          {scoreHandicap}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                          {pointsRaw}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                          {pointsHandicap}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
                           {formatHolesWon(stat)}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
-                          {stat.cpi_after ?? '-'}
+                          {formatNumber(stat.cpi_after)}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 uppercase text-[#8B949E]">{formatSource(stat.source)}</td>
                       </tr>
                     );
                   })}
@@ -177,11 +317,19 @@ function PlayerArchive({
 
 function groupStatsByYear(
   stats: Tournament2026Data['playerStats'],
-  playerLookup: Map<string, Tournament2026Data['players'][number]>
+  playerLookup: Map<string, Tournament2026Data['players'][number]>,
+  teamFilter: PlayerArchiveTeamFilter,
+  sortField: PlayerArchiveSortField,
+  sortDirection: SortDirection
 ): { year: number; stats: Tournament2026Data['playerStats'] }[] {
   const groups = new Map<number, Tournament2026Data['playerStats']>();
 
   for (const stat of stats) {
+    const player = playerLookup.get(stat.player_id);
+    if (teamFilter !== 'ALL' && player?.team !== teamFilter) {
+      continue;
+    }
+
     const existing = groups.get(stat.completion_year) ?? [];
     existing.push(stat);
     groups.set(stat.completion_year, existing);
@@ -190,33 +338,196 @@ function groupStatsByYear(
   return Array.from(groups.entries())
     .map(([year, yearStats]) => ({
       year,
-      stats: yearStats.sort((a, b) =>
-        (playerLookup.get(a.player_id)?.name ?? '').localeCompare(playerLookup.get(b.player_id)?.name ?? '')
-      ),
+      stats: yearStats.sort((a, b) => comparePlayerArchiveStats(a, b, playerLookup, sortField, sortDirection)),
     }))
     .sort((a, b) => b.year - a.year);
 }
 
-function formatPlayerResult(stat: Tournament2026Data['playerStats'][number]): string {
-  if (stat.singles_holes_played > 0) {
-    return `${stat.singles_strokes}/${stat.singles_holes_played} holes`;
+function PlayerArchiveFilterButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-2.5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] ${
+        isActive
+          ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+          : 'border-[#27272A] text-[#8B949E]'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function PlayerArchiveSortButton({
+  label,
+  field,
+  activeField,
+  direction,
+  onClick,
+}: {
+  label: ReactNode;
+  field: PlayerArchiveSortField;
+  activeField: PlayerArchiveSortField;
+  direction: SortDirection;
+  onClick: (field: PlayerArchiveSortField) => void;
+}) {
+  const isActive = field === activeField;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(field)}
+      className={`inline-flex items-center gap-1 whitespace-nowrap uppercase tracking-[0.16em] ${
+        isActive ? 'text-[#3FB950]' : 'text-[#8B949E] hover:text-[#E6EDF3]'
+      }`}
+    >
+      <span>{label}</span>
+      <span className={isActive ? 'text-[#3FB950]' : 'text-[#484F58]'}>
+        {isActive ? (direction === 'asc' ? 'ASC' : 'DESC') : 'SORT'}
+      </span>
+    </button>
+  );
+}
+
+function comparePlayerArchiveStats(
+  a: Tournament2026Data['playerStats'][number],
+  b: Tournament2026Data['playerStats'][number],
+  playerLookup: Map<string, Tournament2026Data['players'][number]>,
+  sortField: PlayerArchiveSortField,
+  sortDirection: SortDirection
+): number {
+  const direction = sortDirection === 'asc' ? 1 : -1;
+
+  if (sortField === 'player') {
+    const aName = playerLookup.get(a.player_id)?.name ?? '';
+    const bName = playerLookup.get(b.player_id)?.name ?? '';
+    return direction * aName.localeCompare(bName);
   }
 
-  const legacyScore = stat.singles_strokes > 0 ? stat.singles_strokes : getLegacyNumber(stat.legacy_payload, 'score');
+  const aValue = getPlayerArchiveSortNumber(a, sortField);
+  const bValue = getPlayerArchiveSortNumber(b, sortField);
 
-  return legacyScore === null ? '-' : `Score ${legacyScore}`;
+  if (aValue === null && bValue === null) {
+    return comparePlayerArchiveStats(a, b, playerLookup, 'player', 'asc');
+  }
+
+  if (aValue === null) {
+    return 1;
+  }
+
+  if (bValue === null) {
+    return -1;
+  }
+
+  if (aValue === bValue) {
+    return comparePlayerArchiveStats(a, b, playerLookup, 'player', 'asc');
+  }
+
+  return direction * (aValue - bValue);
+}
+
+function getPlayerArchiveSortNumber(
+  stat: Tournament2026Data['playerStats'][number],
+  sortField: Exclude<PlayerArchiveSortField, 'player'>
+): number | null {
+  switch (sortField) {
+    case 'scoreRaw':
+      return getPlayerArchiveScoreNumber(stat, 'raw');
+    case 'scoreHandicap':
+      return getPlayerArchiveScoreNumber(stat, 'handicap');
+    case 'pointsRaw':
+      return getPlayerArchivePointsNumber(stat, 'raw');
+    case 'pointsHandicap':
+      return getPlayerArchivePointsNumber(stat, 'handicap');
+    case 'overallHandicap':
+      return stat.cpi_after;
+    case 'holesWon':
+      return getPlayerArchiveHolesWonNumber(stat);
+    default: {
+      const exhaustive: never = sortField;
+      return exhaustive;
+    }
+  }
 }
 
 function formatHolesWon(stat: Tournament2026Data['playerStats'][number]): string {
-  if (stat.singles_holes_played === 0 && stat.holes_won === 0) {
-    return '-';
-  }
-
-  return stat.holes_won.toString();
+  return formatNumber(getPlayerArchiveHolesWonNumber(stat));
 }
 
-function formatSource(source: string): string {
-  return source === 'migrated_firestore' ? 'Legacy' : source;
+function PlayerArchiveName({ player }: { player: Tournament2026Data['players'][number] | undefined }) {
+  const teamEmoji = player?.team === 'EUROPE' ? TEAM_EMOJI.EUROPE : TEAM_EMOJI.USA;
+  const teamLabel = player?.team === 'EUROPE' ? 'Europe' : 'USA';
+
+  return (
+    <span className="inline-flex max-w-48 items-center gap-2">
+      <span aria-label={teamLabel} title={teamLabel}>{teamEmoji}</span>
+      {player?.custom_emoji && <span>{player.custom_emoji}</span>}
+      <span className="truncate">{player?.name ?? 'Unknown player'}</span>
+    </span>
+  );
+}
+
+function getPlayerArchiveScore(
+  stat: Tournament2026Data['playerStats'][number],
+  mode: 'raw' | 'handicap'
+): string {
+  return formatNumber(getPlayerArchiveScoreNumber(stat, mode));
+}
+
+function getPlayerArchiveScoreNumber(
+  stat: Tournament2026Data['playerStats'][number],
+  mode: 'raw' | 'handicap'
+): number | null {
+  if (mode === 'handicap') {
+    return (
+      getLegacyNumber(stat.legacy_payload, 'scoreAdjusted') ??
+        getLegacyNumber(stat.legacy_payload, 'totalStrokesAdjusted') ??
+        stat.cpi_after
+    );
+  }
+
+  return (
+    getLegacyNumber(stat.legacy_payload, 'score') ??
+      getLegacyNumber(stat.legacy_payload, 'totalStrokes') ??
+      (stat.singles_average ?? (stat.singles_strokes > 0 ? stat.singles_strokes : null))
+  );
+}
+
+function getPlayerArchivePoints(
+  stat: Tournament2026Data['playerStats'][number],
+  mode: 'raw' | 'handicap'
+): string {
+  return formatNumber(getPlayerArchivePointsNumber(stat, mode));
+}
+
+function getPlayerArchivePointsNumber(
+  stat: Tournament2026Data['playerStats'][number],
+  mode: 'raw' | 'handicap'
+): number | null {
+  const payloadKey = mode === 'raw' ? 'pointsEarned' : 'pointsEarnedAdjusted';
+
+  return getLegacyNumber(stat.legacy_payload, payloadKey);
+}
+
+function getPlayerArchiveHolesWonNumber(stat: Tournament2026Data['playerStats'][number]): number | null {
+  if (stat.singles_holes_played === 0 && stat.holes_won === 0) {
+    return getLegacyNumber(stat.legacy_payload, 'holesWon');
+  }
+
+  return stat.holes_won;
+}
+
+function formatNumber(value: number | null): string {
+  return value === null ? '-' : value.toString();
 }
 
 function getLegacyNumber(payload: Tournament2026Data['playerStats'][number]['legacy_payload'], key: string): number | null {
@@ -231,12 +542,11 @@ function getLegacyNumber(payload: Tournament2026Data['playerStats'][number]['leg
 
 function HistoryScore({ label, usa, europe }: { label: string; usa: number; europe: number }) {
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-2.5">
+    <div className="min-w-0">
       <p className="text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">{label}</p>
-      <p className="mt-1 text-sm leading-5 text-[#E6EDF3]">
-        <span className="whitespace-nowrap">USA {usa}</span>
-        <span className="text-[#8B949E]"> / </span>
-        <span className="whitespace-nowrap">EUR {europe}</span>
+      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm leading-5 text-[#E6EDF3]">
+        <TeamNumber emoji={TEAM_EMOJI.USA} value={usa} />
+        <TeamNumber emoji={TEAM_EMOJI.EUROPE} value={europe} />
       </p>
     </div>
   );
@@ -244,33 +554,133 @@ function HistoryScore({ label, usa, europe }: { label: string; usa: number; euro
 
 function LegacyGameRow({
   game,
+  playerLookup,
 }: {
   game: Tournament2026Data['history'][number]['games'][number];
+  playerLookup: Map<string, Tournament2026Data['players'][number]>;
 }) {
+  const usaHandicap = getLegacyPlayerHandicap(game, 'USA', playerLookup);
+  const europeHandicap = getLegacyPlayerHandicap(game, 'EUROPE', playerLookup);
+
   return (
     <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-bold text-[#FAFAFA]">
-            {game.usa_player_name} vs {game.europe_player_name}
-          </p>
-          <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#8B949E]">
-            {game.status} · {game.use_legacy_handicap ? `${game.legacy_handicap_strokes} legacy strokes` : 'No legacy handicap'}
-          </p>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)] lg:items-start">
+        <div className="grid gap-1.5 text-sm font-bold text-[#FAFAFA]">
+          <PlayerNameLine emoji={TEAM_EMOJI.USA} teamLabel="USA" name={game.usa_player_name} handicap={usaHandicap} />
+          <PlayerNameLine
+            emoji={TEAM_EMOJI.EUROPE}
+            teamLabel="Europe"
+            name={game.europe_player_name}
+            handicap={europeHandicap}
+          />
+          {game.use_legacy_handicap && (
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8B949E]">
+              Handicap stroke gap: <span className="whitespace-nowrap tabular-nums text-[#A1A1AA]">{game.legacy_handicap_strokes}</span>
+            </p>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs sm:min-w-64">
-          <HistoryScore label="Raw pts" usa={game.points_raw_usa} europe={game.points_raw_europe} />
-          <HistoryScore
-            label="Adj pts"
-            usa={game.points_legacy_adjusted_usa}
-            europe={game.points_legacy_adjusted_europe}
+        <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-1">
+          <HistoryScoreSet
+            label="Points"
+            rawUsa={game.points_raw_usa}
+            rawEurope={game.points_raw_europe}
+            handicapUsa={game.points_legacy_adjusted_usa}
+            handicapEurope={game.points_legacy_adjusted_europe}
+          />
+          <HistoryScoreSet
+            label="Strokes"
+            rawUsa={game.stroke_raw_usa}
+            rawEurope={game.stroke_raw_europe}
+            handicapUsa={game.stroke_legacy_adjusted_usa}
+            handicapEurope={game.stroke_legacy_adjusted_europe}
           />
         </div>
       </div>
-      <p className="mt-2 text-xs text-[#8B949E]">
-        Strokes USA {game.stroke_raw_usa} ({game.stroke_legacy_adjusted_usa} adj) - EUR{' '}
-        {game.stroke_raw_europe} ({game.stroke_legacy_adjusted_europe} adj)
-      </p>
     </div>
   );
+}
+
+function PlayerNameLine({
+  emoji,
+  teamLabel,
+  name,
+  handicap,
+}: {
+  emoji: string;
+  teamLabel: string;
+  name: string;
+  handicap: number | null;
+}) {
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <span aria-label={teamLabel} title={teamLabel}>{emoji}</span>
+      <span>{name}</span>
+      {handicap !== null && (
+        <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.14em] text-[#8B949E]">
+          HCP <span className="tabular-nums text-[#A1A1AA]">{handicap}</span>
+        </span>
+      )}
+    </p>
+  );
+}
+
+function HistoryScoreSet({
+  label,
+  rawUsa,
+  rawEurope,
+  handicapUsa,
+  handicapEurope,
+}: {
+  label: string;
+  rawUsa: number;
+  rawEurope: number;
+  handicapUsa: number;
+  handicapEurope: number;
+}) {
+  return (
+    <div className="min-w-0 border-t border-[#27272A] pt-2 first:border-t-0 first:pt-0 sm:first:border-t sm:first:pt-2 lg:first:border-t-0 lg:first:pt-0">
+      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#3FB950]">{label}</p>
+      <div className="mt-1 grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs leading-5">
+        <span className="uppercase tracking-[0.14em] text-[#8B949E]">Raw</span>
+        <TeamNumberPair usa={rawUsa} europe={rawEurope} />
+        <span className="uppercase tracking-[0.14em] text-[#8B949E]">Handicap</span>
+        <TeamNumberPair usa={handicapUsa} europe={handicapEurope} />
+      </div>
+    </div>
+  );
+}
+
+function TeamNumberPair({ usa, europe }: { usa: number; europe: number }) {
+  return (
+    <span className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[#E6EDF3]">
+      <TeamNumber emoji={TEAM_EMOJI.USA} value={usa} />
+      <TeamNumber emoji={TEAM_EMOJI.EUROPE} value={europe} />
+    </span>
+  );
+}
+
+function TeamNumber({ emoji, value }: { emoji: string; value: number }) {
+  return (
+    <span className="whitespace-nowrap tabular-nums">
+      {emoji} {value}
+    </span>
+  );
+}
+
+function getLegacyPlayerHandicap(
+  game: Tournament2026Data['history'][number]['games'][number],
+  team: 'USA' | 'EUROPE',
+  playerLookup: Map<string, Tournament2026Data['players'][number]>
+): number | null {
+  const payloadKey = team === 'USA' ? 'usaPlayerHandicap' : 'europePlayerHandicap';
+  const payloadValue = getLegacyNumber(game.source_payload, payloadKey);
+
+  if (payloadValue !== null) {
+    return payloadValue;
+  }
+
+  const playerId = team === 'USA' ? game.usa_player_id : game.europe_player_id;
+  const playerCpi = playerId ? playerLookup.get(playerId)?.current_cpi : null;
+
+  return typeof playerCpi === 'number' ? playerCpi : null;
 }

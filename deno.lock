@@ -13,6 +13,7 @@
       "dependencies": [
         "npm:@headlessui/react@^1.7.17",
         "npm:@heroicons/react@^2.0.18",
+        "npm:@supabase/supabase-js@^2.105.1",
         "npm:@tailwindcss/typography@~0.5.10",
         "npm:@testing-library/jest-dom@^6.6.3",
         "npm:@testing-library/react@^14.1.2",
@@ -29,6 +30,7 @@
         "npm:eslint-plugin-react-hooks@^4.6.0",
         "npm:eslint-plugin-react-refresh@~0.4.3",
         "npm:eslint@^8.45.0",
+        "npm:firebase-admin@^13.8.0",
         "npm:firebase@^12.7.0",
         "npm:jsdom@26",
         "npm:postcss@^8.4.27",

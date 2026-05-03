@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SignInPanel } from '../features/tournament2026/components/AuthPanels';
 
 describe('SignInPanel', () => {
-  it('uses Ruff Ryders access language instead of vendor auth copy', () => {
+  it('uses brief Ruff Ryders access language instead of vendor auth copy', () => {
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault());
     const onEmailChange = vi.fn();
     const { container } = render(
@@ -18,13 +18,16 @@ describe('SignInPanel', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('Ruff Ryders Cup')).toBeInTheDocument();
-    expect(view.getByText('2026 Scoring Console')).toBeInTheDocument();
-    expect(view.getByText('Get your match link')).toBeInTheDocument();
+    expect(view.getByText('Al Reynolds Ruff Ryders Cup')).toBeInTheDocument();
+    expect(view.getByText('Ruff Ryders Cup 2026')).toBeInTheDocument();
+    expect(view.queryByText(/console/i)).not.toBeInTheDocument();
+    expect(view.queryByText('Player entry')).not.toBeInTheDocument();
+    expect(view.queryByText('Use the email linked to your player profile.')).not.toBeInTheDocument();
+    expect(view.queryByText(/Private access/i)).not.toBeInTheDocument();
     expect(view.queryByText(/Supabase Sign In/i)).not.toBeInTheDocument();
 
     fireEvent.change(view.getByLabelText('Email'), { target: { value: 'ian+cup@example.com' } });
-    fireEvent.click(view.getByText('Send access link'));
+    fireEvent.click(view.getByText('Send link'));
 
     expect(onEmailChange).toHaveBeenCalledWith('ian+cup@example.com');
     expect(onSubmit).toHaveBeenCalled();

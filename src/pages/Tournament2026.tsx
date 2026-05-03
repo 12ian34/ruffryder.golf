@@ -144,7 +144,7 @@ export default function Tournament2026() {
   };
 
   const handleSignOut = async () => {
-    if (!window.confirm('Sign out of the 2026 tournament console?')) {
+    if (!window.confirm('Sign out of Ruff Ryders Cup 2026?')) {
       return;
     }
 
@@ -172,7 +172,7 @@ export default function Tournament2026() {
   if (isLoading) {
     return (
       <PageShell>
-        <StatusCard>Loading the 2026 tournament console...</StatusCard>
+        <StatusCard>Loading Ruff Ryders Cup 2026...</StatusCard>
       </PageShell>
     );
   }

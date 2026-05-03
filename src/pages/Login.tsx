@@ -126,7 +126,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-gray-900 dark:from-gray-900 dark:via-purple-900/50 dark:to-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h1 className="text-center text-3xl font-bold text-white">
-          Ruff Ryders Cup
+          Ruff Ryders Cup 2026
         </h1>
       </div>
 

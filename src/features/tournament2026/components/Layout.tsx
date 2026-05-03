@@ -32,9 +32,11 @@ export function PageShell<T extends string>({
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[#3FB950] sm:text-xs">Ruff Ryders Cup</p>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-[#3FB950] sm:text-xs">
+                  Al Reynolds Ruff Ryders Cup
+                </p>
                 <h1 className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA] sm:text-2xl">
-                  2026 Tournament Console
+                  Ruff Ryders Cup 2026
                 </h1>
               </div>
             </div>

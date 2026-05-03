@@ -16,8 +16,11 @@ describe('ArchiveSection', () => {
 
     fireEvent.click(view.getByText('Players'));
 
-    expect(view.getByText('Score 84')).toBeInTheDocument();
-    expect(view.getByText('Score 68')).toBeInTheDocument();
+    expect(view.getAllByText('Score')).not.toHaveLength(0);
+    expect(view.getAllByText('Raw')).not.toHaveLength(0);
+    expect(view.getAllByText('Handicap')).not.toHaveLength(0);
+    expect(view.getAllByText('84')).not.toHaveLength(0);
+    expect(view.getAllByText('68')).not.toHaveLength(0);
     expect(view.queryByText('0/0')).not.toBeInTheDocument();
     expect(view.queryByText('68/0')).not.toBeInTheDocument();
   });
