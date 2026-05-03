@@ -259,6 +259,7 @@ Leaderboard surfaces should feel more like a live terminal readout than a card d
 - Clear USA/EUR color accents.
 - Minimal decoration.
 - Obvious live/update state.
+- The `Scores` tab should share the Archive view's flat row language: full-width ledgers, thin dividers, expandable rows where useful, and no tile/card dashboard treatment for score summaries or feeds.
 
 ### Live Score Charts
 
@@ -346,3 +347,4 @@ Respect reduced-motion preferences.
 | 2026-05-03 | Made bottom navigation a transparent glass rail | The boxed tab treatment felt dated. The rail should be glassy, lower-case, and active via a thin underline, not tiles or dots. |
 | 2026-05-03 | Preserved legacy chart semantics in the 2026 live score curve | The old chart had useful x-axis/date behavior; the 2026 version keeps those rules while using the new scoreboard style. |
 | 2026-05-03 | Standardized compact empty states | Repeated placeholder grids create noise. Empty surfaces should be one concise status until real content exists. |
+| 2026-05-03 | Matched Scores to Archive row language | Live scoring should feel like a premium terminal ledger, not a grid of dashboard tiles. |

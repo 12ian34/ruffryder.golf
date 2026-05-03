@@ -51,13 +51,13 @@ export function TournamentActivitySection({
       {events.length === 0 ? (
         <StatusCard>No tournament activity yet. Saved scores and setup changes will appear here.</StatusCard>
       ) : (
-        <div className="mt-4">
-          <div className="grid gap-2">
+        <div className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
+          <div>
             {visibleEvents.map((event) => {
               const categoryClassName = getCategoryClassName(event.category);
 
               return (
-                <article key={event.id} className="border border-[#27272A] bg-[#09090B] p-3">
+                <article key={event.id} className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -91,7 +91,7 @@ export function TournamentActivitySection({
             <button
               type="button"
               onClick={toggleShowAll}
-              className="mt-3 min-h-[44px] rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
+              className="m-3 min-h-[44px] rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
             >
               {isShowingAll ? 'Show latest only' : `Show all ${events.length} events (${hiddenEventCount} older)`}
             </button>

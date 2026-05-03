@@ -175,13 +175,9 @@ export function LeaderboardSection({
 
   return (
     <Panel title="Live Leaderboard" eyebrow="Live scoring">
-      <div className="grid gap-3 md:grid-cols-3">
-        <ScoreTile label="Overall" score={totals.overall} />
-        <ScoreTile label="Foursomes" score={totals.foursomes} />
-        <ScoreTile label="Singles" score={totals.singles} />
-      </div>
+      <ScoreLedger totals={totals} />
       <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border lg:grid lg:grid-cols-3">
         <InsightCard title="Highlights Reel" items={highlights} />
         <AiTournamentOverviewCard
           overview={aiTournamentOverview}
@@ -219,7 +215,7 @@ function AiTournamentOverviewCard({
   scoredHoleCount: number;
 }) {
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+    <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs tracking-[0.2em] text-[#8B949E]">AI Tournament Overview</p>
@@ -244,13 +240,13 @@ function AiTournamentOverviewCard({
           Waiting for the booth to file its first persisted dispatch.
         </p>
       )}
-    </div>
+    </section>
   );
 }
 
 function InsightCard({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+    <section className="px-3 py-3 lg:border-r lg:border-[#27272A]">
       <p className="text-xs tracking-[0.2em] text-[#8B949E]">{title}</p>
       <div className="mt-3 space-y-2">
         {items.map((item) => (
@@ -259,7 +255,7 @@ function InsightCard({ title, items }: { title: string; items: string[] }) {
           </p>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -278,15 +274,15 @@ function AiNewsroomGrid({
   );
 
   return (
-    <div className="mt-4 rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+    <section className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="px-3 pt-3">
           <p className="text-xs tracking-[0.2em] text-[#8B949E]">AI Newsroom</p>
           <p className="mt-1 text-xs text-[#8B949E]">
             Live copy from the scoreboard once the round has enough signal.
           </p>
         </div>
-        <span className="rounded border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
+        <span className="mr-3 mt-3 border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
           {isGenerating ? 'Filing copy' : `${artifacts.length}/${AI_NEWSROOM_ARTIFACT_KINDS.length} cards`}
         </span>
       </div>
@@ -298,9 +294,9 @@ function AiNewsroomGrid({
             : 'No newsroom cards yet. Save more holes and the booth will wake up.'}
         </StatusCard>
       ) : (
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-3 border-t border-[#27272A]">
           {orderedArtifacts.map((artifact) => (
-            <div key={artifact.kind} className="rounded border border-[#27272A] bg-[#18181B] p-3">
+            <article key={artifact.kind} className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
               <p className="text-[10px] tracking-[0.16em] text-[#8B949E]">{artifact.title}</p>
               <div className="mt-2">
                 <MarkdownContent>{artifact.body_markdown}</MarkdownContent>
@@ -308,11 +304,11 @@ function AiNewsroomGrid({
                   Filed at {artifact.source_hole_score_count} saved holes.
                 </p>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -325,15 +321,15 @@ function ProgressTimeline({
 }) {
   if (points.length === 0) {
     return (
-      <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+      <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
         <p className="text-xs tracking-[0.2em] text-[#8B949E]">Score Movement</p>
         <StatusCard>No score movement yet.</StatusCard>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+    <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs tracking-[0.2em] text-[#8B949E]">Score Movement</p>
         <span className="text-[10px] tracking-[0.14em] text-[#8B949E]">
@@ -354,21 +350,43 @@ function ProgressTimeline({
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function ScoreLedger({ totals }: { totals: { overall: TeamScore; foursomes: TeamScore; singles: TeamScore } }) {
+  return (
+    <div className="-mx-3 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
+      <ScoreLedgerRow label="Overall" score={totals.overall} isPrimary />
+      <ScoreLedgerRow label="Foursomes" score={totals.foursomes} />
+      <ScoreLedgerRow label="Singles" score={totals.singles} />
     </div>
   );
 }
 
-function ScoreTile({ label, score }: { label: string; score: TeamScore }) {
+function ScoreLedgerRow({
+  label,
+  score,
+  isPrimary = false,
+}: {
+  label: string;
+  score: TeamScore;
+  isPrimary?: boolean;
+}) {
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#18181B] p-3">
-      <p className="text-xs tracking-[0.2em] text-[#8B949E]">{label}</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <TeamTotal label="USA" value={score.USA} className="text-[#F2B84B]" />
-        <TeamTotal label="Europe" value={score.EUROPE} className="text-[#58A6FF]" />
+    <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.2em] text-[#8B949E]">{label}</p>
+          <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
+            {score.halved} halved · {score.unplayed} unplayed
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-right tabular-nums sm:gap-8">
+          <TeamTotal label="USA" value={score.USA} className="text-[#F2B84B]" isPrimary={isPrimary} />
+          <TeamTotal label="Europe" value={score.EUROPE} className="text-[#58A6FF]" isPrimary={isPrimary} />
+        </div>
       </div>
-      <p className="mt-3 text-xs text-[#8B949E]">
-        {score.halved} halved, {score.unplayed} unplayed
-      </p>
     </div>
   );
 }
@@ -377,15 +395,23 @@ function TeamTotal({
   label,
   value,
   className,
+  isPrimary = false,
 }: {
   label: string;
   value: number;
   className: string;
+  isPrimary?: boolean;
 }) {
   return (
     <div>
       <p className="text-xs tracking-[0.18em] text-[#8B949E]">{label}</p>
-      <p className={`text-3xl font-bold tracking-[-0.07em] tabular-nums ${className}`}>{value}</p>
+      <p
+        className={`font-bold tracking-[-0.07em] tabular-nums ${
+          isPrimary ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
+        } ${className}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
