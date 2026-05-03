@@ -23,32 +23,57 @@ export function SignInPanel({
   cooldownSeconds?: number;
 }) {
   const isSendDisabled = isSubmitting || cooldownSeconds > 0;
+  const [hasCheckedEmail, setHasCheckedEmail] = useState(false);
+  const emailFeedback = getEmailFeedback(email);
+  const shouldShowEmailFeedback = hasCheckedEmail && Boolean(emailFeedback);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    setHasCheckedEmail(true);
+
+    if (emailFeedback) {
+      event.preventDefault();
+      return;
+    }
+
+    onSubmit(event);
+  };
 
   return (
-    <section className="min-h-[calc(100vh-1px)] bg-[#050505] px-4 py-10 font-data text-[#E6EDF3] sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-xl flex-col justify-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-[#3FB950]">
-          Al Reynolds Ruff Ryders Cup
+    <section className="flex min-h-[calc(100vh-1px)] flex-col bg-[#050505] px-4 py-10 font-data text-[#E6EDF3] sm:px-6">
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center">
+        <p className="text-[10px] font-bold tracking-[0.24em] text-[#3FB950]">
+          the al reynolds
         </p>
-        <h1 className="mt-3 text-4xl font-black uppercase leading-none tracking-[-0.08em] text-[#FAFAFA] sm:text-6xl">
-          Ruff Ryders Cup 2026
+        <h1 className="mt-3 text-4xl font-black leading-none tracking-[-0.08em] text-[#FAFAFA] sm:text-6xl">
+          ruff ryders cup 2026
         </h1>
-        <form onSubmit={onSubmit} className="mt-8 grid gap-3 border-t border-[#27272A] pt-5">
-          <label className="block text-xs uppercase tracking-[0.14em] text-[#8B949E]">
-            Email
-            <input
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              type="email"
-              required
-              placeholder="you@example.com"
-              className="mt-2 min-h-11 w-full rounded-md border border-[#27272A] bg-[#050505] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-            />
+        <form noValidate onSubmit={handleSubmit} className="mt-8 grid gap-3 border-t border-[#27272A] pt-5">
+          <label htmlFor="signin-email" className="block text-xs tracking-[0.14em] text-[#8B949E]">
+            email
           </label>
+          <input
+            id="signin-email"
+            value={email}
+            onChange={(event) => onEmailChange(event.target.value)}
+            onBlur={() => setHasCheckedEmail(true)}
+            type="email"
+            required
+            placeholder="the.hologram@wycombe-shites.gov.uk"
+            aria-invalid={shouldShowEmailFeedback}
+            aria-describedby={shouldShowEmailFeedback ? 'signin-email-feedback' : undefined}
+            className={`min-h-11 w-full rounded-md border bg-[#050505] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none ${
+              shouldShowEmailFeedback ? 'border-[#F85149] focus:border-[#F85149]' : 'border-[#27272A] focus:border-[#3FB950]'
+            }`}
+          />
+          {shouldShowEmailFeedback && (
+            <p id="signin-email-feedback" className="text-xs text-[#F85149]">
+              {emailFeedback}
+            </p>
+          )}
           <button
             type="submit"
             disabled={isSendDisabled}
-            className="min-h-11 rounded-md bg-[#3FB950] px-4 py-2 font-data text-sm font-black uppercase tracking-[0.12em] text-[#09090B] disabled:opacity-60"
+            className="min-h-11 rounded-md bg-[#3FB950] px-4 py-2 font-data text-sm font-black tracking-[0.12em] text-[#09090B] disabled:opacity-60"
           >
             {getSignInButtonLabel(isSubmitting, cooldownSeconds)}
           </button>
@@ -56,20 +81,59 @@ export function SignInPanel({
         {notice && <StatusCard tone="success">{notice}</StatusCard>}
         {error && <StatusCard tone="error">{error}</StatusCard>}
       </div>
+      <footer className="mx-auto flex w-full max-w-xl flex-wrap items-center gap-x-3 gap-y-2 border-t border-[#27272A] pt-4 text-xs text-[#8B949E]">
+        <a
+          href="https://github.com/12ian34/ruffryder.golf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-[#E6EDF3]"
+        >
+          source code
+        </a>
+        <span className="text-[#3FB950]" aria-hidden="true">
+          //
+        </span>
+        <a
+          href="https://buymeacoffee.com/12ian34"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-[#E6EDF3]"
+        >
+          donate to ai overlords
+        </a>
+      </footer>
     </section>
   );
 }
 
+function getEmailFeedback(email: string): string | null {
+  const trimmedEmail = email.trim();
+
+  if (!trimmedEmail) {
+    return 'enter an email address';
+  }
+
+  if (!isPlausibleEmailAddress(trimmedEmail)) {
+    return 'enter a real email address';
+  }
+
+  return null;
+}
+
+function isPlausibleEmailAddress(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
 function getSignInButtonLabel(isSubmitting: boolean, cooldownSeconds: number): string {
   if (isSubmitting) {
-    return 'Sending...';
+    return 'sending...';
   }
 
   if (cooldownSeconds > 0) {
-    return `Wait ${cooldownSeconds}s`;
+    return `wait ${cooldownSeconds}s`;
   }
 
-  return 'Send link';
+  return 'send link';
 }
 
 export function CreateProfilePanel({ onSaved }: { onSaved: () => Promise<void> }) {

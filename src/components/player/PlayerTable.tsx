@@ -33,25 +33,25 @@ export default function PlayerTable({
           <tr>
             <th 
               onClick={() => onSort('name')}
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
             >
               Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
             <th 
               onClick={() => onSort('team')}
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
             >
               Team {sortField === 'team' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
             <th
               onClick={() => onSort('tier')}
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
             >
               Tier {sortField === 'tier' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
             <th 
               onClick={() => onSort('averageScore')}
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
             >
               Average {sortField === 'averageScore' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
@@ -59,12 +59,12 @@ export default function PlayerTable({
               <th 
                 key={year}
                 onClick={() => onSort(year)}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
               >
                 {year} {sortField === year && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
             ))}
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider">
               Actions
             </th>
           </tr>

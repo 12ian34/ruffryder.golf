@@ -29,6 +29,7 @@ describe('ScoreEntrySection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   afterEach(() => {
@@ -106,6 +107,49 @@ describe('ScoreEntrySection', () => {
 
     expect(saveHoleScore2026).toHaveBeenCalledTimes(1);
     expect(onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists failed drafts and lets users retry all failed score rows', async () => {
+    vi.useFakeTimers();
+    vi.mocked(saveHoleScore2026).mockRejectedValueOnce(new Error('Network error'));
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[fixture]}
+        players={players}
+        courseHoles={courseHoles}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '5' } });
+    fireEvent.change(view.getAllByLabelText('Europe score')[0], { target: { value: '4' } });
+
+    expect(window.localStorage.getItem('rrc:2026:score-draft:tournament-1:segment-1:2')).toBe(
+      JSON.stringify({ usaScore: '5', europeScore: '4' })
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+      await Promise.resolve();
+    });
+    vi.useRealTimers();
+
+    await waitFor(() => {
+      expect(view.getByText('1 score row failed to save')).toBeInTheDocument();
+    });
+    expect(view.getByText('Retry all')).toBeInTheDocument();
+
+    vi.mocked(saveHoleScore2026).mockResolvedValueOnce(undefined);
+    fireEvent.click(view.getByText('Retry all'));
+
+    await waitFor(() => {
+      expect(saveHoleScore2026).toHaveBeenCalledTimes(2);
+    });
+    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem('rrc:2026:score-draft:tournament-1:segment-1:2')).toBeNull();
   });
 
   it('lets admins clear one saved hole score', async () => {

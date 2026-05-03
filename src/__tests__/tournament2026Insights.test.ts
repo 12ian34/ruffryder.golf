@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { buildTournamentActivityTimeline } from '../features/tournament2026/activity';
 import { buildProgressTimeline, generateTournamentHighlights } from '../features/tournament2026/insights';
-import type { FixtureView, PlayerRow } from '../services/tournament2026Queries';
+import type {
+  FixtureView,
+  PlayerRow,
+  TournamentActivityRow,
+} from '../services/tournament2026Queries';
 
 const players = [
   createPlayer('usa-1', 'Ian', 'USA', 20),
@@ -32,6 +37,33 @@ describe('2026 tournament insights', () => {
 
     expect(highlights).toContain('Ian took 7 on H3.');
     expect(highlights).toContain('Tommy birdied H1.');
+  });
+
+  it('builds a full activity timeline with score and match milestone events', () => {
+    const timeline = buildTournamentActivityTimeline({
+      activity: [createActivityRow()],
+      fixtures: [createFixture()],
+    });
+
+    expect(timeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'Score saved',
+          detail: expect.stringContaining('H3'),
+          actorLabel: 'Ian',
+        }),
+        expect.objectContaining({
+          title: 'Singles A started',
+          detail: 'Fixture 1 - first saved score H1',
+          occurredAt: '2026-05-03T07:01:00.000Z',
+        }),
+        expect.objectContaining({
+          title: 'Singles A finished',
+          detail: 'Fixture 1 - Match halved',
+          occurredAt: '2026-05-03T07:03:00.000Z',
+        }),
+      ])
+    );
   });
 });
 
@@ -114,5 +146,33 @@ function createScore(
     created_at: updatedAt,
     updated_at: updatedAt,
     updatedByProfile: null,
+  };
+}
+
+function createActivityRow(): TournamentActivityRow {
+  return {
+    id: 'activity-1',
+    action: 'insert',
+    table_name: 'hole_scores',
+    record_id: 'score-3',
+    tournament_id: 'tournament-1',
+    fixture_id: 'fixture-1',
+    segment_id: 'segment-1',
+    hole_score_id: 'score-3',
+    player_id: null,
+    occurred_at: '2026-05-03T07:03:00.000Z',
+    actor_display_name: 'Ian',
+    actor_is_admin: false,
+    changed_fields: null,
+    hole_number: 3,
+    usa_score: 7,
+    europe_score: 5,
+    outcome: 'EUROPE',
+    fixture_name: 'Fixture 1',
+    segment_name: 'Singles A',
+    segment_kind: 'singles',
+    player_name: null,
+    tournament_is_complete: null,
+    cpi_enabled: null,
   };
 }

@@ -118,9 +118,9 @@ export default function GameScoreTable({ game, useHandicaps }: GameScoreTablePro
         <table className="min-w-full divide-y divide-gray-700/50 dark:divide-gray-800/40 bg-gradient-to-br from-gray-900 to-gray-950 dark:from-gray-950 dark:to-black" data-attr="game-score-table-scores">
           <thead>
             <tr className="bg-gray-900/40 dark:bg-black/40">
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-300 dark:text-gray-400 uppercase tracking-wider">HOLE</th>
-              <th className="px-2 py-1 text-center text-xs font-medium text-usa-500 uppercase tracking-wider">USA</th>
-              <th className="px-2 py-1 text-center text-xs font-medium text-europe-500 uppercase tracking-wider">EUR</th>
+              <th className="px-2 py-1 text-left text-xs font-medium text-gray-300 dark:text-gray-400 tracking-wider">HOLE</th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-usa-500 tracking-wider">USA</th>
+              <th className="px-2 py-1 text-center text-xs font-medium text-europe-500 tracking-wider">EUR</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700/50 dark:divide-gray-800/40">

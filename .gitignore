@@ -11,6 +11,11 @@ dist
 dist-ssr
 *.local
 
+# Newsletter source exports
+THE RUFF RYDER*.pdf
+The Ruff Ryder*.pdf
+docs/newsletters/*.md
+
 # Environment files
 .env
 .env.local

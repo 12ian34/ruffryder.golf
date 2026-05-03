@@ -5,6 +5,7 @@ import type {
   ProfileRow,
 } from '../../../services/tournament2026Queries';
 import { Panel, StatusCard } from './Layout';
+import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
 
 type TeamFilter = 'ALL' | 'USA' | 'EUROPE';
 type SortField = 'name' | 'team' | 'currentCpi' | 'holesWon' | number;
@@ -73,7 +74,7 @@ export function StatsSection({
             key={team}
             type="button"
             onClick={() => setTeamFilter(team)}
-            className={`rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+            className={`rounded-md border px-3 py-2 text-xs font-bold tracking-[0.14em] ${
               teamFilter === team
                 ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
                 : 'border-[#27272A] text-[#8B949E]'
@@ -88,7 +89,7 @@ export function StatsSection({
       ) : (
         <div className="-mx-4 mt-4 overflow-x-auto sm:mx-0">
           <table className="min-w-full border-y border-[#27272A] text-left text-sm">
-            <thead className="bg-[#0C0C0E] text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
+            <thead className="bg-[#0C0C0E] text-[10px] tracking-[0.16em] text-[#8B949E]">
               <tr>
                 <SortableHeader label="Player" isActive={sortField === 'name'} onClick={() => toggleSort('name')} />
                 <SortableHeader label="Team" isActive={sortField === 'team'} onClick={() => toggleSort('team')} />
@@ -119,10 +120,11 @@ export function StatsSection({
                 return (
                   <tr key={row.player.id} className={isCurrentPlayer ? 'bg-[#06170B]' : undefined}>
                     <td className="whitespace-nowrap px-4 py-3 font-bold text-[#FAFAFA]">
-                      {row.player.custom_emoji && <span className="mr-2">{row.player.custom_emoji}</span>}
-                      {row.player.name}
+                      <PlayerHistoryTrigger player={row.player}>
+                        <PlayerIdentity player={row.player} showTeam={false} />
+                      </PlayerHistoryTrigger>
                       {isCurrentPlayer && (
-                        <span className="ml-2 rounded border border-[#3FB950] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#3FB950]">
+                        <span className="ml-2 rounded border border-[#3FB950] px-1.5 py-0.5 text-[10px] tracking-[0.12em] text-[#3FB950]">
                           You
                         </span>
                       )}

@@ -5,8 +5,10 @@ import { AdminSetupSection } from '../features/tournament2026/components/AdminSe
 import { ArchiveSection } from '../features/tournament2026/components/HistorySection';
 import { LeaderboardSection } from '../features/tournament2026/components/LeaderboardSection';
 import { PageShell, StatusCard, type AppNavItem } from '../features/tournament2026/components/Layout';
+import { PlayerHistoryProvider } from '../features/tournament2026/components/PlayerHistory';
 import { ProfileSection } from '../features/tournament2026/components/ProfileSection';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
+import { TournamentActivitySection } from '../features/tournament2026/components/TournamentActivitySection';
 import { filterFixturesForScoreEntry, getErrorMessage } from '../features/tournament2026/viewUtils';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { getSupabaseClient, getSupabaseConfigStatus } from '../lib/supabase';
@@ -55,6 +57,7 @@ export default function Tournament2026() {
       const nextData = await fetchTournament2026Data();
       setData(nextData);
       setUser(nextData.user);
+      identifySupabaseUser(nextData.user, nextData.profile);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -179,17 +182,15 @@ export default function Tournament2026() {
 
   if (!user) {
     return (
-      <PageShell>
-        <SignInPanel
-          email={email}
-          notice={notice}
-          error={error}
-          onEmailChange={setEmail}
-          onSubmit={handleSignIn}
-          isSubmitting={isSignInSubmitting}
-          cooldownSeconds={signInCooldownSeconds}
-        />
-      </PageShell>
+      <SignInPanel
+        email={email}
+        notice={notice}
+        error={error}
+        onEmailChange={setEmail}
+        onSubmit={handleSignIn}
+        isSubmitting={isSignInSubmitting}
+        cooldownSeconds={signInCooldownSeconds}
+      />
     );
   }
 
@@ -206,61 +207,77 @@ export default function Tournament2026() {
   const navItems = data.profile.is_admin ? ADMIN_NAV_ITEMS : PLAYER_NAV_ITEMS;
 
   return (
-    <PageShell
-      userEmail={user.email}
-      isOnline={isOnline}
-      onSignOut={handleSignOut}
-      activeTab={activeTab}
-      navItems={navItems}
-      onTabChange={handleTabChange}
+    <PlayerHistoryProvider
+      players={data.players}
+      playerStats={data.playerStats}
+      aiPlayerOverviews={data.aiPlayerOverviews}
+      profile={data.profile}
+      onSaved={refreshData}
     >
-      {!isOnline && (
-        <StatusCard tone="warning">
-          Offline mode: saved data may be stale and score writes can fail until connection returns.
-        </StatusCard>
-      )}
-      {error && <StatusCard tone="error">{error}</StatusCard>}
-      {activeTab === 'score' && (
-        <ScoreEntrySection
-          tournament={data.activeTournament}
-          fixtures={scoreEntryFixtures}
-          players={data.players}
-          courseHoles={data.courseHoles}
-          profile={data.profile}
-          onSaved={refreshData}
-        />
-      )}
-      {activeTab === 'leaderboard' && (
-        <LeaderboardSection
-          tournament={data.activeTournament}
-          fixtures={data.fixtures}
-          players={data.players}
-          courseHoles={data.courseHoles}
-        />
-      )}
-      {activeTab === 'setup' &&
-        (data.profile.is_admin ? (
-          <AdminSetupSection data={data} onSaved={refreshData} />
-        ) : (
-          <StatusCard tone="warning">Setup is admin-only. Use Score during tournament play.</StatusCard>
-        ))}
-      {activeTab === 'archive' && (
-        <ArchiveSection
-          history={data.history}
-          players={data.players}
-          playerStats={data.playerStats}
-        />
-      )}
-      {activeTab === 'profile' && (
-        <ProfileSection
-          tournament={data.activeTournament}
-          profile={data.profile}
-          players={data.players}
-          onSignOut={handleSignOut}
-          onSaved={refreshData}
-        />
-      )}
-    </PageShell>
+      <PageShell
+        userEmail={user.email}
+        isOnline={isOnline}
+        onSignOut={handleSignOut}
+        activeTab={activeTab}
+        navItems={navItems}
+        onTabChange={handleTabChange}
+      >
+        {!isOnline && (
+          <StatusCard tone="warning">
+            Offline mode: saved data may be stale and score writes can fail until connection returns.
+          </StatusCard>
+        )}
+        {error && <StatusCard tone="error">{error}</StatusCard>}
+        {activeTab === 'score' && (
+          <ScoreEntrySection
+            tournament={data.activeTournament}
+            fixtures={scoreEntryFixtures}
+            players={data.players}
+            courseHoles={data.courseHoles}
+            profile={data.profile}
+            onSaved={refreshData}
+          />
+        )}
+        {activeTab === 'leaderboard' && (
+          <>
+            <LeaderboardSection
+              tournament={data.activeTournament}
+              fixtures={data.fixtures}
+              players={data.players}
+              courseHoles={data.courseHoles}
+              aiTournamentOverview={data.aiTournamentOverview}
+              aiNewsroomArtifacts={data.aiNewsroomArtifacts}
+              onSaved={refreshData}
+            />
+            <TournamentActivitySection activity={data.activity} fixtures={data.fixtures} />
+          </>
+        )}
+        {activeTab === 'setup' &&
+          (data.profile.is_admin ? (
+            <AdminSetupSection data={data} onSaved={refreshData} />
+          ) : (
+            <StatusCard tone="warning">Setup is admin-only. Use Score during tournament play.</StatusCard>
+          ))}
+        {activeTab === 'archive' && (
+          <ArchiveSection
+            history={data.history}
+            players={data.players}
+            playerStats={data.playerStats}
+          />
+        )}
+        {activeTab === 'profile' && (
+          <ProfileSection
+            tournament={data.activeTournament}
+            profile={data.profile}
+            players={data.players}
+            playerStats={data.playerStats}
+            aiPlayerOverviews={data.aiPlayerOverviews}
+            onSignOut={handleSignOut}
+            onSaved={refreshData}
+          />
+        )}
+      </PageShell>
+    </PlayerHistoryProvider>
   );
 }
 

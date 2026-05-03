@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   updateOwnProfile2026,
   updateProfileAdmin2026,
+  type AiPlayerOverviewRow,
   type PlayerRow,
+  type PlayerTournamentStatsRow,
   type ProfileRow,
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
@@ -11,6 +13,8 @@ import { getErrorMessage } from '../viewUtils';
 import { AvatarEmojiPicker } from './AvatarEmojiPicker';
 import { PlayerSelect } from './FormControls';
 import { Panel, StatusCard } from './Layout';
+import { PlayerAiOverview } from './PlayerAiOverview';
+import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
 
 type AvatarSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -18,16 +22,23 @@ export function ProfileSection({
   tournament,
   profile,
   players,
+  playerStats,
+  aiPlayerOverviews,
   onSignOut,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   profile: ProfileRow;
   players: PlayerRow[];
+  playerStats: PlayerTournamentStatsRow[];
+  aiPlayerOverviews: AiPlayerOverviewRow[];
   onSignOut: () => Promise<void>;
   onSaved: () => Promise<void>;
 }) {
   const linkedPlayer = players.find((player) => player.id === profile.linked_player_id) ?? null;
+  const linkedPlayerOverview = linkedPlayer
+    ? aiPlayerOverviews.find((overview) => overview.player_id === linkedPlayer.id) ?? null
+    : null;
 
   return (
     <Panel title="Profile" eyebrow="Account">
@@ -42,7 +53,13 @@ export function ProfileSection({
           </p>
           <p>
             Linked player:{' '}
-            <span className="text-[#FAFAFA]">{linkedPlayer?.name ?? 'Not linked yet'}</span>
+            {linkedPlayer ? (
+              <PlayerHistoryTrigger player={linkedPlayer} className="text-[#FAFAFA]">
+                <PlayerIdentity player={linkedPlayer} />
+              </PlayerHistoryTrigger>
+            ) : (
+              <span className="text-[#FAFAFA]">Not linked yet</span>
+            )}
           </p>
           <p>
             Tournament:{' '}
@@ -50,6 +67,18 @@ export function ProfileSection({
           </p>
         </div>
       </div>
+      {linkedPlayer && (
+        <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+          <PlayerAiOverview
+            player={linkedPlayer}
+            playerStats={playerStats}
+            overview={linkedPlayerOverview}
+            canRegenerate
+            source="profile"
+            onSaved={onSaved}
+          />
+        </div>
+      )}
       <OwnProfileForm profile={profile} onSaved={onSaved} />
       <AccountActions onSignOut={onSignOut} />
     </Panel>
@@ -71,7 +100,7 @@ function AccountActions({ onSignOut }: { onSignOut: () => Promise<void> }) {
 
   return (
     <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Account</p>
+      <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Account</p>
       <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
         Sign out of this device. You can return with a fresh email link.
       </p>
@@ -81,7 +110,7 @@ function AccountActions({ onSignOut }: { onSignOut: () => Promise<void> }) {
           void signOut();
         }}
         disabled={isSigningOut}
-        className="mt-3 min-h-11 rounded-md border border-[#F85149] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#F85149] disabled:border-[#27272A] disabled:text-[#484F58]"
+        className="mt-3 min-h-11 rounded-md border border-[#F85149] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#F85149] disabled:border-[#27272A] disabled:text-[#484F58]"
       >
         {isSigningOut ? 'Signing out' : 'Sign out'}
       </button>
@@ -139,7 +168,20 @@ function OwnProfileForm({
         displayName,
         customEmoji: customEmoji.trim() || null,
       });
-      track2026('profile_updated', { self_service: true });
+      track2026('profile_updated', {
+        self_service: true,
+        display_name_changed: displayName !== profile.display_name,
+        avatar_changed: customEmoji !== (profile.custom_emoji ?? ''),
+      });
+      if (displayName !== profile.display_name) {
+        track2026('profile_display_name_updated', { self_service: true });
+      }
+      if (customEmoji !== (profile.custom_emoji ?? '')) {
+        track2026('profile_avatar_updated', {
+          self_service: true,
+          has_custom_emoji: Boolean(customEmoji.trim()),
+        });
+      }
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -181,10 +223,10 @@ function OwnProfileForm({
 
   return (
     <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile settings</p>
+      <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Profile settings</p>
       <div className="mt-3 grid gap-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
             Display name
             <input
               value={displayName}
@@ -196,7 +238,7 @@ function OwnProfileForm({
             type="button"
             onClick={saveProfile}
             disabled={!hasChanged || isSaving}
-            className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             {isSaving ? 'Saving' : 'Save'}
           </button>
@@ -228,7 +270,7 @@ export function ProfileLinkingPanel({
   return (
     <div className="-mx-3 border-t border-[#27272A] sm:mx-0">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile admin</p>
+        <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Profile admin</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Edit signed-in profiles, roles, avatars, and player links. Player links control fixture score access.
         </p>
@@ -296,7 +338,40 @@ function ProfileLinkRow({
         playerId: playerId || null,
         players,
       });
-      track2026('profile_admin_updated', { profile_id: profile.id, is_admin: isAdmin });
+      track2026('profile_admin_updated', {
+        profile_id: profile.id,
+        is_admin: isAdmin,
+        display_name_changed: displayName !== profile.display_name,
+        avatar_changed: customEmoji !== (profile.custom_emoji ?? ''),
+        role_changed: isAdmin !== profile.is_admin,
+        linked_player_changed: playerId !== (profile.linked_player_id ?? ''),
+      });
+      if (playerId !== (profile.linked_player_id ?? '')) {
+        track2026('profile_player_link_updated', {
+          profile_id: profile.id,
+          previous_player_id: profile.linked_player_id,
+          next_player_id: playerId || null,
+        });
+      }
+      if (isAdmin !== profile.is_admin) {
+        track2026('profile_role_updated', {
+          profile_id: profile.id,
+          is_admin: isAdmin,
+        });
+      }
+      if (customEmoji !== (profile.custom_emoji ?? '')) {
+        track2026('profile_avatar_updated', {
+          profile_id: profile.id,
+          self_service: false,
+          has_custom_emoji: Boolean(customEmoji.trim()),
+        });
+      }
+      if (displayName !== profile.display_name) {
+        track2026('profile_display_name_updated', {
+          profile_id: profile.id,
+          self_service: false,
+        });
+      }
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -312,12 +387,12 @@ function ProfileLinkRow({
           <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
           <p className="truncate text-xs text-[#8B949E]">{profile.email}</p>
           {selectedPlayer && (
-            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#A1A1AA]">
+            <p className="mt-1 text-xs tracking-[0.14em] text-[#A1A1AA]">
               {selectedPlayer.team}
             </p>
           )}
         </div>
-        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+        <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
           Display name
           <input
             value={displayName}
@@ -338,7 +413,7 @@ function ProfileLinkRow({
         <button
           type="button"
           onClick={() => setIsAdmin((current) => !current)}
-          className={`min-h-11 rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+          className={`min-h-11 rounded-md border px-4 py-2 text-xs font-bold tracking-[0.14em] ${
             isAdmin ? 'border-[#F59E0B] text-[#F59E0B]' : 'border-[#27272A] text-[#8B949E]'
           }`}
         >
@@ -348,7 +423,7 @@ function ProfileLinkRow({
           type="button"
           onClick={saveProfile}
           disabled={!hasChanged || isSaving}
-          className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : hasChanged ? 'Save' : 'Linked'}
         </button>

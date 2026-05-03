@@ -80,6 +80,48 @@ describe('2026 score permissions', () => {
     expect(data.courseHoles[0]).toMatchObject({ holeNumber: 1, strokeIndex: 3 });
   });
 
+  it('loads tournament data before the AI newsroom artifacts table exists', async () => {
+    const getUser = vi.fn().mockResolvedValue({ data: { user: null }, error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'ai_newsroom_artifacts') {
+        return {
+          select: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: null,
+              error: {
+                message:
+                  "Could not find the table 'public.ai_newsroom_artifacts' in the schema cache",
+              },
+            }),
+          }),
+        };
+      }
+
+      if (table === 'tournaments') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+
+      return { select: () => ({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }) };
+    });
+
+    const data = await fetchTournament2026Data({
+      auth: { getUser },
+      from,
+    } as unknown as SupabaseClient<Database>);
+
+    expect(data.aiNewsroomArtifacts).toEqual([]);
+  });
+
   it('ignores duplicate profile creation when the signed-in user already has one', async () => {
     const getUser = vi.fn().mockResolvedValue({
       data: { user: { id: 'profile-1', email: 'ian@example.com' } },

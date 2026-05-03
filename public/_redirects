@@ -1,1 +1,7 @@
+/docs/* /index.html 404!
+/AGENTS.md /index.html 404!
+/CLAUDE.md /index.html 404!
+/DESIGN.md /index.html 404!
+/README.md /index.html 404!
+/*.pdf /index.html 404!
 /* /index.html 200

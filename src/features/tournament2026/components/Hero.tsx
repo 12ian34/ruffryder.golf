@@ -9,7 +9,7 @@ export function Hero({
 }) {
   return (
     <section className="rounded-lg border border-[#27272A] bg-[radial-gradient(circle_at_top_left,rgba(63,185,80,0.16),transparent_32%),#09090B] p-6 shadow-[0_18px_80px_rgba(0,0,0,0.45)]">
-      <p className="text-sm uppercase tracking-[0.28em] text-[#3FB950]">
+      <p className="text-sm tracking-[0.28em] text-[#3FB950]">
         {profile.is_admin ? 'Admin access' : 'Player access'}
       </p>
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -24,7 +24,7 @@ export function Hero({
         </div>
         {tournament && (
           <div className="rounded-md border border-[#27272A] bg-[#0C0C0E]/80 px-4 py-3 text-right">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">CPI threshold</p>
+            <p className="text-xs tracking-[0.2em] text-[#8B949E]">CPI threshold</p>
             <p className="text-3xl font-bold text-[#F59E0B]">{tournament.cpi_threshold}</p>
           </div>
         )}

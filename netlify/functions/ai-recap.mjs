@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { RUFF_RYDERS_TONE_CONTEXT } from './ai-tone-context.mjs';
 
 const MAX_REQUEST_BYTES = 24_000;
 const MAX_OUTPUT_TOKENS = 260;
@@ -75,8 +76,12 @@ async function generateRecap(snapshot) {
               type: 'input_text',
               text: [
                 'You are the Ruff Ryders Cup live tournament commentator.',
+                RUFF_RYDERS_TONE_CONTEXT,
                 'Use a sharp, funny clubhouse broadcast voice while staying factual.',
-                'Return one punchy headline followed by exactly three short bullets.',
+                'Return concise Markdown that works in a compact mobile scoreboard card.',
+                'Use formatting only when it improves scanability: short headings, bold emphasis, bullets, or numbered lists are allowed.',
+                'Emojis are allowed sparingly, maximum two, only when they add flavour.',
+                'Keep it under 120 words.',
                 'Do not invent scores, quotes, injuries, weather, or events not present in the snapshot.',
                 'If little has happened, make the lack of drama itself the recap.',
               ].join(' '),

@@ -113,7 +113,9 @@ export function buildAiRecapPrompt(snapshot: AiRecapSnapshot): string {
   return [
     'Write a live Ruff Ryders Cup tournament recap from this score snapshot.',
     'Voice: sharp, funny, clubhouse broadcast energy, but still factual.',
-    'Length: 3 short bullets plus one one-line headline.',
+    'Length: concise Markdown, maximum 120 words.',
+    'Formatting: headings, bold emphasis, bullets, and numbered lists are allowed when useful.',
+    'Emojis: allowed sparingly, maximum two, only when they add flavour.',
     'Rules: do not invent scores, injuries, weather, quotes, or events not in the snapshot.',
     'If little has happened, say the board is still waiting for drama.',
     '',

@@ -84,6 +84,9 @@ describe('2026 AI recap helpers', () => {
 
     expect(request).toEqual({ snapshot });
     expect(prompt).toContain('Write a live Ruff Ryders Cup tournament recap');
+    expect(prompt).toContain('concise Markdown');
+    expect(prompt).toContain('headings, bold emphasis, bullets, and numbered lists are allowed');
+    expect(prompt).toContain('Emojis: allowed sparingly');
     expect(prompt).toContain('"fixtures"');
     expect(prompt).not.toContain('email');
     expect(prompt).not.toContain('access_token');

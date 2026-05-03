@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
@@ -9,6 +17,7 @@ import {
   getDefaultCourseHole,
   type CourseHoleMetadata,
 } from '../../../domain/2026/course';
+import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 import {
   clearHoleScore2026,
   saveHoleScore2026,
@@ -24,7 +33,6 @@ import { track2026 } from '../../../utils/analytics';
 import {
   createHoleRange,
   formatOutcome,
-  formatParticipants,
   formatSegmentKind,
   formatSegmentMatchup,
   getErrorMessage,
@@ -32,6 +40,7 @@ import {
 } from '../viewUtils';
 import { ScorePicker } from './FormControls';
 import { Panel, StatusCard } from './Layout';
+import { PlayerHistoryTrigger } from './PlayerHistory';
 
 interface HoleDraft {
   usaScore: string;
@@ -47,6 +56,24 @@ type LengthUnit = 'metres' | 'yards';
 
 type HoleSaveState = 'dirty' | 'incomplete' | 'saving' | 'saved' | 'error';
 type FixtureScoreView = 'front' | 'back';
+
+const SCORE_DRAFT_STORAGE_PREFIX = 'rrc:2026:score-draft:';
+const SCORE_SAVE_TIMEOUT_MS = 10_000;
+
+interface ScoreSyncRow {
+  state: HoleSaveState;
+  error: string | null;
+  retry: () => void;
+}
+
+type ScoreSyncRows = Record<string, ScoreSyncRow>;
+
+interface ScoreSyncContextValue {
+  registerRow: (rowKey: string, row: ScoreSyncRow) => void;
+  unregisterRow: (rowKey: string) => void;
+}
+
+const ScoreSyncContext = createContext<ScoreSyncContextValue | null>(null);
 
 export function ScoreEntrySection({
   tournament,
@@ -64,9 +91,63 @@ export function ScoreEntrySection({
   onSaved: () => Promise<void>;
 }) {
   const [lengthUnit, setLengthUnit] = useState<LengthUnit>('metres');
+  const [syncRows, setSyncRows] = useState<ScoreSyncRows>({});
+  const isOnline = useOnlineStatus();
+  const wasOnlineRef = useRef(isOnline);
   const toggleLengthUnit = () => {
     setLengthUnit((unit) => (unit === 'metres' ? 'yards' : 'metres'));
   };
+  const registerRow = useCallback((rowKey: string, row: ScoreSyncRow) => {
+    setSyncRows((current) => ({ ...current, [rowKey]: row }));
+  }, []);
+  const unregisterRow = useCallback((rowKey: string) => {
+    setSyncRows((current) => {
+      if (!(rowKey in current)) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[rowKey];
+      return next;
+    });
+  }, []);
+  const syncContextValue = useMemo(
+    () => ({ registerRow, unregisterRow }),
+    [registerRow, unregisterRow]
+  );
+  const hasUnsavedRows = Object.values(syncRows).some((row) =>
+    row.state === 'dirty' || row.state === 'incomplete' || row.state === 'error' || row.state === 'saving'
+  );
+
+  useEffect(() => {
+    if (!hasUnsavedRows) {
+      return undefined;
+    }
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', warnBeforeUnload);
+
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasUnsavedRows]);
+
+  useEffect(() => {
+    const wasOnline = wasOnlineRef.current;
+    wasOnlineRef.current = isOnline;
+
+    if (!wasOnline && isOnline) {
+      for (const row of Object.values(syncRows)) {
+        if (row.state === 'error') {
+          row.retry();
+        }
+      }
+    }
+
+    return undefined;
+  }, [isOnline, syncRows]);
 
   if (!tournament) {
     return (
@@ -87,31 +168,34 @@ export function ScoreEntrySection({
   }
 
   return (
-    <Panel title="Score Entry" eyebrow="Fixture scores">
-      <div className="-mx-3 sm:mx-0">
-        {fixtures.length === 0 && (
-          <StatusCard tone="warning">
-            {profile.is_admin || profile.linked_player_id
-              ? 'No fixtures are available for score entry yet.'
-              : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
-          </StatusCard>
-        )}
-        {fixtures.map((fixture, index) => (
-          <FixtureScoreCard
-            key={fixture.id}
-            tournament={tournament}
-            fixture={fixture}
-            players={players}
-            profile={profile}
-            courseHoles={courseHoles}
-            lengthUnit={lengthUnit}
-            initialOpen={fixtures.length === 1 || index === 0}
-            onLengthUnitToggle={toggleLengthUnit}
-            onSaved={onSaved}
-          />
-        ))}
-      </div>
-    </Panel>
+    <ScoreSyncContext.Provider value={syncContextValue}>
+      <Panel title="Score Entry" eyebrow="Fixture scores">
+        <ScoreSyncBanner rows={syncRows} isOnline={isOnline} />
+        <div className="-mx-3 sm:mx-0">
+          {fixtures.length === 0 && (
+            <StatusCard tone="warning">
+              {profile.is_admin || profile.linked_player_id
+                ? 'No fixtures are available for score entry yet.'
+                : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
+            </StatusCard>
+          )}
+          {fixtures.map((fixture, index) => (
+            <FixtureScoreCard
+              key={fixture.id}
+              tournament={tournament}
+              fixture={fixture}
+              players={players}
+              profile={profile}
+              courseHoles={courseHoles}
+              lengthUnit={lengthUnit}
+              initialOpen={fixtures.length === 1 || index === 0}
+              onLengthUnitToggle={toggleLengthUnit}
+              onSaved={onSaved}
+            />
+          ))}
+        </div>
+      </Panel>
+    </ScoreSyncContext.Provider>
   );
 }
 
@@ -158,31 +242,40 @@ function FixtureScoreCard({
 
   return (
     <div className="border-t border-[#27272A] first:border-t-0">
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="w-full px-3 py-3 text-left"
-      >
+      <div className="px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">
               {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
             </h3>
-            <p className="mt-1 text-xs leading-5 text-[#8B949E]">{formatParticipants(fixture.participants)}</p>
+            <FixtureParticipantsLine fixture={fixture} />
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
+            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.16em] text-[#A1A1AA]">
               {progress.completedHoles}/{progress.totalHoles}
             </span>
-            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen((current) => {
+                  const next = !current;
+                  track2026('score_fixture_toggled', {
+                    fixture_id: fixture.id,
+                    is_open: next,
+                  });
+                  return next;
+                });
+              }}
+              className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.16em] text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#3FB950]"
+            >
               {isOpen ? 'Hide' : 'Open'}
-            </span>
+            </button>
           </div>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#18181B]">
           <div className="h-full bg-[#3FB950]" style={{ width: `${progress.percent}%` }} />
         </div>
-      </button>
+      </div>
       {isOpen && (
         <div>
           {hasFrontAndBack && (
@@ -190,12 +283,24 @@ function FixtureScoreCard({
               <ScoreViewButton
                 label="Front 9"
                 isActive={activeView === 'front'}
-                onClick={() => setActiveView('front')}
+                onClick={() => {
+                  setActiveView('front');
+                  track2026('score_fixture_view_changed', {
+                    fixture_id: fixture.id,
+                    view: 'front',
+                  });
+                }}
               />
               <ScoreViewButton
                 label="Back 9"
                 isActive={activeView === 'back'}
-                onClick={() => setActiveView('back')}
+                onClick={() => {
+                  setActiveView('back');
+                  track2026('score_fixture_view_changed', {
+                    fixture_id: fixture.id,
+                    view: 'back',
+                  });
+                }}
               />
             </div>
           )}
@@ -231,6 +336,178 @@ function FixtureScoreCard({
   );
 }
 
+function FixtureParticipantsLine({ fixture }: { fixture: FixtureView }) {
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs leading-5 text-[#8B949E]">
+      {fixture.participants.map((participant) => {
+        const playerName = participant.player?.name ?? 'Unknown player';
+        const playerTeam = participant.player?.team;
+        const sideLabel = playerTeam && playerTeam !== participant.team
+          ? `${participant.team} side`
+          : participant.team;
+        const teamLabel = playerTeam && playerTeam !== participant.team ? ` (${playerTeam})` : '';
+
+        return (
+          <span key={`${participant.fixture_id}-${participant.player_id}-${participant.team}`} className="whitespace-nowrap">
+            {sideLabel}:{' '}
+            <PlayerHistoryTrigger player={participant.player} fallback={playerName}>
+              {playerName}
+            </PlayerHistoryTrigger>
+            {teamLabel}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+function ScoreSyncBanner({ rows, isOnline }: { rows: ScoreSyncRows; isOnline: boolean }) {
+  const rowList = Object.values(rows);
+  const dirtyCount = rowList.filter((row) => row.state === 'dirty').length;
+  const incompleteCount = rowList.filter((row) => row.state === 'incomplete').length;
+  const savingCount = rowList.filter((row) => row.state === 'saving').length;
+  const errorRows = rowList.filter((row) => row.state === 'error');
+  const unsavedCount = dirtyCount + incompleteCount + errorRows.length;
+
+  if (rowList.length === 0 || (unsavedCount === 0 && savingCount === 0 && isOnline)) {
+    return (
+      <div className="-mx-3 border-t border-[#27272A] px-3 py-2 font-data text-[10px] tracking-[0.16em] text-[#3FB950] sm:mx-0">
+        All saved
+      </div>
+    );
+  }
+
+  const retryAll = () => {
+    for (const row of errorRows) {
+      row.retry();
+    }
+  };
+  const toneClass = !isOnline || errorRows.length > 0
+    ? 'border-[#F85149] bg-[#1A0808] text-[#F85149]'
+    : savingCount > 0
+      ? 'border-[#F59E0B] bg-[#1C1406] text-[#F59E0B]'
+      : 'border-[#F59E0B] bg-[#1C1406] text-[#F59E0B]';
+  const message = getSyncBannerMessage({
+    isOnline,
+    savingCount,
+    dirtyCount,
+    incompleteCount,
+    errorCount: errorRows.length,
+  });
+
+  return (
+    <div className={`-mx-3 border-t px-3 py-3 sm:mx-0 ${toneClass}`} role="status" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-data text-xs font-bold tracking-[0.14em]">{message}</p>
+        {errorRows.length > 0 && (
+          <button
+            type="button"
+            onClick={retryAll}
+            disabled={!isOnline || savingCount > 0}
+            className="rounded-md border border-current px-3 py-2 font-data text-[10px] font-bold tracking-[0.14em] disabled:opacity-50"
+          >
+            Retry all
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getSyncBannerMessage({
+  isOnline,
+  savingCount,
+  dirtyCount,
+  incompleteCount,
+  errorCount,
+}: {
+  isOnline: boolean;
+  savingCount: number;
+  dirtyCount: number;
+  incompleteCount: number;
+  errorCount: number;
+}): string {
+  if (!isOnline) {
+    const unsaved = dirtyCount + incompleteCount + errorCount;
+    return unsaved > 0
+      ? `Offline, ${unsaved} score ${unsaved === 1 ? 'row is' : 'rows are'} not saved`
+      : 'Offline, new scores will not save';
+  }
+
+  if (errorCount > 0) {
+    return `${errorCount} score ${errorCount === 1 ? 'row' : 'rows'} failed to save`;
+  }
+
+  if (savingCount > 0) {
+    return `Saving ${savingCount} score ${savingCount === 1 ? 'row' : 'rows'}`;
+  }
+
+  if (incompleteCount > 0) {
+    return `${incompleteCount} incomplete score ${incompleteCount === 1 ? 'row' : 'rows'}`;
+  }
+
+  if (dirtyCount > 0) {
+    return `${dirtyCount} unsaved score ${dirtyCount === 1 ? 'row' : 'rows'}`;
+  }
+
+  return 'All saved';
+}
+
+function SegmentMatchupPlayers({ segment, players }: { segment: SegmentView; players: PlayerRow[] }) {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+
+  if (segment.kind === 'foursomes') {
+    const usaPlayers = segment.players
+      .filter((player) => player.team === 'USA')
+      .map((segmentPlayer) => segmentPlayer.player)
+      .filter((player): player is PlayerRow => Boolean(player));
+    const europePlayers = segment.players
+      .filter((player) => player.team === 'EUROPE')
+      .map((segmentPlayer) => segmentPlayer.player)
+      .filter((player): player is PlayerRow => Boolean(player));
+
+    return (
+      <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 font-data text-sm leading-6 text-[#A1A1AA]">
+        <PlayerList players={usaPlayers} />
+        <span>vs</span>
+        <PlayerList players={europePlayers} />
+      </p>
+    );
+  }
+
+  const usaPlayer = segment.usa_player_id ? playerLookup.get(segment.usa_player_id) : null;
+  const europePlayer = segment.europe_player_id ? playerLookup.get(segment.europe_player_id) : null;
+
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-2 gap-y-1 font-data text-sm leading-6 text-[#A1A1AA]">
+      <PlayerHistoryTrigger player={usaPlayer} fallback="USA player">
+        {usaPlayer?.name ?? 'USA player'}
+      </PlayerHistoryTrigger>
+      <span>vs</span>
+      <PlayerHistoryTrigger player={europePlayer} fallback="Europe player">
+        {europePlayer?.name ?? 'Europe player'}
+      </PlayerHistoryTrigger>
+    </p>
+  );
+}
+
+function PlayerList({ players }: { players: PlayerRow[] }) {
+  if (players.length === 0) {
+    return <span>Unknown players</span>;
+  }
+
+  return (
+    <span className="flex flex-wrap gap-x-1">
+      {players.map((player, index) => (
+        <span key={player.id} className="inline-flex gap-x-1">
+          {index > 0 && <span>+</span>}
+          <PlayerHistoryTrigger player={player}>{player.name}</PlayerHistoryTrigger>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ScoreViewButton({
   label,
   isActive,
@@ -244,7 +521,7 @@ function ScoreViewButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+      className={`rounded-md border px-3 py-2 text-xs font-bold tracking-[0.14em] ${
         isActive
           ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
           : 'border-[#27272A] text-[#8B949E]'
@@ -284,7 +561,7 @@ function SegmentScoreCard({
     [segment.holeScores]
   );
   const [drafts, setDrafts] = useState<Record<number, HoleDraft>>(() =>
-    createDrafts(holes, scoreByHole)
+    createDrafts(holes, scoreByHole, tournament.id, segment.id)
   );
   const [savingHoles, setSavingHoles] = useState<Set<number>>(new Set());
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
@@ -300,8 +577,8 @@ function SegmentScoreCard({
   const isSavingAny = savingHoles.size > 0;
 
   useEffect(() => {
-    setDrafts(createDrafts(holes, scoreByHole));
-  }, [holes.join(','), scoreByHole]);
+    setDrafts(createDrafts(holes, scoreByHole, tournament.id, segment.id));
+  }, [holes.join(','), scoreByHole, segment.id, tournament.id]);
 
   const handleCpiToggle = async () => {
     if (!canConfigureCpi) return;
@@ -321,6 +598,15 @@ function SegmentScoreCard({
   };
 
   const updateDraft = (holeNumber: number, nextDraft: HoleDraft) => {
+    const rowKey = getScoreDraftKey(tournament.id, segment.id, holeNumber);
+    const score = scoreByHole.get(holeNumber);
+
+    if (isHoleDirty(nextDraft, score)) {
+      writePersistedDraft(rowKey, nextDraft);
+    } else {
+      removePersistedDraft(rowKey);
+    }
+
     setDrafts((current) => ({
       ...current,
       [holeNumber]: nextDraft,
@@ -360,6 +646,7 @@ function SegmentScoreCard({
         hole_number: holeNumber,
         segment_kind: segment.kind,
       });
+      removePersistedDraft(getScoreDraftKey(tournament.id, segment.id, holeNumber));
       await onSaved();
     } catch (err) {
       const message = getErrorMessage(err);
@@ -382,28 +669,45 @@ function SegmentScoreCard({
     setSavingHoles(new Set(dirtyHoles));
 
     try {
+      let savedCount = 0;
+      let firstError: string | null = null;
+
       for (const holeNumber of dirtyHoles) {
         const draft = drafts[holeNumber];
 
         if (!draft) continue;
 
-        await saveHoleDraft({
-          tournament,
-          segment,
-          players,
-          profile,
-          courseHole: courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber),
-          holeNumber,
-          draft,
+        try {
+          await saveHoleDraft({
+            tournament,
+            segment,
+            players,
+            profile,
+            courseHole: courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber),
+            holeNumber,
+            draft,
+          });
+          removePersistedDraft(getScoreDraftKey(tournament.id, segment.id, holeNumber));
+          savedCount += 1;
+        } catch (err) {
+          const message = getErrorMessage(err);
+          firstError = firstError ?? message;
+          setRowErrors((current) => ({ ...current, [holeNumber]: message }));
+        }
+      }
+
+      if (firstError) {
+        setSaveAllError(firstError);
+      } else {
+        track2026('scores_bulk_saved', {
+          segment_id: segment.id,
+          hole_count: savedCount,
         });
       }
-      await onSaved();
-      track2026('scores_bulk_saved', {
-        segment_id: segment.id,
-        hole_count: dirtyHoles.length,
-      });
-    } catch (err) {
-      setSaveAllError(getErrorMessage(err));
+
+      if (savedCount > 0) {
+        await onSaved();
+      }
     } finally {
       setSavingHoles(new Set());
     }
@@ -423,6 +727,7 @@ function SegmentScoreCard({
     try {
       await clearHoleScore2026({ tournament, scoreId });
       track2026('score_cleared', { segment_id: segment.id, hole_number: holeNumber });
+      removePersistedDraft(getScoreDraftKey(tournament.id, segment.id, holeNumber));
       await onSaved();
     } catch (err) {
       setRowErrors((current) => ({ ...current, [holeNumber]: getErrorMessage(err) }));
@@ -442,10 +747,10 @@ function SegmentScoreCard({
           <h4 className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
             {segment.name ?? formatSegmentKind(segment.kind)}
           </h4>
-          <p className="mt-1 font-data text-sm leading-6 text-[#A1A1AA]">{formatSegmentMatchup(segment, players)}</p>
+          <SegmentMatchupPlayers segment={segment} players={players} />
           <div className="mt-2 flex flex-wrap gap-2">
             <MatchStatusBadge status={matchStatus.state} label={matchStatusLabel} />
-            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
+            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.14em] text-[#8B949E]">
               {matchStatus.completedHoles}/{matchStatus.totalHoles} played
             </span>
           </div>
@@ -475,7 +780,7 @@ function SegmentScoreCard({
               {isSavingAny ? 'Saving...' : `Save all (${dirtyHoles.length})`}
             </button>
           )}
-          <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] uppercase tracking-[0.18em] text-[#A1A1AA]">
+          <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] tracking-[0.18em] text-[#A1A1AA]">
             Holes {segment.hole_start}-{segment.hole_end}
           </span>
         </div>
@@ -493,6 +798,7 @@ function SegmentScoreCard({
           return (
             <HoleScoreForm
               key={holeNumber}
+              rowKey={getScoreDraftKey(tournament.id, segment.id, holeNumber)}
               holeNumber={holeNumber}
               courseHole={courseHole}
               score={score}
@@ -640,7 +946,7 @@ function SegmentStatusPill({
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2">
       <p className="text-xs font-bold text-[#FAFAFA]">{segment.name ?? formatSegmentMatchup(segment, players)}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#8B949E]">
+      <p className="mt-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
         {formatMatchStatusLabel(status, labels)}
       </p>
       {cpiStatus && (
@@ -679,15 +985,27 @@ function SingleHoleScoreCard({
   onSaved: () => Promise<void>;
 }) {
   const score = segment.holeScores.find((row) => row.hole_number === holeNumber) ?? null;
-  const [draft, setDraft] = useState<HoleDraft>(() => createDraft(score));
+  const rowKey = getScoreDraftKey(tournament.id, segment.id, holeNumber);
+  const [draft, setDraft] = useState<HoleDraft>(() => readPersistedDraft(rowKey) ?? createDraft(score));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scoreLabels = getSegmentScoreLabels(segment, players);
   const isDirty = isHoleDirty(draft, score);
 
   useEffect(() => {
-    setDraft(createDraft(score));
-  }, [score]);
+    setDraft(readPersistedDraft(rowKey) ?? createDraft(score));
+  }, [rowKey, score]);
+
+  const updateDraft = (nextDraft: HoleDraft) => {
+    if (isHoleDirty(nextDraft, score)) {
+      writePersistedDraft(rowKey, nextDraft);
+    } else {
+      removePersistedDraft(rowKey);
+    }
+
+    setDraft(nextDraft);
+    setError(null);
+  };
 
   const saveHole = async () => {
     setError(null);
@@ -708,6 +1026,7 @@ function SingleHoleScoreCard({
         hole_number: holeNumber,
         segment_kind: segment.kind,
       });
+      removePersistedDraft(rowKey);
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -725,6 +1044,7 @@ function SingleHoleScoreCard({
     try {
       await clearHoleScore2026({ tournament, scoreId: score.id });
       track2026('score_cleared', { segment_id: segment.id, hole_number: holeNumber });
+      removePersistedDraft(rowKey);
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -735,6 +1055,7 @@ function SingleHoleScoreCard({
 
   return (
     <HoleScoreForm
+      rowKey={rowKey}
       holeNumber={holeNumber}
       courseHole={courseHole}
       score={score}
@@ -746,7 +1067,7 @@ function SingleHoleScoreCard({
       rowMeta={formatSegmentMatchup(segment, players)}
       showHoleMetadata={false}
       canClear={profile.is_admin && Boolean(score)}
-      onDraftChange={setDraft}
+      onDraftChange={updateDraft}
       onSave={saveHole}
       onClear={clearHole}
     />
@@ -754,6 +1075,7 @@ function SingleHoleScoreCard({
 }
 
 function HoleScoreForm({
+  rowKey,
   holeNumber,
   courseHole,
   score,
@@ -771,6 +1093,7 @@ function HoleScoreForm({
   onSave,
   onClear,
 }: {
+  rowKey: string;
   holeNumber: number;
   courseHole: CourseHoleMetadata;
   score: HoleScoreView | null;
@@ -790,8 +1113,28 @@ function HoleScoreForm({
 }) {
   const isDirty = saveState === 'dirty' || saveState === 'incomplete';
   const [isEditingSaved, setIsEditingSaved] = useState(false);
+  const syncContext = useContext(ScoreSyncContext);
+  const retryRef = useRef(onSave);
   const borderClass =
     saveState === 'error' ? 'border-[#F85149]' : isDirty ? 'border-[#F59E0B]' : 'border-[#27272A]';
+
+  useEffect(() => {
+    retryRef.current = onSave;
+  }, [onSave]);
+
+  useEffect(() => {
+    if (!syncContext) {
+      return undefined;
+    }
+
+    syncContext.registerRow(rowKey, {
+      state: saveState,
+      error,
+      retry: () => retryRef.current(),
+    });
+
+    return () => syncContext.unregisterRow(rowKey);
+  }, [error, rowKey, saveState, syncContext]);
 
   useEffect(() => {
     setIsEditingSaved(false);
@@ -819,8 +1162,8 @@ function HoleScoreForm({
               {scoreLabels.usa} {score.usa_score ?? '--'} - {scoreLabels.europe} {score.europe_score ?? '--'} ·{' '}
               {formatOutcome(score.outcome, scoreLabels)}
             </p>
-            {rowMeta && <p className="mt-1 truncate text-[10px] uppercase tracking-[0.12em] text-[#8B949E]">{rowMeta}</p>}
-            <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
+            {rowMeta && <p className="mt-1 truncate text-[10px] tracking-[0.12em] text-[#8B949E]">{rowMeta}</p>}
+            <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] tracking-[0.12em] text-[#A1A1AA]">
               <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
                 Saved {formatAuditTime(score.updated_at)}
               </span>
@@ -834,8 +1177,11 @@ function HoleScoreForm({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setIsEditingSaved(true)}
-              className="rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold uppercase tracking-[0.14em] text-[#E6EDF3]"
+              onClick={() => {
+                setIsEditingSaved(true);
+                track2026('score_saved_row_edit_started', { hole_number: holeNumber });
+              }}
+              className="rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
             >
               Edit
             </button>
@@ -845,7 +1191,7 @@ function HoleScoreForm({
                 onClick={() => {
                   void onClear();
                 }}
-                className="rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold uppercase tracking-[0.14em] text-[#F85149]"
+                className="rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#F85149]"
               >
                 Clear
               </button>
@@ -869,7 +1215,7 @@ function HoleScoreForm({
           >
             {rowLabel ?? `H${holeNumber}`}
           </div>
-          {rowMeta && <div className="text-[10px] uppercase tracking-[0.12em] text-[#8B949E]">{rowMeta}</div>}
+          {rowMeta && <div className="text-[10px] tracking-[0.12em] text-[#8B949E]">{rowMeta}</div>}
           {showHoleMetadata && lengthUnit && onLengthUnitToggle && (
             <HoleMetadata
               courseHole={courseHole}
@@ -917,7 +1263,7 @@ function HoleScoreForm({
         </div>
       </div>
       {score && (
-        <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
+        <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] tracking-[0.12em] text-[#A1A1AA]">
           <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
             {formatOutcome(score.outcome, scoreLabels)}
           </span>
@@ -949,7 +1295,7 @@ function SyncBadge({ label, tone }: { label: string; tone: 'saved' | 'pending' }
 
   return (
     <div
-      className={`border px-3 py-2 text-center font-data text-[10px] font-bold uppercase tracking-[0.14em] sm:rounded-md ${className}`}
+      className={`border px-3 py-2 text-center font-data text-[10px] font-bold tracking-[0.14em] sm:rounded-md ${className}`}
     >
       {label}
     </div>
@@ -966,7 +1312,7 @@ function HoleMetadata({
   onLengthUnitToggle: () => void;
 }) {
   return (
-    <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
+    <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
       {courseHole.yardage ? (
         <button
           type="button"
@@ -1000,7 +1346,7 @@ function MatchStatusBadge({
         : 'border-[#27272A] bg-[#0C0C0E] text-[#A1A1AA]';
 
   return (
-    <span className={`border px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] ${className}`}>
+    <span className={`border px-2 py-1 font-data text-[10px] tracking-[0.14em] ${className}`}>
       {label}
     </span>
   );
@@ -1108,20 +1454,35 @@ async function saveHoleDraft({
   holeNumber: number;
   draft: HoleDraft;
 }) {
-  await saveHoleScore2026({
-    tournament,
-    segment,
-    players,
-    holeNumber,
-    strokeIndex: courseHole.strokeIndex,
-    usaScore: parseOptionalPositiveInteger(draft.usaScore),
-    europeScore: parseOptionalPositiveInteger(draft.europeScore),
-    updatedBy: profile.id,
-  });
+  await withTimeout(
+    saveHoleScore2026({
+      tournament,
+      segment,
+      players,
+      holeNumber,
+      strokeIndex: courseHole.strokeIndex,
+      usaScore: parseOptionalPositiveInteger(draft.usaScore),
+      europeScore: parseOptionalPositiveInteger(draft.europeScore),
+      updatedBy: profile.id,
+    }),
+    SCORE_SAVE_TIMEOUT_MS,
+    'Score save is taking too long. Check your connection and retry.'
+  );
 }
 
-function createDrafts(holes: number[], scoreByHole: Map<number, HoleScoreView>): Record<number, HoleDraft> {
-  return Object.fromEntries(holes.map((holeNumber) => [holeNumber, createDraft(scoreByHole.get(holeNumber))]));
+function createDrafts(
+  holes: number[],
+  scoreByHole: Map<number, HoleScoreView>,
+  tournamentId: string,
+  segmentId: string
+): Record<number, HoleDraft> {
+  return Object.fromEntries(
+    holes.map((holeNumber) => [
+      holeNumber,
+      readPersistedDraft(getScoreDraftKey(tournamentId, segmentId, holeNumber)) ??
+        createDraft(scoreByHole.get(holeNumber)),
+    ])
+  );
 }
 
 function createDraft(score: HoleScoreView | null | undefined): HoleDraft {
@@ -1162,6 +1523,62 @@ function isDraftAutosavable(draft: HoleDraft): boolean {
   const hasEuropeScore = draft.europeScore.trim().length > 0;
 
   return (hasUsaScore && hasEuropeScore) || (!hasUsaScore && !hasEuropeScore);
+}
+
+function getScoreDraftKey(tournamentId: string, segmentId: string, holeNumber: number): string {
+  return `${SCORE_DRAFT_STORAGE_PREFIX}${tournamentId}:${segmentId}:${holeNumber}`;
+}
+
+function readPersistedDraft(rowKey: string): HoleDraft | null {
+  try {
+    const stored = window.localStorage.getItem(rowKey);
+
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as Partial<HoleDraft>;
+
+    if (typeof parsed.usaScore !== 'string' || typeof parsed.europeScore !== 'string') {
+      return null;
+    }
+
+    return {
+      usaScore: parsed.usaScore,
+      europeScore: parsed.europeScore,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedDraft(rowKey: string, draft: HoleDraft): void {
+  try {
+    window.localStorage.setItem(rowKey, JSON.stringify(draft));
+  } catch {
+    // Storage can fail in private mode; the visible row state still protects the user.
+  }
+}
+
+function removePersistedDraft(rowKey: string): void {
+  try {
+    window.localStorage.removeItem(rowKey);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  });
 }
 
 function formatAuditTime(value: string): string {

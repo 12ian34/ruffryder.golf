@@ -41,7 +41,7 @@ export function AvatarEmojiPicker({
         onClick={() => onChange('')}
         disabled={disabled}
         aria-pressed={!value}
-        className={`min-h-11 rounded-md border px-2 text-[10px] font-bold uppercase tracking-[0.12em] transition ${
+        className={`min-h-11 rounded-md border px-2 text-[10px] font-bold tracking-[0.12em] transition ${
           !value
             ? 'border-[#3FB950] bg-[#3FB950]/15 text-[#3FB950]'
             : 'border-[#27272A] text-[#8B949E] hover:border-[#3F3F46] hover:text-[#E6EDF3]'
@@ -72,10 +72,10 @@ export function AvatarEmojiPicker({
   if (collapsible) {
     return (
       <details className="rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-data text-xs uppercase tracking-[0.14em] text-[#8B949E] [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-data text-xs tracking-[0.14em] text-[#8B949E] [&::-webkit-details-marker]:hidden">
           <span>{label}</span>
           <span className="flex items-center gap-2 text-base normal-case tracking-normal text-[#E6EDF3]">
-            {feedback && <span className={`text-[10px] uppercase tracking-[0.12em] ${feedbackClass}`}>{feedback}</span>}
+            {feedback && <span className={`text-[10px] tracking-[0.12em] ${feedbackClass}`}>{feedback}</span>}
             {selectedValue}
           </span>
         </summary>
@@ -86,10 +86,10 @@ export function AvatarEmojiPicker({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+      <div className="flex items-center justify-between gap-3 font-data text-xs tracking-[0.14em] text-[#8B949E]">
         <span>{label}</span>
         <span className="flex items-center gap-2 text-base normal-case tracking-normal text-[#E6EDF3]">
-          {feedback && <span className={`text-[10px] uppercase tracking-[0.12em] ${feedbackClass}`}>{feedback}</span>}
+          {feedback && <span className={`text-[10px] tracking-[0.12em] ${feedbackClass}`}>{feedback}</span>}
           {selectedValue}
         </span>
       </div>

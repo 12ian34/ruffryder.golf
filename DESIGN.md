@@ -10,9 +10,9 @@
 ## Aesthetic Direction
 
 - **Direction:** Dark terminal scoreboard.
-- **Reference feel:** Closer to `../miniti/DESIGN.md`: dark-mode-only, monospaced, sharp, compact, system-console energy.
+- **Reference feel:** Closer to `../miniti/DESIGN.md`: dark-mode-only, monospaced, sharp, compact, live scoring energy.
 - **Decoration level:** Minimal, precise, and functional. The product should look engineered, not decorated.
-- **Mood:** Slick, clean, slightly dangerous, and expensive in a quiet way. It should feel like a live scoring terminal for a private tournament, not a generic admin dashboard and not golf clip art.
+- **Mood:** Slick, clean, slightly dangerous, and expensive in a quiet way. It should feel like a private live scoring system, not a generic admin dashboard and not golf clip art.
 - **Design principle:** The active scoring state is the hero. Every surface should answer: what hole, who is playing, what changed, what needs saving?
 
 Avoid:
@@ -30,7 +30,8 @@ Avoid:
 - **Body/UI:** `Geist Mono`, `SF Mono`, `Menlo`, fallback `monospace`.
 - **Data/Tables:** `Geist Mono`, `JetBrains Mono`, `SF Mono`, fallback `monospace`.
 - **Loading strategy:** Use local/system monospace first. Hosted fonts are optional, not required.
-- **Rule:** Use one mono family everywhere for the 2026 console. Weight, scale, color, and spacing create hierarchy.
+- **Rule:** Use one mono family everywhere for the 2026 app. Weight, scale, color, and spacing create hierarchy.
+- **Casing:** Do not force all-caps typography anywhere in the app. Use natural casing in source copy and avoid Tailwind `uppercase` or equivalent text transforms.
 
 Type scale:
 
@@ -49,7 +50,7 @@ Use tabular numbers for all scores, hole numbers, stroke indices, distances, and
 
 ### Approach
 
-Dark-only for the 2026 console. Restrained terminal palette, GitHub-ish state colors, team colors used surgically. The UI should feel calm until a score, save state, or match state needs attention.
+Dark-only for the 2026 app. Restrained terminal palette, GitHub-ish state colors, team colors used surgically. The UI should feel calm until a score, save state, or match state needs attention.
 
 ### Core Palette
 
@@ -95,7 +96,7 @@ Tailwind tokens:
 
 ### Dark Mode
 
-Dark mode is the only 2026 console experience:
+Dark mode is the only 2026 app experience:
 
 - Background: Black 980 or Black 950
 - Panel: Panel 900
@@ -109,7 +110,7 @@ Dark mode is the only 2026 console experience:
 
 ### Light Mode
 
-Do not build light mode for the 2026 console unless explicitly requested. The legacy Firebase UI can keep its existing light/dark behavior.
+Do not build light mode for the 2026 app unless explicitly requested. The legacy Firebase UI can keep its existing light/dark behavior.
 
 ## Spacing
 
@@ -142,11 +143,11 @@ Rules:
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
 - **Max content width:** `1180px` for desktop admin/dashboard pages.
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
-- **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons. Player nav labels should be task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
+- **Navigation:** Authenticated 2026 screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 app is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons. Player nav labels should be task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
 - **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Scores` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
 - **Profile vs Admin:** `Profile` is self-service only: own display name/avatar, linked player summary, and sign-out. Editing other users, admin roles, and profile-player links belongs in `Admin` → `Players`.
 - **Horizontal overflow:** App pages should not horizontally scroll. The only intentional horizontal scrolling surfaces are the bottom nav and explicitly contained tables/lists with local `overflow-x-auto`.
-- **Auth screen:** The unauthenticated `/2026` entry screen should feel like a private Ruff Ryders Cup access card, not vendor auth. Avoid visible backend/vendor language such as "Supabase sign in"; use match-day language like access link, scoring console, invite-only, and player entry.
+- **Auth screen:** The unauthenticated `/2026` entry screen should be flat, minimal, and brand-led. Do not wrap it in the shared app shell or show a top header. Use `the al reynolds` as the small line and `ruff ryders cup 2026` as the main title. Keep copy brief: email field, send-link action, concise validation/status/error messages, and the minimal source/donation footer only. Email placeholders can use one lore reference, but should still look like plausible email addresses.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:
@@ -158,7 +159,7 @@ Radius:
 - `xl`: 12px for major panels/modals.
 - `full`: pills, avatars, status dots.
 
-Borders define the interface. Prefer full-width horizontal dividers and section rules over nested cards. Avoid layer-over-layer card hierarchy in the 2026 console. Cards only earn their existence when the card itself is the interaction.
+Borders define the interface. Prefer full-width horizontal dividers and section rules over nested cards. Avoid layer-over-layer card hierarchy in the 2026 app. Cards only earn their existence when the card itself is the interaction.
 
 ## Components
 
@@ -172,7 +173,7 @@ Borders define the interface. Prefer full-width horizontal dividers and section 
 
 Button labels should be action-specific: `Save scores`, `Create fixture`, `Complete tournament`.
 
-Primary buttons should be rectangular with `6px-8px` radius. No pill CTAs for the main console.
+Primary buttons should be rectangular with `6px-8px` radius. No pill CTAs for the main 2026 app.
 
 ### Cards
 
@@ -200,9 +201,10 @@ Score entry screens must optimize for speed:
 - CPI explanation only when CPI applies. Do not show CPI controls or copy during front-nine foursomes.
 - Stroke index is fixed course data, not editable.
 - Hole distance should be visible near the hole label when data is available.
-- Score entry should be autosave-first with visible sync states: dirty, saving, saved, error.
-- Manual retry/save controls are fallback actions, not the primary path.
-- A `Save all` action can appear when multiple rows have unsaved changes or failed saves need a bulk retry.
+- Score entry should be autosave-first with visible row sync states: dirty, saving, saved, error.
+- A global sync banner should make connection/save risk obvious, including unsaved rows, failed saves, offline state, and retry-all recovery.
+- Manual retry/save controls are fallback actions, not the primary path; Supabase scores are only saved after server acknowledgment.
+- A `Save all` action can appear when multiple rows have unsaved changes, and a `Retry all` action can appear when failed saves need bulk recovery.
 - Dirty rows should be visually obvious with a subtle amber border or marker; failed rows should use red.
 - Saved rows should collapse to a compact result summary with an explicit `Edit` action. Re-open full score pickers only when the scorer is changing that saved hole.
 - Rows should feel like terminal records: `H10`, distance, SI, USA score, Europe score, result, save state.
@@ -283,7 +285,7 @@ Respect reduced-motion preferences.
 - Prefer Tailwind utility classes backed by this system.
 - Add semantic Tailwind tokens before repeating raw hex values across components.
 - The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI. New 2026 UI should prefer `team-usa` and `team-europe`.
-- New 2026 UI should bias toward mono typography, dark terminal surfaces, tighter radius, and visible borders.
+- New 2026 UI should bias toward mono typography, dark terminal surfaces, tighter radius, visible borders, and natural casing.
 - Read this file before building new UI.
 - If a component needs to deviate, document the reason in the decisions log.
 
@@ -294,4 +296,5 @@ Respect reduced-motion preferences.
 | 2026-05-02 | Created design system source of truth | Needed before building the 2026 Supabase admin and score-entry UI. |
 | 2026-05-02 | Chose dark-first clubhouse scoreboard direction | The app is used live on course and needs fast score comprehension. |
 | 2026-05-02 | Kept team colors semantic rather than decorative | USA/EUR colors should clarify scores, not dominate every surface. |
-| 2026-05-02 | Shifted 2026 console toward dark terminal scoreboard | The first deployed console looked too generic and soft. The scoring flow needs sharper, cleaner, sexier terminal energy closer to `miniti`. |
+| 2026-05-02 | Shifted 2026 app toward dark terminal scoreboard | The first deployed app looked too generic and soft. The scoring flow needs sharper, cleaner, sexier terminal energy closer to `miniti`. |
+| 2026-05-03 | Flattened auth and removed forced all-caps | Login should be minimal and brand-led, with natural casing and no shared top header. |

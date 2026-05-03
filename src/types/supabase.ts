@@ -74,6 +74,165 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_player_overviews: {
+        Row: {
+          created_at: string
+          custom_prompt: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          overview_markdown: string
+          player_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_prompt?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overview_markdown: string
+          player_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_prompt?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overview_markdown?: string
+          player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_player_overviews_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_player_overviews_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tournament_overviews: {
+        Row: {
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          overview_markdown: string
+          source_hole_score_count: number
+          source_snapshot: Json
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overview_markdown: string
+          source_hole_score_count?: number
+          source_snapshot?: Json
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overview_markdown?: string
+          source_hole_score_count?: number
+          source_snapshot?: Json
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tournament_overviews_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tournament_overviews_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_newsroom_artifacts: {
+        Row: {
+          body_markdown: string
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["ai_newsroom_artifact_kind"]
+          source_hash: string
+          source_hole_score_count: number
+          source_snapshot: Json
+          title: string
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          body_markdown: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["ai_newsroom_artifact_kind"]
+          source_hash: string
+          source_hole_score_count?: number
+          source_snapshot?: Json
+          title: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          body_markdown?: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["ai_newsroom_artifact_kind"]
+          source_hash?: string
+          source_hole_score_count?: number
+          source_snapshot?: Json
+          title?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_newsroom_artifacts_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_newsroom_artifacts_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_holes: {
         Row: {
           created_at: string
@@ -771,12 +930,47 @@ export type Database = {
       }
       current_linked_player_id: { Args: never; Returns: string }
       current_profile_is_admin: { Args: never; Returns: boolean }
+      get_tournament_activity: {
+        Args: { p_limit?: number; p_tournament_id: string }
+        Returns: {
+          action: string
+          actor_display_name: string | null
+          actor_is_admin: boolean | null
+          changed_fields: string[] | null
+          cpi_enabled: boolean | null
+          europe_score: number | null
+          fixture_id: string | null
+          fixture_name: string | null
+          hole_number: number | null
+          hole_score_id: string | null
+          id: string
+          occurred_at: string
+          outcome: string | null
+          player_id: string | null
+          player_name: string | null
+          record_id: string
+          segment_id: string | null
+          segment_kind: string | null
+          segment_name: string | null
+          table_name: string
+          tournament_id: string | null
+          tournament_is_complete: boolean | null
+          usa_score: number | null
+        }[]
+      }
       update_own_profile: {
         Args: { custom_emoji_input: string; display_name_input: string }
         Returns: undefined
       }
     }
     Enums: {
+      ai_newsroom_artifact_kind:
+        | "highlights_commentary"
+        | "moment_of_round"
+        | "cheese_detector"
+        | "rivalry_watch"
+        | "captains_briefing"
+        | "post_round_report"
       app_team: "USA" | "EUROPE"
       fixture_status: "not_started" | "in_progress" | "complete"
       hole_outcome: "USA" | "EUROPE" | "halved" | "unplayed"
@@ -908,6 +1102,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_newsroom_artifact_kind: [
+        "highlights_commentary",
+        "moment_of_round",
+        "cheese_detector",
+        "rivalry_watch",
+        "captains_briefing",
+        "post_round_report",
+      ],
       app_team: ["USA", "EUROPE"],
       fixture_status: ["not_started", "in_progress", "complete"],
       hole_outcome: ["USA", "EUROPE", "halved", "unplayed"],

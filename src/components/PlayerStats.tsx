@@ -81,19 +81,19 @@ export default function PlayerStats() {
                   <tr>
                     <th 
                       onClick={() => toggleSort('name')}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
                     >
                       Player {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       onClick={() => toggleSort('team')}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
                     >
                       Team {sortField === 'team' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       onClick={() => toggleSort('averageScore')}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
                     >
                       Handicap {sortField === 'averageScore' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
@@ -101,7 +101,7 @@ export default function PlayerStats() {
                       <th 
                         key={year}
                         onClick={() => toggleSort(year)}
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 tracking-wider cursor-pointer"
                       >
                         {year} {sortField === year && (sortDirection === 'asc' ? '↑' : '↓')}
                       </th>

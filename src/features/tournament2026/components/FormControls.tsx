@@ -13,7 +13,7 @@ export function TextField({
   type?: string;
 }) {
   return (
-    <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+    <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
       {label}
       <input
         value={value}
@@ -42,7 +42,7 @@ export function ScorePicker({
   const incrementValue = numericValue ? numericValue + 1 : 4;
 
   return (
-    <div className="min-w-0 font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+    <div className="min-w-0 font-data text-xs tracking-[0.14em] text-[#8B949E]">
       <div>{label}</div>
       <div className="mt-1 min-w-0 border-y border-[#27272A] bg-[#050505] py-2 sm:rounded-md sm:border sm:px-2">
         <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2">
@@ -123,7 +123,7 @@ export function PlayerSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+    <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
       {label}
       <select
         value={value}

@@ -22,6 +22,13 @@ export type SegmentPlayerRow = Database['public']['Tables']['segment_players']['
 export type HoleScoreRow = Database['public']['Tables']['hole_scores']['Row'];
 export type CourseHoleRow = Database['public']['Tables']['course_holes']['Row'];
 export type AuditLogRow = Database['public']['Tables']['audit_logs']['Row'];
+export type TournamentActivityRow =
+  Database['public']['Functions']['get_tournament_activity']['Returns'][number];
+export type AiPlayerOverviewRow = Database['public']['Tables']['ai_player_overviews']['Row'];
+export type AiTournamentOverviewRow =
+  Database['public']['Tables']['ai_tournament_overviews']['Row'];
+export type AiNewsroomArtifactRow =
+  Database['public']['Tables']['ai_newsroom_artifacts']['Row'];
 export type LegacyTournamentRow = Database['public']['Tables']['legacy_tournaments']['Row'];
 export type LegacyGameRow = Database['public']['Tables']['legacy_games']['Row'];
 export type PlayerTournamentStatsInsert =
@@ -66,7 +73,11 @@ export interface Tournament2026Data {
   profiles: ProfileRow[];
   players: PlayerRow[];
   playerStats: PlayerTournamentStatsRow[];
+  aiPlayerOverviews: AiPlayerOverviewRow[];
+  aiTournamentOverview: AiTournamentOverviewRow | null;
+  aiNewsroomArtifacts: AiNewsroomArtifactRow[];
   auditLogs: AuditLogRow[];
+  activity: TournamentActivityRow[];
   courseHoles: CourseHoleMetadata[];
   activeTournament: TournamentRow | null;
   fixtures: FixtureView[];
@@ -213,11 +224,22 @@ export interface ClearHoleScoreInput {
 export async function fetchTournament2026Data(
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<Tournament2026Data> {
-  const [{ data: userData }, players, playerStats, courseHoles, activeTournament, history] =
+  const [
+    { data: userData },
+    players,
+    playerStats,
+    aiPlayerOverviews,
+    aiNewsroomArtifacts,
+    courseHoles,
+    activeTournament,
+    history,
+  ] =
     await Promise.all([
       client.auth.getUser(),
       fetchPlayers(client),
       fetchPlayerTournamentStats(client),
+      fetchAiPlayerOverviews(client),
+      fetchAiNewsroomArtifacts(client),
       fetchCourseHoles(client),
       fetchActiveTournament(client),
       fetchLegacyHistory(client),
@@ -227,9 +249,15 @@ export async function fetchTournament2026Data(
   const profile = user ? await fetchProfile(client, user.id) : null;
   const profiles = profile?.is_admin ? await fetchProfiles(client) : [];
   const auditLogs = profile?.is_admin ? await fetchAuditLogs(client) : [];
+  const activity = activeTournament
+    ? await fetchTournamentActivity(client, activeTournament.id)
+    : [];
   const fixtures = activeTournament
     ? await fetchFixturesForTournament(client, activeTournament.id, players)
     : [];
+  const aiTournamentOverview = activeTournament
+    ? await fetchAiTournamentOverview(client, activeTournament.id)
+    : null;
 
   return {
     user,
@@ -237,7 +265,11 @@ export async function fetchTournament2026Data(
     profiles,
     players,
     playerStats,
+    aiPlayerOverviews,
+    aiTournamentOverview,
+    aiNewsroomArtifacts,
     auditLogs,
+    activity,
     courseHoles,
     activeTournament,
     fixtures,
@@ -261,6 +293,9 @@ export function subscribeToTournament2026Changes(
     'segment_players',
     'hole_scores',
     'audit_logs',
+    'ai_player_overviews',
+    'ai_tournament_overviews',
+    'ai_newsroom_artifacts',
     'player_tournament_stats',
     'legacy_tournaments',
     'legacy_games',
@@ -1119,6 +1154,57 @@ async function fetchPlayerTournamentStats(
   return data ?? [];
 }
 
+async function fetchAiPlayerOverviews(client: SupabaseClient<Database>): Promise<AiPlayerOverviewRow[]> {
+  const { data, error } = await client
+    .from('ai_player_overviews')
+    .select('*')
+    .order('generated_at', { ascending: false });
+
+  if (isMissingTableError(error, 'ai_player_overviews')) {
+    return [];
+  }
+
+  throwIfSupabaseError(error, 'Failed to load AI player overviews');
+
+  return data ?? [];
+}
+
+async function fetchAiNewsroomArtifacts(
+  client: SupabaseClient<Database>
+): Promise<AiNewsroomArtifactRow[]> {
+  const { data, error } = await client
+    .from('ai_newsroom_artifacts')
+    .select('*')
+    .order('generated_at', { ascending: false });
+
+  if (isMissingTableError(error, 'ai_newsroom_artifacts')) {
+    return [];
+  }
+
+  throwIfSupabaseError(error, 'Failed to load AI newsroom artifacts');
+
+  return data ?? [];
+}
+
+async function fetchAiTournamentOverview(
+  client: SupabaseClient<Database>,
+  tournamentId: string
+): Promise<AiTournamentOverviewRow | null> {
+  const { data, error } = await client
+    .from('ai_tournament_overviews')
+    .select('*')
+    .eq('tournament_id', tournamentId)
+    .maybeSingle();
+
+  if (isMissingTableError(error, 'ai_tournament_overviews')) {
+    return null;
+  }
+
+  throwIfSupabaseError(error, 'Failed to load AI tournament overview');
+
+  return data;
+}
+
 async function fetchAuditLogs(client: SupabaseClient<Database>): Promise<AuditLogRow[]> {
   const { data, error } = await client
     .from('audit_logs')
@@ -1126,7 +1212,7 @@ async function fetchAuditLogs(client: SupabaseClient<Database>): Promise<AuditLo
     .order('created_at', { ascending: false })
     .limit(80);
 
-  if (isMissingTableError(error)) {
+  if (isMissingTableError(error, 'audit_logs')) {
     return [];
   }
 
@@ -1135,10 +1221,28 @@ async function fetchAuditLogs(client: SupabaseClient<Database>): Promise<AuditLo
   return data ?? [];
 }
 
+async function fetchTournamentActivity(
+  client: SupabaseClient<Database>,
+  tournamentId: string
+): Promise<TournamentActivityRow[]> {
+  const { data, error } = await client.rpc('get_tournament_activity', {
+    p_tournament_id: tournamentId,
+    p_limit: 1000,
+  });
+
+  if (isMissingFunctionError(error)) {
+    return [];
+  }
+
+  throwIfSupabaseError(error, 'Failed to load tournament activity');
+
+  return data ?? [];
+}
+
 async function fetchCourseHoles(client: SupabaseClient<Database>): Promise<CourseHoleMetadata[]> {
   const { data, error } = await client.from('course_holes').select('*').order('hole_number');
 
-  if (isMissingTableError(error)) {
+  if (isMissingTableError(error, 'course_holes')) {
     return DEFAULT_COURSE_HOLES;
   }
 
@@ -1328,10 +1432,22 @@ function throwIfSupabaseError(error: { message: string } | null, message: string
   }
 }
 
-function isMissingTableError(error: { message: string } | null): boolean {
+function isMissingTableError(error: { message: string } | null, tableName: string): boolean {
+  const message = error?.message ?? '';
+
   return Boolean(
-    error?.message.includes("Could not find the table 'public.course_holes'") ||
-      error?.message.includes('relation "public.course_holes" does not exist')
+    message.includes(`Could not find the table 'public.${tableName}'`) ||
+      message.includes(`relation "public.${tableName}" does not exist`)
+  );
+}
+
+function isMissingFunctionError(error: { message: string } | null): boolean {
+  const message = error?.message.toLowerCase() ?? '';
+
+  return Boolean(
+    message.includes('could not find the function public.get_tournament_activity') ||
+      (message.includes('function public.get_tournament_activity') && message.includes('does not exist')) ||
+      (message.includes('function get_tournament_activity') && message.includes('does not exist'))
   );
 }
 

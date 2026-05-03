@@ -140,7 +140,7 @@ function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; playe
           <article key={log.id} className="border border-[#27272A] bg-[#09090B] p-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-data text-sm font-bold uppercase tracking-[0.12em] text-[#FAFAFA]">
+                <p className="font-data text-sm font-bold tracking-[0.12em] text-[#FAFAFA]">
                   {formatAuditAction(log.action)} {formatAuditTable(log.table_name)}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
@@ -149,11 +149,11 @@ function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; playe
                   {targetPlayer ? ` · target ${targetPlayer.name}` : ''}
                 </p>
               </div>
-              <time className="font-data text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
+              <time className="font-data text-[10px] tracking-[0.16em] text-[#8B949E]">
                 {formatAuditTime(log.created_at)}
               </time>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] tracking-[0.14em] text-[#8B949E]">
               <span className="border border-[#27272A] px-2 py-1">Record {shortId(log.record_id)}</span>
               {log.tournament_id ? (
                 <span className="border border-[#27272A] px-2 py-1">Tournament {shortId(log.tournament_id)}</span>
@@ -192,7 +192,7 @@ function AdminTaskSection({
             <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">{title}</h3>
             <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
           </div>
-          <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
+          <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.16em] text-[#8B949E]">
             Open
           </span>
         </div>
@@ -310,7 +310,7 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
   return (
     <SetupForm title="Add Player" onSubmit={handleSubmit} error={error}>
       <TextField label="Name" value={name} onChange={setName} />
-      <label className="font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+      <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
         Team
         <select
           value={team}
@@ -391,7 +391,7 @@ function FinalizationPanel({
 
   return (
     <div className="mt-5 border-t border-[#27272A] pt-4">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3FB950]">Finalization</p>
+      <p className="text-xs font-bold tracking-[0.22em] text-[#3FB950]">Finalization</p>
       <div className="mt-3 border-y border-[#27272A] bg-[#050505] px-3 py-3 sm:rounded-md sm:border">
         {!tournament ? (
           <StatusCard tone="warning">Create an active tournament before finalization.</StatusCard>
@@ -408,7 +408,7 @@ function FinalizationPanel({
               type="button"
               onClick={reopenTournament}
               disabled={isSaving}
-              className="min-h-11 rounded-md border border-[#F59E0B] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+              className="min-h-11 rounded-md border border-[#F59E0B] px-4 py-2 text-xs font-bold tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
             >
               {isSaving ? 'Reopening' : 'Reopen'}
             </button>
@@ -425,7 +425,7 @@ function FinalizationPanel({
               type="button"
               onClick={completeTournament}
               disabled={isSaving || fixtures.length === 0}
-              className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+              className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
             >
               {isSaving ? 'Completing' : 'Finalize'}
             </button>
@@ -463,7 +463,7 @@ function CourseMetadataCorrections({
   return (
     <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Course</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Course</p>
         <p className="mt-1 text-xs leading-5 text-[#8B949E]">Set par and yardage for score-entry context.</p>
       </div>
       <div className="max-h-[32rem] overflow-y-auto border-t border-[#27272A]">
@@ -518,8 +518,8 @@ function CourseHoleCorrectionRow({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="font-data text-sm font-bold text-[#FAFAFA]">H{hole.holeNumber}</p>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">SI {hole.strokeIndex}</p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
+          <p className="text-[10px] tracking-[0.14em] text-[#8B949E]">SI {hole.strokeIndex}</p>
+          <p className="mt-1 text-[10px] tracking-[0.12em] text-[#A1A1AA]">
             Current: {formatCurrentCourseValue('Par', hole.par)} · {formatCurrentCourseValue('Yards', hole.yardage)}
           </p>
         </div>
@@ -531,7 +531,7 @@ function CourseHoleCorrectionRow({
           type="button"
           onClick={saveHole}
           disabled={!hasChanged || isSaving}
-          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : 'Save'}
         </button>
@@ -603,7 +603,7 @@ function TournamentCorrections({
   return (
     <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Tournament</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament</p>
       </div>
       {!tournament ? (
         <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
@@ -623,7 +623,7 @@ function TournamentCorrections({
                 type="button"
                 onClick={saveTournament}
                 disabled={!hasChanged || isSaving || tournament.is_complete}
-                className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+                className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
               >
                 {isSaving ? 'Saving' : 'Save'}
               </button>
@@ -646,7 +646,7 @@ function PlayerCorrections({
   return (
     <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Players</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Players</p>
       </div>
       {players.length === 0 ? (
         <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No players yet.</p>
@@ -707,7 +707,7 @@ function PlayerCorrectionRow({
       <div className="grid gap-2">
         <TextField label="Name" value={name} onChange={setName} />
         <div className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
-          <label className="font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
             Team
             <select
               value={team}
@@ -723,7 +723,7 @@ function PlayerCorrectionRow({
             type="button"
             onClick={savePlayer}
             disabled={!hasChanged || isSaving}
-            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             {isSaving ? 'Saving' : 'Save'}
           </button>
@@ -748,7 +748,7 @@ function FixtureCorrections({
   return (
     <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">Fixtures</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Fixtures</p>
       </div>
       {fixtures.length === 0 ? (
         <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No fixtures yet.</p>
@@ -864,7 +864,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={saveFixture}
             disabled={!tournament || !hasNameChanged || isSaving || tournament.is_complete}
-            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             Save
           </button>
@@ -872,7 +872,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={clearScores}
             disabled={isSaving || scoreCount === 0}
-            className="min-h-10 rounded-md border border-[#F59E0B] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-10 rounded-md border border-[#F59E0B] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             Clear scores
           </button>
@@ -880,7 +880,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={deleteFixture}
             disabled={isSaving}
-            className="min-h-10 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#F85149] disabled:opacity-60"
+            className="min-h-10 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F85149] disabled:opacity-60"
           >
             Delete
           </button>
@@ -986,11 +986,11 @@ function SegmentCorrectionRow({
     <div className="border-t border-[#27272A] pt-3">
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8B949E]">
+          <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">
             {segment.kind} · Holes {segment.hole_start}-{segment.hole_end}
           </p>
           {hasScores && (
-            <span className="text-[10px] uppercase tracking-[0.14em] text-[#F59E0B]">
+            <span className="text-[10px] tracking-[0.14em] text-[#F59E0B]">
               {segment.holeScores.length} scores
             </span>
           )}
@@ -1042,7 +1042,7 @@ function SegmentCorrectionRow({
             isSaving ||
             tournament.is_complete
           }
-          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : hasScores && hasMembershipChanged ? 'Clear scores + save' : 'Save segment'}
         </button>
@@ -1308,7 +1308,7 @@ function FixtureModeButton({
           : 'border-[#27272A] bg-[#0C0C0E] text-[#A1A1AA]'
       }`}
     >
-      <span className="block text-xs font-bold uppercase tracking-[0.14em]">{label}</span>
+      <span className="block text-xs font-bold tracking-[0.14em]">{label}</span>
       <span className="mt-1 block text-xs leading-5 text-[#8B949E]">{description}</span>
     </button>
   );
@@ -1333,7 +1333,7 @@ function OneVsOnePicker({
 }) {
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">1v1 players</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">1v1 players</p>
       <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
         Pick any two players. Side A and Side B are the two scoring sides for this match.
       </p>
@@ -1344,7 +1344,7 @@ function OneVsOnePicker({
       <button
         type="button"
         onClick={() => onCpiEnabledChange(!cpiEnabled)}
-        className={`mt-3 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] ${
+        className={`mt-3 rounded-md border px-3 py-2 text-xs font-bold tracking-[0.12em] ${
           cpiEnabled ? 'border-[#F59E0B] text-[#F59E0B]' : 'border-[#27272A] text-[#8B949E]'
         }`}
       >
@@ -1367,7 +1367,7 @@ function TeamSlotPicker({
 }) {
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">{label}</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">{label}</p>
       <div className="mt-2 space-y-2">
         {slots.map((playerId, index) => (
           <PlayerSelect
@@ -1398,7 +1398,7 @@ function FrontNinePicker({
 }) {
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">Front 9 players</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Front 9 players</p>
       <div className="mt-2 grid gap-2">
         {players.map((player) => {
           const isSelected = selectedPlayerIds.includes(player.id);
@@ -1442,11 +1442,11 @@ function SinglesPairPicker({
 }) {
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">Back 9 singles</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Back 9 singles</p>
       <div className="mt-2 space-y-3">
         {pairs.map((pair, index) => (
           <div key={index} className="rounded-md border border-[#27272A] bg-[#18181B] p-3">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#A1A1AA]">
+            <p className="text-xs font-bold tracking-[0.14em] text-[#A1A1AA]">
               Singles {String.fromCharCode(65 + index)}
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -1466,7 +1466,7 @@ function SinglesPairPicker({
             <button
               type="button"
               onClick={() => updatePair(pairs, index, { cpiEnabled: !pair.cpiEnabled }, onChange)}
-              className={`mt-3 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] ${
+              className={`mt-3 rounded-md border px-3 py-2 text-xs font-bold tracking-[0.12em] ${
                 pair.cpiEnabled
                   ? 'border-[#F59E0B] text-[#F59E0B]'
                   : 'border-[#27272A] text-[#8B949E]'
@@ -1496,7 +1496,7 @@ function FixturePreview({
 
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">Preview</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Preview</p>
       <p className="mt-2 text-sm text-[#E6EDF3]">
         {selectedPlayers.length} players ·{' '}
         {isOneVsOneFixture
