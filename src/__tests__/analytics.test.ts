@@ -35,7 +35,7 @@ vi.mock('posthog-js', () => ({
 vi.stubGlobal('import', {
   meta: {
     env: {
-      VITE_POSTHOG_API_KEY: 'test-api-key',
+      VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: 'test-project-token',
       VITE_POSTHOG_DEBUG: 'false',
     },
   },

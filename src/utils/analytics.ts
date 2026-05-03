@@ -4,13 +4,13 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import posthog from 'posthog-js';
 
 // Log the environment variables to help debug PostHog initialization
-const posthogApiKey = import.meta.env.VITE_POSTHOG_API_KEY;
+const posthogProjectToken = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogDebug = import.meta.env.VITE_POSTHOG_DEBUG === 'true';
 
 // Log configuration in development mode
 if (posthogDebug) {
-  if (!posthogApiKey) {
-    console.warn('PostHog API key is missing! Add VITE_POSTHOG_API_KEY to your Netlify environment variables');
+  if (!posthogProjectToken) {
+    console.warn('PostHog project token is missing! Add VITE_PUBLIC_POSTHOG_PROJECT_TOKEN to your environment variables');
   }
 }
 

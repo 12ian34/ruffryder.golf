@@ -59,6 +59,15 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 `SUPABASE_SERVICE_ROLE_KEY` is server/admin only. Never import it from client code and never expose it to Vite.
 
+AI features that call hosted model providers must keep provider keys server-side. Use unprefixed variables such as:
+
+```bash
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Never expose model provider keys through `VITE_` variables. Browser code should call an authenticated server boundary such as a Netlify Function, and AI features should stay read-only unless a user explicitly asks for a confirmed write flow.
+
 Do not use `supabase gen types --db-url` for type generation. That CLI path requires Docker. Use:
 
 ```bash
@@ -122,6 +131,7 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/Hero.tsx` is legacy/unused after the bottom-nav IA cleanup; do not build new flows around it unless it is reintroduced intentionally.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, and score-movement timeline data for tournament-day scanning.
+- `src/features/tournament2026/components/LeaderboardSection.tsx` includes an on-demand read-only AI recap card. It builds compact snapshots through `src/features/tournament2026/aiRecap.ts` and calls `netlify/functions/ai-recap.mjs`; do not call OpenAI directly from browser code.
 - `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture score entry as collapsible work cards with front/back switches, grouped back-nine singles by hole, Supabase-backed course metadata, compact saved-by/saved-time audit metadata, admin single-hole clear controls, and autosaves each hole through the 2026 query service. It must remain locked when `tournaments.is_complete` is true.
 - `src/features/tournament2026/components/StatsSection.tsx` is legacy/unused after the Archive consolidation; prefer the Archive player-history view for new work unless this file is removed.
 - `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Course shows current par/yardage and lets admins correct metadata. Activity reads recent DB-backed audit logs. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role edits belong in the Players section, not the user Profile page.

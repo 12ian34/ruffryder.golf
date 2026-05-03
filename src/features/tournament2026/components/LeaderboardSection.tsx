@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
@@ -8,8 +9,10 @@ import type {
   TournamentRow,
 } from '../../../services/tournament2026Queries';
 import type { CourseHoleMetadata } from '../../../domain/2026/course';
+import { generateAiRecap } from '../../../services/aiRecapService';
+import { buildAiRecapSnapshot } from '../aiRecap';
 import { buildProgressTimeline, generateTournamentHighlights } from '../insights';
-import { calculateTotals } from '../viewUtils';
+import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
 import { Panel, StatusCard } from './Layout';
 
@@ -28,6 +31,26 @@ export function LeaderboardSection({
   const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
   const timeline = buildProgressTimeline(fixtures);
   const recentTimeline = timeline.slice(-8);
+  const [recap, setRecap] = useState<string | null>(null);
+  const [recapError, setRecapError] = useState<string | null>(null);
+  const [isGeneratingRecap, setIsGeneratingRecap] = useState(false);
+
+  const handleGenerateRecap = async () => {
+    if (isGeneratingRecap) return;
+
+    setIsGeneratingRecap(true);
+    setRecapError(null);
+
+    try {
+      const snapshot = buildAiRecapSnapshot({ tournament, fixtures, players, courseHoles });
+      const result = await generateAiRecap(snapshot);
+      setRecap(result.recap);
+    } catch (error) {
+      setRecapError(getErrorMessage(error));
+    } finally {
+      setIsGeneratingRecap(false);
+    }
+  };
 
   return (
     <Panel title="Live Leaderboard" eyebrow="Supabase realtime">
@@ -36,8 +59,14 @@ export function LeaderboardSection({
         <ScoreTile label="Foursomes" score={totals.foursomes} />
         <ScoreTile label="Singles" score={totals.singles} />
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <InsightCard title="Highlights Reel" items={highlights} />
+        <AiRecapCard
+          recap={recap}
+          error={recapError}
+          isGenerating={isGeneratingRecap}
+          onGenerate={handleGenerateRecap}
+        />
         <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
       </div>
       <div className="-mx-3 mt-4 border-t border-[#27272A] sm:mx-0">
@@ -48,6 +77,45 @@ export function LeaderboardSection({
         )}
       </div>
     </Panel>
+  );
+}
+
+function AiRecapCard({
+  recap,
+  error,
+  isGenerating,
+  onGenerate,
+}: {
+  recap: string | null;
+  error: string | null;
+  isGenerating: boolean;
+  onGenerate: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">AI Recap</p>
+          <p className="mt-1 text-xs text-[#8B949E]">Read-only commentator, generated on demand.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={isGenerating}
+          className="shrink-0 rounded-md border border-[#3FB950]/70 px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#3FB950] disabled:cursor-not-allowed disabled:border-[#27272A] disabled:text-[#8B949E]"
+        >
+          {isGenerating ? 'Calling booth' : recap ? 'Refresh' : 'Generate'}
+        </button>
+      </div>
+      {error && <StatusCard tone="error">{error}</StatusCard>}
+      {recap ? (
+        <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#E6EDF3]">{recap}</p>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-[#A1A1AA]">
+          Generate a short live read of the board once scores start moving.
+        </p>
+      )}
+    </div>
   );
 }
 

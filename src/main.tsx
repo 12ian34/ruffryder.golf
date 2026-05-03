@@ -5,8 +5,8 @@ import App from './App';
 import './index.css';
 
 // Initialize PostHog with environment variables
-const posthogKey = import.meta.env.VITE_POSTHOG_API_KEY;
-const posthogHost = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
+const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com';
 const posthogDebug = import.meta.env.VITE_POSTHOG_DEBUG === 'true';
 
 // Initialize PostHog if the key is available

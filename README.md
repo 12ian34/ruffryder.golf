@@ -140,8 +140,8 @@ web app for live tracking and score keeping for an annual golf tournament with f
    | `VITE_FIREBASE_STORAGE_BUCKET` | Storage bucket (e.g., `project-id.appspot.com`) |
    | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
    | `VITE_FIREBASE_APP_ID` | Firebase app ID |
-   | `VITE_POSTHOG_API_KEY` | PostHog analytics key (optional for local dev) |
-   | `VITE_POSTHOG_HOST` | PostHog host (default: `https://eu.i.posthog.com`) |
+   | `VITE_PUBLIC_POSTHOG_PROJECT_TOKEN` | PostHog project token (optional for local dev) |
+   | `VITE_PUBLIC_POSTHOG_HOST` | PostHog host (default: `https://eu.i.posthog.com`) |
 
    Optional variables for local development:
 
@@ -150,13 +150,22 @@ web app for live tracking and score keeping for an annual golf tournament with f
    | `VITE_USE_FIREBASE_EMULATOR` | Set to `true` to use local Firebase emulators |
    | `VITE_POSTHOG_DEBUG` | Set to `true` for PostHog debug mode |
 
+   Server-only variables for Netlify Functions and local `netlify dev`:
+
+   | Variable | Description |
+   |----------|-------------|
+   | `OPENAI_API_KEY` | OpenAI API key for server-side AI recap generation. Never prefix with `VITE_`. |
+   | `OPENAI_MODEL` | Optional OpenAI model override for AI recaps. Defaults to `gpt-5.4-mini`. |
+
 4. **Start the development server**
 
    ```bash
    npm run dev
    ```
 
-   Open http://localhost:5173 in your browser.
+   This starts Netlify Dev on `http://localhost:3000`, which proxies the Vite app and serves local Netlify Functions. Use `npm run dev:vite` only when you do not need functions such as the AI recap.
+
+   Open http://localhost:3000 in your browser.
 
 ### using firebase emulators (recommended for development)
 
@@ -195,7 +204,8 @@ Using emulators lets you develop without affecting production data.
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server (port 5173) |
+| `npm run dev` | Start Netlify Dev with Vite and local functions (port 3000) |
+| `npm run dev:vite` | Start Vite only (port 5173, no Netlify Functions) |
 | `npm run build` | Type-check + production build |
 | `npm run type-check` | TypeScript validation only |
 | `npm run lint` | ESLint check |

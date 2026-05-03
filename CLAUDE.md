@@ -355,7 +355,8 @@ Emulator ports (configured in `firebase.json`):
 
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start dev server (port 5173)
+npm run dev          # Start Netlify Dev with Vite and functions (port 3000)
+npm run dev:vite     # Start Vite only (port 5173, no Netlify Functions)
 npm run build        # Type-check + production build
 npm run type-check   # TypeScript validation only
 npm run lint         # ESLint check
@@ -375,8 +376,8 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 
 # PostHog Analytics (required for tracking)
-VITE_POSTHOG_API_KEY=
-VITE_POSTHOG_HOST=https://eu.i.posthog.com  # optional, defaults to EU
+VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=
+VITE_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com  # optional, defaults to EU
 
 # Local Development (optional)
 VITE_USE_FIREBASE_EMULATOR=true  # connects to local emulators
