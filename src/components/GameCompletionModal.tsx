@@ -4,7 +4,7 @@ import { db } from '../config/firebase';
 import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface GameCompletionModalProps {

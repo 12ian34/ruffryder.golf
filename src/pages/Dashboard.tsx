@@ -11,7 +11,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import type { User } from '../types/user';
 import PlayerEmoji from '../components/PlayerEmoji';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -24,7 +24,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!currentUser) {
-      navigate('/');
+      navigate('/legacy');
       setIsLoading(false);
       return;
     }
@@ -137,7 +137,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/legacy/profile')}
                 className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
               >
                 Profile
@@ -180,7 +180,7 @@ export default function Dashboard() {
             </p>
             <button
               type="button"
-              onClick={() => navigate('/2026')}
+              onClick={() => navigate('/')}
               className="mt-4 rounded-lg bg-purple-500 px-4 py-2 font-medium text-white hover:bg-purple-600"
             >
               Open 2026

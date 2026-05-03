@@ -5,7 +5,7 @@ import type { Game } from '../types/game';
 import { updateTournamentScores } from '../utils/tournamentScores';
 import { calculateGamePoints } from '../utils/gamePoints';
 import { useHoleDistances } from '../hooks/useHoleDistances';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 interface ScoreEntryProps {
   gameId: string;

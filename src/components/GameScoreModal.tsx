@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Game } from '../types/game';
 import GameScoreTable from './shared/GameScoreTable';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 interface GameScoreModalProps {
   game: Game;

@@ -176,7 +176,7 @@ export default function GameCard({
 
   const handleEnterScores = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/score-entry/${initialGame.tournamentId}/${initialGame.id}`, {
+    navigate(`/legacy/score-entry/${initialGame.tournamentId}/${initialGame.id}`, {
       state: { returnToTab: 'games' }
     });
   }, [navigate, initialGame.tournamentId, initialGame.id]);

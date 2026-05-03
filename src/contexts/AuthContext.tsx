@@ -15,7 +15,7 @@ import {
 import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { auth } from '../config/firebase';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 import posthog from 'posthog-js';
 
 setPersistence(auth, browserLocalPersistence).catch((error) => {
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Send verification email
       const actionCodeSettings = {
-        url: `${window.location.origin}/?email=${encodeURIComponent(email)}`,
+        url: `${window.location.origin}/legacy?email=${encodeURIComponent(email)}`,
         handleCodeInApp: false
       };
       await sendEmailVerification(userCredential.user, actionCodeSettings);
@@ -228,7 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const actionCodeSettings = {
-        url: `${window.location.origin}/password-reset-complete`,
+        url: `${window.location.origin}/legacy/password-reset-complete`,
         handleCodeInApp: true
       };
       await sendPasswordResetEmail(auth, email, actionCodeSettings);

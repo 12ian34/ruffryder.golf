@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
 import { useAuth } from '../contexts/AuthContext';
-import { identifyUser } from '../utils/analytics';
+import { identifyUser } from '../utils/legacyAnalytics';
 
 // No longer needed as we're using the actual package
 // declare global {

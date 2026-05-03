@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 interface StrokeIndices {
   indices: number[];

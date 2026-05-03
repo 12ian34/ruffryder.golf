@@ -36,6 +36,10 @@ const ADMIN_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
   { id: 'profile', label: 'Profile' },
 ];
 
+export function getSupabaseEmailRedirectTo() {
+  return window.location.origin;
+}
+
 export default function Tournament2026() {
   const configStatus = useMemo(() => getSupabaseConfigStatus(), []);
   const isOnline = useOnlineStatus();
@@ -128,7 +132,7 @@ export default function Tournament2026() {
       const { error: signInError } = await getSupabaseClient().auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/2026`,
+          emailRedirectTo: getSupabaseEmailRedirectTo(),
         },
       });
 

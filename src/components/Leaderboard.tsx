@@ -9,7 +9,7 @@ import StatusFilter from './filters/StatusFilter';
 import { GameList } from './GameList';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useAuth } from '../contexts/AuthContext';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 export default function Leaderboard() {
   const [tournament, setTournament] = useState<Tournament | null>(null);

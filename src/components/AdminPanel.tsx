@@ -4,7 +4,7 @@ import TournamentManagement from './TournamentManagement';
 import StrokeIndexManagement from './StrokeIndexManagement';
 import UserManagement from './UserManagement';
 import PlayerManagement from './PlayerManagement';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 export default function AdminPanel() {
   const [selectedTab, setSelectedTab] = useState(0);

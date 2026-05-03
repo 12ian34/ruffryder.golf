@@ -50,7 +50,7 @@ export default function PasswordResetComplete() {
       // Wait a moment to ensure Firebase has processed the password reset
       await new Promise(resolve => setTimeout(resolve, 1000));
       await signIn(email, password);
-      navigate('/dashboard');
+      navigate('/legacy/dashboard');
     } catch (err: any) {
       console.error('Password reset error:', err);
       if (err.code === 'auth/invalid-action-code') {

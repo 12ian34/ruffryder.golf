@@ -61,7 +61,7 @@ describe('analytics utilities', () => {
         },
       }));
       
-      const { track } = await import('../utils/analytics');
+      const { track } = await import('../utils/legacyAnalytics');
       
       track('test_event', { property1: 'value1' });
 
@@ -82,7 +82,7 @@ describe('analytics utilities', () => {
       
       // Force re-import
       vi.resetModules();
-      const { track } = await import('../utils/analytics');
+      const { track } = await import('../utils/legacyAnalytics');
       
       track('test_event', { custom: 'data' });
 
@@ -106,7 +106,7 @@ describe('analytics utilities', () => {
       }));
       
       vi.resetModules();
-      const { track } = await import('../utils/analytics');
+      const { track } = await import('../utils/legacyAnalytics');
       
       track('simple_event');
 
@@ -127,7 +127,7 @@ describe('analytics utilities', () => {
       }));
       
       vi.resetModules();
-      const { track } = await import('../utils/analytics');
+      const { track } = await import('../utils/legacyAnalytics');
       
       track('test_event');
 
@@ -143,7 +143,7 @@ describe('analytics utilities', () => {
   describe('identifyUser', () => {
     it('should identify user with email and properties', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'user-456',
@@ -169,7 +169,7 @@ describe('analytics utilities', () => {
 
     it('should set person properties', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'user-789',
@@ -193,7 +193,7 @@ describe('analytics utilities', () => {
 
     it('should register super properties', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'super-user',
@@ -216,7 +216,7 @@ describe('analytics utilities', () => {
 
     it('should capture identification events', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'event-user',
@@ -246,7 +246,7 @@ describe('analytics utilities', () => {
 
     it('should create alias for email to uid', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'alias-user',
@@ -265,7 +265,7 @@ describe('analytics utilities', () => {
 
     it('should reset PostHog when user is null', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       identifyUser(null);
 
@@ -275,7 +275,7 @@ describe('analytics utilities', () => {
 
     it('should reset PostHog when user has no email', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const userWithoutEmail = {
         uid: 'no-email-user',
@@ -292,7 +292,7 @@ describe('analytics utilities', () => {
 
     it('should derive name from email when displayName is missing', async () => {
       vi.resetModules();
-      const { identifyUser } = await import('../utils/analytics');
+      const { identifyUser } = await import('../utils/legacyAnalytics');
       
       const user = {
         uid: 'no-name-user',

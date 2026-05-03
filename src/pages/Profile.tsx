@@ -6,7 +6,7 @@ import { db } from '../config/firebase';
 import { availableEmojis } from '../utils/animalAvatars';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import type { User } from '../types/user';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 
 export default function Profile() {
   const { currentUser, signOut } = useAuth();
@@ -20,7 +20,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!currentUser) {
-      navigate('/');
+      navigate('/legacy');
       return;
     }
 
@@ -121,7 +121,7 @@ export default function Profile() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/');
+      navigate('/legacy');
     } catch (err: any) {
       showErrorToast('Failed to sign out');
     }
@@ -154,7 +154,7 @@ export default function Profile() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/legacy/dashboard')}
               className="text-purple-500 hover:text-purple-600 dark:text-purple-400"
             >
               Back to Dashboard

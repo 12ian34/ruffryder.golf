@@ -24,7 +24,7 @@ export default function ScoreEntryPage() {
   const handleBackNavigation = () => {
     // Pass the tab state back to the dashboard so it opens on the games tab
     const returnToTab = location.state?.returnToTab || 'games';
-    navigate('/dashboard', { state: { activeTab: returnToTab } });
+    navigate('/legacy/dashboard', { state: { activeTab: returnToTab } });
   };
 
   const scrollToFirstIncompleteHole = () => {
@@ -80,7 +80,7 @@ export default function ScoreEntryPage() {
 
   useEffect(() => {
     if (!currentUser) {
-      navigate('/login');
+      navigate('/legacy');
       return;
     }
 

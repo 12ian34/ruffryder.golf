@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Player } from '../../types/player';
-import { track } from '../../utils/analytics';
+import { track } from '../../utils/legacyAnalytics';
 import { useAllActiveTournaments } from '../../hooks/useAllActiveTournaments';
 import { showErrorToast } from '../../utils/toast';
 

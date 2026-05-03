@@ -1,17 +1,11 @@
-import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
-import { usePostHog } from './hooks/usePostHog';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import About from './pages/About';
-import PasswordResetComplete from './pages/PasswordResetComplete';
-import ScoreEntryPage from './pages/ScoreEntryPage';
 import Tournament2026 from './pages/Tournament2026';
 import { clearLocalStorage } from './utils/storage';
+
+const LegacyApp = lazy(() => import('./pages/LegacyApp'));
 
 export default function App() {
   useEffect(() => {
@@ -21,29 +15,33 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }
 
 function AppContent() {
-  // Initialize PostHog tracking
-  usePostHog();
-
   return (
     <>
       <Router>
         <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/password-reset-complete" element={<PasswordResetComplete />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/" element={<Tournament2026 />} />
           <Route path="/2026" element={<Tournament2026 />} />
-          <Route path="/score-entry/:tournamentId/:gameId" element={<ScoreEntryPage />} />
+          <Route path="/login" element={<RedirectWithSearch to="/legacy" />} />
+          <Route path="/dashboard" element={<Navigate to="/legacy/dashboard" replace />} />
+          <Route path="/profile" element={<Navigate to="/legacy/profile" replace />} />
+          <Route path="/password-reset-complete" element={<RedirectWithSearch to="/legacy/password-reset-complete" />} />
+          <Route path="/about" element={<Navigate to="/legacy/about" replace />} />
+          <Route path="/score-entry/:tournamentId/:gameId" element={<LegacyScoreEntryRedirect />} />
+          <Route
+            path="/legacy/*"
+            element={
+              <Suspense fallback={<div className="min-h-screen bg-gray-950 text-gray-100" />}>
+                <LegacyApp />
+              </Suspense>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
       <Toaster 
@@ -72,4 +70,20 @@ function AppContent() {
       />
     </>
   );
+}
+
+function RedirectWithSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+
+  return <Navigate to={`${to}${search}`} replace />;
+}
+
+function LegacyScoreEntryRedirect() {
+  const { gameId, tournamentId } = useParams<{ gameId: string; tournamentId: string }>();
+
+  if (!gameId || !tournamentId) {
+    return <Navigate to="/legacy/dashboard" replace />;
+  }
+
+  return <Navigate to={`/legacy/score-entry/${tournamentId}/${gameId}`} replace />;
 }

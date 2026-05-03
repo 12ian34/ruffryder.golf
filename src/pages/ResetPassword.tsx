@@ -16,7 +16,7 @@ export default function ResetPassword() {
 
   useEffect(() => {
     if (!oobCode || !email) {
-      navigate('/');
+      navigate('/legacy');
     }
   }, [oobCode, email, navigate]);
 
@@ -52,12 +52,12 @@ export default function ResetPassword() {
       await signIn(email, password);
       
       // Navigate to dashboard after successful sign in
-      navigate('/dashboard');
+      navigate('/legacy/dashboard');
     } catch (err: any) {
       console.error('Reset password error:', err);
       setError(err.message);
       if (err.code === 'auth/invalid-action-code') {
-        navigate('/');
+        navigate('/legacy');
       }
     } finally {
       setIsLoading(false);

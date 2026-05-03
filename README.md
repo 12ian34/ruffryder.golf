@@ -6,9 +6,9 @@ The Ruff Ryders Cup app is the live tournament console for players. Use it on to
 
 ## Start Here
 
-Open the 2026 console:
+Open the app:
 
-https://ruffryder.golf/2026
+https://ruffryder.golf
 
 Sign in with the email address linked to your player profile. If you are prompted to finish your profile, add your display name and avatar so the rest of the field can recognise you.
 

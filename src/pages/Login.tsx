@@ -38,7 +38,7 @@ export default function Login() {
   // Handle dashboard redirect - only if user is verified and we're not in a verification flow
   useEffect(() => {
     if (!authLoading && currentUser?.emailVerified && !searchParams.get('email')) {
-      navigate('/dashboard');
+      navigate('/legacy/dashboard');
     }
   }, [currentUser, navigate, authLoading, searchParams]);
 
@@ -95,7 +95,7 @@ export default function Login() {
         method: 'email'
       });
       
-      navigate('/dashboard');
+      navigate('/legacy/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {

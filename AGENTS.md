@@ -23,9 +23,9 @@ Do not move contributor setup, stack inventories, or agent-only rebuild notes ba
 
 ## Project Direction
 
-Ruff Ryders Cup is being rebuilt for the 2026 tournament as a Supabase/Postgres-backed React app.
+Ruff Ryders Cup is now led by the Supabase/Postgres-backed 2026 app.
 
-The current Firebase implementation should be used as a reference, not extended as the long-term model. The old app assumes one USA player vs one Europe player over 18 holes with both stroke-play and match-play points. The 2026 format changes the match unit itself, so new work should use a clean domain model.
+The current Firebase implementation should be used as a reference and legacy fallback, not extended as the long-term model. The old app assumes one USA player vs one Europe player over 18 holes with both stroke-play and match-play points. The 2026 format changes the match unit itself, so new work should use a clean domain model.
 
 ## Design System
 
@@ -120,7 +120,7 @@ The current Supabase schema is managed through migrations in `supabase/migration
 - `20260503201000_tournament_activity_feed.sql` exposes a sanitized `get_tournament_activity` RPC for authenticated users so the Scores tab can show full activity without exposing raw audit row JSON.
 - `20260503203000_ai_newsroom_artifacts.sql` creates persisted AI newsroom artifacts for highlights commentary, moment of the round, cheese detector, rivalry watch, captain's briefing, and post-round reports.
 
-When adding tables that should update the `/2026` console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
+When adding tables that should update the main Supabase console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
 
 Supabase Auth email template copy/design is documented in `docs/supabase-auth-email-template.md`. Supabase currently owns the actual hosted email template; keep the repo doc in sync when the login voice changes.
 
@@ -137,16 +137,17 @@ Supabase Auth email template copy/design is documented in `docs/supabase-auth-em
 
 ## 2026 Supabase UI
 
-The fresh Supabase-backed console lives at `/2026`. The legacy Firebase dashboard links to it from the `2026` tab, but the new route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS.
+The fresh Supabase-backed console is the main app at `/`. `/2026` remains a compatibility alias for existing bookmarks, and the old Firebase app is fallback-only under `/legacy/*`. The 2026 route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS; do not wrap it in the legacy Firebase `AuthProvider`.
 
 Current 2026 UI/service layout:
 
-- `src/lib/supabase.ts` lazily creates the browser Supabase client so the legacy app can still load when Supabase env vars are absent.
+- `src/App.tsx` routes `/` and `/2026` to `src/pages/Tournament2026.tsx`. `src/pages/LegacyApp.tsx` is lazy-loaded under `/legacy/*` and is the only route boundary that should wrap Firebase `AuthProvider`.
+- `src/lib/supabase.ts` lazily creates the browser Supabase client and surfaces a config warning when the main app is missing Supabase env vars.
 - `src/pages/Tournament2026.tsx` is the route-level orchestrator. It handles Supabase config checks, OTP sign-in, profile creation flow, auth state refresh, realtime subscription setup, and section composition.
-- The authenticated `/2026` nav is bottom-only and task-based: `My Game`, `Scores`, `Archive`, `Profile`, plus admin-only `Admin`. Do not show admin setup to non-admins in nav, and keep sign-out in Profile with confirmation.
+- The authenticated Supabase app nav is bottom-only and task-based: `My Game`, `Scores`, `Archive`, `Profile`, plus admin-only `Admin`. Do not show admin setup to non-admins in nav, and keep sign-out in Profile with confirmation.
 - `src/features/tournament2026/components/AuthPanels.tsx` contains sign-in and profile creation panels. The sign-in panel supports a resend cooldown and should use Ruff Ryders access-card language, not visible backend/vendor language.
 - `src/features/tournament2026/components/Layout.tsx` contains shared shell, panel, form, and status-card primitives for the 2026 console.
-- `src/features/tournament2026/components/PlayerHistory.tsx` owns the shared player-history popover for the 2026 console. Wrap authenticated `/2026` content in `PlayerHistoryProvider` and use `PlayerHistoryTrigger` for non-conflicting player-name displays instead of creating one-off popovers.
+- `src/features/tournament2026/components/PlayerHistory.tsx` owns the shared player-history popover for the 2026 console. Wrap authenticated `Tournament2026` content in `PlayerHistoryProvider` and use `PlayerHistoryTrigger` for non-conflicting player-name displays instead of creating one-off popovers.
 - `src/features/tournament2026/components/Hero.tsx` is legacy/unused after the bottom-nav IA cleanup; do not build new flows around it unless it is reintroduced intentionally.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, a Chart.js live score curve, and score-movement timeline data for tournament-day scanning.
@@ -157,7 +158,8 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/StatsSection.tsx` is legacy/unused after the Archive consolidation; prefer the Archive player-history view for new work unless this file is removed.
 - `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Course shows current par/yardage and lets admins correct metadata. Activity reads recent DB-backed audit logs. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role edits belong in the Players section, not the user Profile page.
 - `src/features/tournament2026/components/ProfileSection.tsx` supports self-service profile display name/avatar through the `update_own_profile` RPC and account sign-out. Keep it scoped to the signed-in user's own account.
-- PostHog for `/2026` identifies Supabase users by email and registers profile/player super properties after profile load. Keep new AI, profile, archive, score-entry, and admin interactions tracked with `track2026()` using flat snake_case event properties.
+- PostHog for the main Supabase app identifies Supabase users by email and registers profile/player super properties after profile load. Keep new AI, profile, archive, score-entry, and admin interactions tracked with `track2026()` using flat snake_case event properties.
+- `src/utils/analytics.ts` must stay Firebase-free so the main app can load without legacy Firebase config. Firebase-specific tracking belongs in `src/utils/legacyAnalytics.ts`.
 - `src/features/tournament2026/components/HistorySection.tsx` exports the Archive view. It combines historical tournament drilldowns from `legacy_tournaments`/`legacy_games` with player history from `player_tournament_stats`. Migrated score-only rows should display as historical scores/CPI, not as `0/0` 2026 hole-count stats.
 - `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
 - `src/features/tournament2026/insights.ts` derives 2026 highlights and score-movement timeline data from fixture segments and hole scores.

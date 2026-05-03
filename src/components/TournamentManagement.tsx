@@ -11,7 +11,7 @@ import type { Game } from '../types/game';
 import type { Tournament, TeamConfig, Matchup } from '../types/tournament';
 import { auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
-import { track } from '../utils/analytics';
+import { track } from '../utils/legacyAnalytics';
 import { calculateAverageTeamHandicaps, type TeamAverageHandicaps } from '../utils/handicapScoring';
 
 interface NewTournamentForm {
