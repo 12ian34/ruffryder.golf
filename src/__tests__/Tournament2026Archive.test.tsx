@@ -17,7 +17,7 @@ describe('ArchiveSection', () => {
 
     expect(view.getAllByText('Score')).not.toHaveLength(0);
     expect(view.getAllByText('Raw')).not.toHaveLength(0);
-    expect(view.getAllByText('Handicap')).not.toHaveLength(0);
+    expect(view.getAllByText('Legacy adj.')).not.toHaveLength(0);
     expect(view.getAllByText('84')).not.toHaveLength(0);
     expect(view.getAllByText('68')).not.toHaveLength(0);
     expect(view.queryByText('0/0')).not.toBeInTheDocument();

@@ -179,7 +179,7 @@ export default function Tournament2026() {
   if (isLoading) {
     return (
       <PageShell>
-        <StatusCard>Loading Ruff Ryders Cup 2026...</StatusCard>
+        <StatusCard>Loading Ruff Ryders Cup 2026…</StatusCard>
       </PageShell>
     );
   }

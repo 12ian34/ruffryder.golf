@@ -8,13 +8,13 @@ export function Hero({
   profile: ProfileRow;
 }) {
   return (
-    <section className="rounded-lg border border-[#27272A] bg-[radial-gradient(circle_at_top_left,rgba(63,185,80,0.16),transparent_32%),#09090B] p-6 shadow-[0_18px_80px_rgba(0,0,0,0.45)]">
+    <section className="rounded-lg border border-[#27272A] bg-[#09090B] p-4">
       <p className="text-sm tracking-[0.28em] text-[#3FB950]">
         {profile.is_admin ? 'Admin access' : 'Player access'}
       </p>
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-4xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
+          <h2 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl">
             {tournament ? tournament.name : 'No Active Tournament'}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A1A1AA]">

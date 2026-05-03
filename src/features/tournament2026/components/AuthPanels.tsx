@@ -39,7 +39,7 @@ export function SignInPanel({
   };
 
   return (
-    <section className="flex min-h-[calc(100vh-1px)] flex-col bg-[#050505] px-4 py-10 font-data text-[#E6EDF3] sm:px-6">
+    <section className="flex min-h-[calc(100vh-1px)] flex-col bg-[#050506] px-4 py-10 font-data text-[#E6EDF3] sm:px-6">
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center">
         <p className="text-[10px] font-bold tracking-[0.24em] text-[#3FB950]">
           the al reynolds
@@ -61,7 +61,7 @@ export function SignInPanel({
             placeholder="the.hologram@wycombe-shites.gov.uk"
             aria-invalid={shouldShowEmailFeedback}
             aria-describedby={shouldShowEmailFeedback ? 'signin-email-feedback' : undefined}
-            className={`min-h-11 w-full rounded-md border bg-[#050505] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none ${
+            className={`min-h-11 w-full rounded-md border bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none ${
               shouldShowEmailFeedback ? 'border-[#F85149] focus:border-[#F85149]' : 'border-[#27272A] focus:border-[#3FB950]'
             }`}
           />
@@ -126,7 +126,7 @@ function isPlausibleEmailAddress(email: string): boolean {
 
 function getSignInButtonLabel(isSubmitting: boolean, cooldownSeconds: number): string {
   if (isSubmitting) {
-    return 'sending...';
+    return 'sending…';
   }
 
   if (cooldownSeconds > 0) {

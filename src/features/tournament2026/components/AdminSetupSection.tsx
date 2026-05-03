@@ -5,17 +5,22 @@ import {
   completeTournament2026,
   createCustomFixture2026,
   createPlayer2026,
+  createPlayerTournamentStat2026,
   createTournament2026,
+  deletePlayerTournamentStat2026,
   deleteFixture2026,
   reopenTournament2026,
+  setTournamentActive2026,
   updateCourseHole2026,
   updateFixture2026,
   updatePlayer2026,
+  updatePlayerTournamentStat2026,
   updateSegment2026,
   updateTournament2026,
   type AuditLogRow,
   type FixtureView,
   type PlayerRow,
+  type PlayerTournamentStatsRow,
   type Team,
   type Tournament2026Data,
   type TournamentRow,
@@ -58,6 +63,7 @@ export function AdminSetupSection({
               onSaved={onSaved}
             />
           </div>
+          <TournamentList tournaments={data.tournaments} onSaved={onSaved} />
           <FinalizationPanel
             tournament={data.activeTournament}
             fixtures={data.fixtures}
@@ -75,6 +81,14 @@ export function AdminSetupSection({
           </div>
           <div className="mt-4">
             <ProfileLinkingPanel profiles={data.profiles} players={data.players} onSaved={onSaved} />
+          </div>
+          <div className="mt-4">
+            <PlayerStatsEditor
+              stats={data.playerStats}
+              players={data.players}
+              tournaments={data.tournaments}
+              onSaved={onSaved}
+            />
           </div>
         </AdminTaskSection>
         <AdminTaskSection
@@ -185,7 +199,7 @@ function AdminTaskSection({
   children: ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="border-t border-[#27272A] bg-[#050505] first:border-t-0">
+    <details open={defaultOpen} className="border-t border-[#27272A] bg-[#050506] first:border-t-0">
       <summary className="cursor-pointer list-none px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -199,6 +213,84 @@ function AdminTaskSection({
       </summary>
       <div className="border-t border-[#27272A] px-3 py-3">{children}</div>
     </details>
+  );
+}
+
+function StatusPill({
+  tone,
+  children,
+}: {
+  tone: 'success' | 'warning' | 'error' | 'muted';
+  children: ReactNode;
+}) {
+  const className = {
+    success: 'border-[#3FB950] text-[#3FB950]',
+    warning: 'border-[#F59E0B] text-[#F59E0B]',
+    error: 'border-[#F85149] text-[#F85149]',
+    muted: 'border-[#27272A] text-[#8B949E]',
+  }[tone];
+
+  return (
+    <span className={`rounded border px-2 py-1 text-[10px] font-bold tracking-[0.14em] ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+function AdminTextInput({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  required = true,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        type={type}
+        required={required}
+        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+      />
+    </label>
+  );
+}
+
+function TournamentSelect({
+  label,
+  value,
+  tournaments,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  tournaments: TournamentRow[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+      >
+        <option value="">No linked tournament</option>
+        {tournaments.map((tournament) => (
+          <option key={tournament.id} value={tournament.id}>
+            {tournament.year} · {tournament.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -228,6 +320,15 @@ function formatAuditTime(value: string): string {
   }).format(new Date(value));
 }
 
+function formatCompactDateTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
 function formatChangedFields(fields: string[] | null): string | null {
   if (!fields?.length) {
     return null;
@@ -238,6 +339,24 @@ function formatChangedFields(fields: string[] | null): string | null {
 
 function shortId(value: string): string {
   return value.length <= 8 ? value : value.slice(0, 8);
+}
+
+function parseOptionalNumber(value: string): number | null {
+  return value.trim() ? Number(value) : null;
+}
+
+function toDateInputValue(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function toCompletedAtIso(value: string): string {
+  return `${value}T12:00:00.000Z`;
 }
 
 function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
@@ -275,6 +394,117 @@ function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
       <TextField label="CPI threshold" value={threshold} onChange={setThreshold} type="number" />
       <SubmitButton isSaving={isSaving}>Create tournament</SubmitButton>
     </SetupForm>
+  );
+}
+
+function TournamentList({
+  tournaments,
+  onSaved,
+}: {
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  if (tournaments.length === 0) {
+    return (
+      <div className="mt-4 border-y border-[#27272A] bg-[#050506] px-3 py-3 sm:rounded-md sm:border">
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament list</p>
+        <p className="mt-2 text-sm text-[#8B949E]">No Supabase tournaments have been created yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament list</p>
+        <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+          Activate the event players should see, or leave all events inactive during setup.
+        </p>
+      </div>
+      <div>
+        {tournaments.map((tournament) => (
+          <TournamentListRow key={tournament.id} tournament={tournament} onSaved={onSaved} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TournamentListRow({
+  tournament,
+  onSaved,
+}: {
+  tournament: TournamentRow;
+  onSaved: () => Promise<void>;
+}) {
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nextActiveState = !tournament.is_active;
+
+  const updateActiveState = async () => {
+    if (!nextActiveState) {
+      const confirmed = window.confirm(
+        `Deactivate "${tournament.name}"? Players will see no active event until another tournament is activated.`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await setTournamentActive2026({
+        tournamentId: tournament.id,
+        isActive: nextActiveState,
+      });
+      track2026('tournament_active_state_updated', {
+        tournament_id: tournament.id,
+        is_active: nextActiveState,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
+              {tournament.name}
+            </p>
+            <StatusPill tone={tournament.is_active ? 'success' : 'muted'}>
+              {tournament.is_active ? 'Active' : 'Inactive'}
+            </StatusPill>
+            {tournament.is_complete ? <StatusPill tone="warning">Complete</StatusPill> : null}
+          </div>
+          <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
+            {tournament.year} · CPI threshold {tournament.cpi_threshold} · Updated{' '}
+            {formatCompactDateTime(tournament.updated_at)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={updateActiveState}
+          disabled={isSaving}
+          className={`min-h-11 rounded-md border px-4 py-2 text-xs font-bold tracking-[0.14em] ${
+            tournament.is_active
+              ? 'border-[#F59E0B] text-[#F59E0B]'
+              : 'border-[#3FB950] text-[#3FB950]'
+          } disabled:border-[#27272A] disabled:text-[#484F58]`}
+        >
+          {isSaving ? 'Saving' : tournament.is_active ? 'Deactivate' : 'Activate'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
   );
 }
 
@@ -324,6 +554,328 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
       <TextField label="Current CPI" value={cpi} onChange={setCpi} type="number" />
       <SubmitButton isSaving={isSaving}>Add player</SubmitButton>
     </SetupForm>
+  );
+}
+
+function PlayerStatsEditor({
+  stats,
+  players,
+  tournaments,
+  onSaved,
+}: {
+  stats: PlayerTournamentStatsRow[];
+  players: PlayerRow[];
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const sortedStats = useMemo(
+    () =>
+      [...stats].sort((a, b) => {
+        if (b.completion_year !== a.completion_year) {
+          return b.completion_year - a.completion_year;
+        }
+
+        return a.player_id.localeCompare(b.player_id);
+      }),
+    [stats]
+  );
+
+  return (
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Player history editor</p>
+        <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+          Correct app-generated or migrated player history without opening the database.
+        </p>
+      </div>
+      <PlayerStatCreateForm players={players} tournaments={tournaments} onSaved={onSaved} />
+      {sortedStats.length === 0 ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
+          No player history rows yet.
+        </p>
+      ) : (
+        sortedStats.map((stat) => (
+          <PlayerStatRow
+            key={stat.id}
+            stat={stat}
+            players={players}
+            tournaments={tournaments}
+            onSaved={onSaved}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
+function PlayerStatCreateForm({
+  players,
+  tournaments,
+  onSaved,
+}: {
+  players: PlayerRow[];
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const [playerId, setPlayerId] = useState('');
+  const [tournamentId, setTournamentId] = useState('');
+  const [source, setSource] = useState('manual');
+  const [completionYear, setCompletionYear] = useState(new Date().getFullYear().toString());
+  const [singlesHolesPlayed, setSinglesHolesPlayed] = useState('0');
+  const [singlesStrokes, setSinglesStrokes] = useState('0');
+  const [singlesAverage, setSinglesAverage] = useState('');
+  const [holesWon, setHolesWon] = useState('0');
+  const [holesHalved, setHolesHalved] = useState('0');
+  const [cpiAfter, setCpiAfter] = useState('');
+  const [completedAt, setCompletedAt] = useState(toDateInputValue(new Date().toISOString()));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await createPlayerTournamentStat2026({
+        playerId,
+        tournamentId: tournamentId || null,
+        source,
+        completionYear: Number(completionYear),
+        singlesHolesPlayed: Number(singlesHolesPlayed),
+        singlesStrokes: Number(singlesStrokes),
+        singlesAverage: parseOptionalNumber(singlesAverage),
+        holesWon: Number(holesWon),
+        holesHalved: Number(holesHalved),
+        cpiAfter: parseOptionalNumber(cpiAfter),
+        completedAt: toCompletedAtIso(completedAt),
+      });
+      track2026('player_history_row_created', {
+        player_id: playerId,
+        source,
+        completion_year: Number(completionYear),
+      });
+      setPlayerId('');
+      setTournamentId('');
+      setSource('manual');
+      setSinglesHolesPlayed('0');
+      setSinglesStrokes('0');
+      setSinglesAverage('');
+      setHolesWon('0');
+      setHolesHalved('0');
+      setCpiAfter('');
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="border-t border-[#27272A] px-3 py-3">
+      <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Add history row</p>
+      <div className="mt-3 grid gap-2 lg:grid-cols-4">
+        <PlayerSelect label="Player" value={playerId} players={players} onChange={setPlayerId} />
+        <TournamentSelect
+          label="Tournament"
+          value={tournamentId}
+          tournaments={tournaments}
+          onChange={setTournamentId}
+        />
+        <AdminTextInput label="Source" value={source} onChange={setSource} />
+        <AdminTextInput label="Year" value={completionYear} onChange={setCompletionYear} type="number" />
+      </div>
+      <div className="mt-2 grid gap-2 lg:grid-cols-6">
+        <AdminTextInput label="Singles holes" value={singlesHolesPlayed} onChange={setSinglesHolesPlayed} type="number" />
+        <AdminTextInput label="Singles strokes" value={singlesStrokes} onChange={setSinglesStrokes} type="number" />
+        <AdminTextInput label="Singles avg" value={singlesAverage} onChange={setSinglesAverage} type="number" required={false} />
+        <AdminTextInput label="Holes won" value={holesWon} onChange={setHolesWon} type="number" />
+        <AdminTextInput label="Holes halved" value={holesHalved} onChange={setHolesHalved} type="number" />
+        <AdminTextInput label="CPI after" value={cpiAfter} onChange={setCpiAfter} type="number" required={false} />
+      </div>
+      <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <AdminTextInput label="Completed date" value={completedAt} onChange={setCompletedAt} type="date" />
+        <button
+          type="submit"
+          disabled={isSaving || !playerId}
+          className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : 'Add row'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </form>
+  );
+}
+
+function PlayerStatRow({
+  stat,
+  players,
+  tournaments,
+  onSaved,
+}: {
+  stat: PlayerTournamentStatsRow;
+  players: PlayerRow[];
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const [playerId, setPlayerId] = useState(stat.player_id);
+  const [tournamentId, setTournamentId] = useState(stat.tournament_id ?? '');
+  const [source, setSource] = useState(stat.source);
+  const [completionYear, setCompletionYear] = useState(stat.completion_year.toString());
+  const [singlesHolesPlayed, setSinglesHolesPlayed] = useState(stat.singles_holes_played.toString());
+  const [singlesStrokes, setSinglesStrokes] = useState(stat.singles_strokes.toString());
+  const [singlesAverage, setSinglesAverage] = useState(stat.singles_average?.toString() ?? '');
+  const [holesWon, setHolesWon] = useState(stat.holes_won.toString());
+  const [holesHalved, setHolesHalved] = useState(stat.holes_halved.toString());
+  const [cpiAfter, setCpiAfter] = useState(stat.cpi_after?.toString() ?? '');
+  const [completedAt, setCompletedAt] = useState(toDateInputValue(stat.completed_at));
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const player = players.find((candidate) => candidate.id === stat.player_id);
+  const hasChanged =
+    playerId !== stat.player_id ||
+    tournamentId !== (stat.tournament_id ?? '') ||
+    source !== stat.source ||
+    completionYear !== stat.completion_year.toString() ||
+    singlesHolesPlayed !== stat.singles_holes_played.toString() ||
+    singlesStrokes !== stat.singles_strokes.toString() ||
+    singlesAverage !== (stat.singles_average?.toString() ?? '') ||
+    holesWon !== stat.holes_won.toString() ||
+    holesHalved !== stat.holes_halved.toString() ||
+    cpiAfter !== (stat.cpi_after?.toString() ?? '') ||
+    completedAt !== toDateInputValue(stat.completed_at);
+
+  useEffect(() => {
+    setPlayerId(stat.player_id);
+    setTournamentId(stat.tournament_id ?? '');
+    setSource(stat.source);
+    setCompletionYear(stat.completion_year.toString());
+    setSinglesHolesPlayed(stat.singles_holes_played.toString());
+    setSinglesStrokes(stat.singles_strokes.toString());
+    setSinglesAverage(stat.singles_average?.toString() ?? '');
+    setHolesWon(stat.holes_won.toString());
+    setHolesHalved(stat.holes_halved.toString());
+    setCpiAfter(stat.cpi_after?.toString() ?? '');
+    setCompletedAt(toDateInputValue(stat.completed_at));
+  }, [stat]);
+
+  const saveStat = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updatePlayerTournamentStat2026({
+        statId: stat.id,
+        playerId,
+        tournamentId: tournamentId || null,
+        source,
+        completionYear: Number(completionYear),
+        singlesHolesPlayed: Number(singlesHolesPlayed),
+        singlesStrokes: Number(singlesStrokes),
+        singlesAverage: parseOptionalNumber(singlesAverage),
+        holesWon: Number(holesWon),
+        holesHalved: Number(holesHalved),
+        cpiAfter: parseOptionalNumber(cpiAfter),
+        completedAt: toCompletedAtIso(completedAt),
+        legacyPayload: stat.legacy_payload,
+      });
+      track2026('player_history_row_updated', {
+        player_id: playerId,
+        stat_id: stat.id,
+        source,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteStat = async () => {
+    const confirmed = window.confirm(
+      `Delete ${player?.name ?? 'this player'}'s ${stat.completion_year} history row?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      await deletePlayerTournamentStat2026(stat.id);
+      track2026('player_history_row_deleted', {
+        player_id: stat.player_id,
+        stat_id: stat.id,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-bold tracking-[-0.03em] text-[#FAFAFA]">
+            {player?.name ?? 'Unknown player'} · {stat.completion_year}
+          </p>
+          <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
+            {stat.source} · completed {formatCompactDateTime(stat.completed_at)}
+          </p>
+        </div>
+        <StatusPill tone={stat.source === 'app' ? 'success' : stat.source === 'manual' ? 'warning' : 'muted'}>
+          {stat.source}
+        </StatusPill>
+      </div>
+      <div className="mt-3 grid gap-2 lg:grid-cols-4">
+        <PlayerSelect label="Player" value={playerId} players={players} onChange={setPlayerId} />
+        <TournamentSelect
+          label="Tournament"
+          value={tournamentId}
+          tournaments={tournaments}
+          onChange={setTournamentId}
+        />
+        <AdminTextInput label="Source" value={source} onChange={setSource} />
+        <AdminTextInput label="Year" value={completionYear} onChange={setCompletionYear} type="number" />
+      </div>
+      <div className="mt-2 grid gap-2 lg:grid-cols-6">
+        <AdminTextInput label="Singles holes" value={singlesHolesPlayed} onChange={setSinglesHolesPlayed} type="number" />
+        <AdminTextInput label="Singles strokes" value={singlesStrokes} onChange={setSinglesStrokes} type="number" />
+        <AdminTextInput label="Singles avg" value={singlesAverage} onChange={setSinglesAverage} type="number" required={false} />
+        <AdminTextInput label="Holes won" value={holesWon} onChange={setHolesWon} type="number" />
+        <AdminTextInput label="Holes halved" value={holesHalved} onChange={setHolesHalved} type="number" />
+        <AdminTextInput label="CPI after" value={cpiAfter} onChange={setCpiAfter} type="number" required={false} />
+      </div>
+      <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+        <AdminTextInput label="Completed date" value={completedAt} onChange={setCompletedAt} type="date" />
+        <button
+          type="button"
+          onClick={saveStat}
+          disabled={!hasChanged || isSaving || isDeleting || !playerId}
+          className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={deleteStat}
+          disabled={isSaving || isDeleting}
+          className="min-h-11 rounded-md border border-[#F85149] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#F85149] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isDeleting ? 'Deleting' : 'Delete'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
   );
 }
 
@@ -392,7 +944,7 @@ function FinalizationPanel({
   return (
     <div className="mt-5 border-t border-[#27272A] pt-4">
       <p className="text-xs font-bold tracking-[0.22em] text-[#3FB950]">Finalization</p>
-      <div className="mt-3 border-y border-[#27272A] bg-[#050505] px-3 py-3 sm:rounded-md sm:border">
+      <div className="mt-3 border-y border-[#27272A] bg-[#050506] px-3 py-3 sm:rounded-md sm:border">
         {!tournament ? (
           <StatusCard tone="warning">Create an active tournament before finalization.</StatusCard>
         ) : tournament.is_complete ? (
@@ -461,7 +1013,7 @@ function CourseMetadataCorrections({
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Course</p>
         <p className="mt-1 text-xs leading-5 text-[#8B949E]">Set par and yardage for score-entry context.</p>
@@ -531,7 +1083,7 @@ function CourseHoleCorrectionRow({
           type="button"
           onClick={saveHole}
           disabled={!hasChanged || isSaving}
-          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : 'Save'}
         </button>
@@ -601,7 +1153,7 @@ function TournamentCorrections({
   };
 
   return (
-    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament</p>
       </div>
@@ -623,7 +1175,7 @@ function TournamentCorrections({
                 type="button"
                 onClick={saveTournament}
                 disabled={!hasChanged || isSaving || tournament.is_complete}
-                className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+                className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
               >
                 {isSaving ? 'Saving' : 'Save'}
               </button>
@@ -644,7 +1196,7 @@ function PlayerCorrections({
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Players</p>
       </div>
@@ -723,7 +1275,7 @@ function PlayerCorrectionRow({
             type="button"
             onClick={savePlayer}
             disabled={!hasChanged || isSaving}
-            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             {isSaving ? 'Saving' : 'Save'}
           </button>
@@ -746,7 +1298,7 @@ function FixtureCorrections({
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="border-y border-[#27272A] bg-[#050505] sm:rounded-md sm:border">
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Fixtures</p>
       </div>
@@ -864,7 +1416,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={saveFixture}
             disabled={!tournament || !hasNameChanged || isSaving || tournament.is_complete}
-            className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             Save
           </button>
@@ -872,7 +1424,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={clearScores}
             disabled={isSaving || scoreCount === 0}
-            className="min-h-10 rounded-md border border-[#F59E0B] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-11 rounded-md border border-[#F59E0B] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             Clear scores
           </button>
@@ -880,7 +1432,7 @@ function FixtureCorrectionRow({
             type="button"
             onClick={deleteFixture}
             disabled={isSaving}
-            className="min-h-10 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F85149] disabled:opacity-60"
+            className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#F85149] disabled:opacity-60"
           >
             Delete
           </button>
@@ -1042,7 +1594,7 @@ function SegmentCorrectionRow({
             isSaving ||
             tournament.is_complete
           }
-          className="min-h-10 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : hasScores && hasMembershipChanged ? 'Clear scores + save' : 'Save segment'}
         </button>

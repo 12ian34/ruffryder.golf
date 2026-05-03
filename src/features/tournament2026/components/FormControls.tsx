@@ -20,7 +20,7 @@ export function TextField({
         onChange={(event) => onChange(event.target.value)}
         type={type}
         required
-        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       />
     </label>
   );
@@ -44,14 +44,14 @@ export function ScorePicker({
   return (
     <div className="min-w-0 font-data text-xs tracking-[0.14em] text-[#8B949E]">
       <div>{label}</div>
-      <div className="mt-1 min-w-0 border-y border-[#27272A] bg-[#050505] py-2 sm:rounded-md sm:border sm:px-2">
-        <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2">
+      <div className="mt-1 min-w-0 border-y border-[#27272A] bg-[#050506] py-2 sm:rounded-md sm:border sm:px-2">
+        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <button
             type="button"
             onClick={() => onChange(decrementValue.toString())}
             disabled={!numericValue || numericValue <= 1}
             aria-label={`${label} decrement`}
-            className="h-10 rounded-md border border-[#27272A] text-lg font-bold text-[#E6EDF3] disabled:text-[#484F58]"
+            className="min-h-11 rounded-md border border-[#27272A] text-lg font-bold text-[#E6EDF3] disabled:text-[#484F58]"
           >
             -
           </button>
@@ -59,7 +59,7 @@ export function ScorePicker({
             value={selectedValue}
             onChange={(event) => onChange(event.target.value)}
             aria-label={`${label} score`}
-            className="h-10 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#18181B] px-2 text-center text-lg font-bold text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+            className="min-h-11 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#18181B] px-2 text-center text-lg font-bold tabular-nums text-[#FAFAFA] outline-none focus:border-[#3FB950]"
           >
             <option value="">--</option>
             {Array.from({ length: 12 }, (_, index) => index + 1).map((score) => (
@@ -72,7 +72,7 @@ export function ScorePicker({
             type="button"
             onClick={() => onChange(incrementValue.toString())}
             aria-label={`${label} increment`}
-            className="h-10 rounded-md border border-[#27272A] text-lg font-bold text-[#E6EDF3]"
+            className="min-h-11 rounded-md border border-[#27272A] text-lg font-bold text-[#E6EDF3]"
           >
             +
           </button>
@@ -83,7 +83,7 @@ export function ScorePicker({
               key={score}
               type="button"
               onClick={() => onChange(score.toString())}
-              className={`rounded border px-1 py-1.5 text-xs font-bold ${
+              className={`min-h-11 rounded border px-1 py-2 text-xs font-bold tabular-nums ${
                 numericValue === score
                   ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
                   : 'border-[#27272A] text-[#A1A1AA]'
@@ -128,7 +128,7 @@ export function PlayerSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       >
         <option value="">Select player</option>
         {players.map((player) => (
@@ -154,9 +154,9 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={disabled || isSaving}
-      className="w-full rounded-md bg-[#3FB950] px-3 py-2 font-data text-sm font-bold text-[#09090B] disabled:opacity-60"
+      className="min-h-11 w-full rounded-md bg-[#3FB950] px-3 py-2 font-data text-sm font-bold text-[#09090B] disabled:opacity-60"
     >
-      {isSaving ? 'Saving...' : children}
+      {isSaving ? 'Saving…' : children}
     </button>
   );
 }

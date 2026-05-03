@@ -294,7 +294,7 @@ function AiNewsroomGrid({
       {orderedArtifacts.length === 0 ? (
         <StatusCard>
           {isGenerating
-            ? 'Filing the first newsroom cards...'
+            ? 'Filing the first newsroom cards…'
             : 'No newsroom cards yet. Save more holes and the booth will wake up.'}
         </StatusCard>
       ) : (
@@ -385,7 +385,7 @@ function TeamTotal({
   return (
     <div>
       <p className="text-xs tracking-[0.18em] text-[#8B949E]">{label}</p>
-      <p className={`text-3xl font-bold tracking-[-0.07em] ${className}`}>{value}</p>
+      <p className={`text-3xl font-bold tracking-[-0.07em] tabular-nums ${className}`}>{value}</p>
     </div>
   );
 }

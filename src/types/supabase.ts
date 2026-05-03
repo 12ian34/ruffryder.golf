@@ -697,6 +697,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_disabled_at: string | null
+          access_disabled_by: string | null
+          access_disabled_reason: string | null
           created_at: string
           custom_emoji: string | null
           display_name: string
@@ -709,6 +712,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_disabled_at?: string | null
+          access_disabled_by?: string | null
+          access_disabled_reason?: string | null
           created_at?: string
           custom_emoji?: string | null
           display_name: string
@@ -721,6 +727,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_disabled_at?: string | null
+          access_disabled_by?: string | null
+          access_disabled_reason?: string | null
           created_at?: string
           custom_emoji?: string | null
           display_name?: string
@@ -733,6 +742,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_access_disabled_by_fkey"
+            columns: ["access_disabled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_linked_player_id_fkey"
             columns: ["linked_player_id"]

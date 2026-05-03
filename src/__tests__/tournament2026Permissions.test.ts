@@ -4,12 +4,16 @@ import {
   clearFixtureScores2026,
   clearHoleScore2026,
   createOwnProfile,
+  createPlayerTournamentStat2026,
+  deletePlayerTournamentStat2026,
   deleteFixture2026,
   fetchTournament2026Data,
   saveHoleScore2026,
+  setTournamentActive2026,
   updateCourseHole2026,
   updateFixture2026,
   updatePlayer2026,
+  updatePlayerTournamentStat2026,
   updateProfilePlayerLink2026,
   updateSegmentCpiEnabled,
   updateSegment2026,
@@ -196,6 +200,80 @@ describe('2026 score permissions', () => {
     expect(from).toHaveBeenNthCalledWith(2, 'profiles');
     expect(updateProfiles).toHaveBeenCalledWith({ team: 'EUROPE' });
     expect(eqProfile).toHaveBeenCalledWith('linked_player_id', 'usa-1');
+  });
+
+  it('activates one tournament after deactivating the current active tournament', async () => {
+    const deactivateEq = vi.fn().mockResolvedValue({ error: null });
+    const activateEq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi
+      .fn()
+      .mockReturnValueOnce({ eq: deactivateEq })
+      .mockReturnValueOnce({ eq: activateEq });
+    const from = vi.fn(() => ({ update }));
+
+    await setTournamentActive2026(
+      { tournamentId: 'tournament-2', isActive: true },
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(from).toHaveBeenCalledWith('tournaments');
+    expect(update).toHaveBeenNthCalledWith(1, { is_active: false });
+    expect(deactivateEq).toHaveBeenCalledWith('is_active', true);
+    expect(update).toHaveBeenNthCalledWith(2, { is_active: true });
+    expect(activateEq).toHaveBeenCalledWith('id', 'tournament-2');
+  });
+
+  it('creates, updates, and deletes player tournament stats through admin table helpers', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn(() => ({ eq: updateEq }));
+    const deleteEq = vi.fn().mockResolvedValue({ error: null });
+    const deleteRows = vi.fn(() => ({ eq: deleteEq }));
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({ insert })
+      .mockReturnValueOnce({ update })
+      .mockReturnValueOnce({ delete: deleteRows });
+    const statInput = {
+      playerId: 'usa-1',
+      tournamentId: 'tournament-1',
+      source: 'manual',
+      completionYear: 2026,
+      singlesHolesPlayed: 9,
+      singlesStrokes: 42,
+      singlesAverage: 4.67,
+      holesWon: 5,
+      holesHalved: 1,
+      cpiAfter: 84,
+      completedAt: '2026-05-03T12:00:00.000Z',
+    };
+
+    await createPlayerTournamentStat2026(
+      statInput,
+      { from } as unknown as SupabaseClient<Database>
+    );
+    await updatePlayerTournamentStat2026(
+      { ...statInput, statId: 'stat-1', holesWon: 6 },
+      { from } as unknown as SupabaseClient<Database>
+    );
+    await deletePlayerTournamentStat2026(
+      'stat-1',
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        player_id: 'usa-1',
+        tournament_id: 'tournament-1',
+        source: 'manual',
+        completion_year: 2026,
+        singles_average: 4.67,
+        legacy_payload: { manual_editor: true },
+      })
+    );
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ holes_won: 6 }));
+    expect(updateEq).toHaveBeenCalledWith('id', 'stat-1');
+    expect(deleteEq).toHaveBeenCalledWith('id', 'stat-1');
   });
 
   it('deletes a fixture by id', async () => {

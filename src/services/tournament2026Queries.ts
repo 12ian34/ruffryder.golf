@@ -9,7 +9,7 @@ import {
   type CourseHoleMetadata,
 } from '../domain/2026/course';
 import { getSupabaseClient } from '../lib/supabase';
-import type { Database } from '../types/supabase';
+import type { Database, Json } from '../types/supabase';
 
 export type Team = Database['public']['Enums']['app_team'];
 export type PlayerRow = Database['public']['Tables']['players']['Row'];
@@ -71,6 +71,7 @@ export interface Tournament2026Data {
   user: User | null;
   profile: ProfileRow | null;
   profiles: ProfileRow[];
+  tournaments: TournamentRow[];
   players: PlayerRow[];
   playerStats: PlayerTournamentStatsRow[];
   aiPlayerOverviews: AiPlayerOverviewRow[];
@@ -118,6 +119,11 @@ export interface UpdateTournamentInput {
   year: number;
   cpiThreshold: number;
   updatedBy: string | null;
+}
+
+export interface SetTournamentActiveInput {
+  tournamentId: string;
+  isActive: boolean;
 }
 
 export interface CreatePlayerInput {
@@ -221,6 +227,27 @@ export interface ClearHoleScoreInput {
   scoreId: string;
 }
 
+export interface PlayerTournamentStatFields {
+  playerId: string;
+  tournamentId: string | null;
+  source: string;
+  completionYear: number;
+  singlesHolesPlayed: number;
+  singlesStrokes: number;
+  singlesAverage: number | null;
+  holesWon: number;
+  holesHalved: number;
+  cpiAfter: number | null;
+  completedAt: string;
+  legacyPayload?: Json;
+}
+
+export interface CreatePlayerTournamentStatInput extends PlayerTournamentStatFields {}
+
+export interface UpdatePlayerTournamentStatInput extends PlayerTournamentStatFields {
+  statId: string;
+}
+
 export async function fetchTournament2026Data(
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<Tournament2026Data> {
@@ -248,6 +275,11 @@ export async function fetchTournament2026Data(
   const user = userData.user;
   const profile = user ? await fetchProfile(client, user.id) : null;
   const profiles = profile?.is_admin ? await fetchProfiles(client) : [];
+  const tournaments = profile?.is_admin
+    ? await fetchTournaments(client)
+    : activeTournament
+      ? [activeTournament]
+      : [];
   const auditLogs = profile?.is_admin ? await fetchAuditLogs(client) : [];
   const activity = activeTournament
     ? await fetchTournamentActivity(client, activeTournament.id)
@@ -263,6 +295,7 @@ export async function fetchTournament2026Data(
     user,
     profile,
     profiles,
+    tournaments,
     players,
     playerStats,
     aiPlayerOverviews,
@@ -420,6 +453,30 @@ export async function updateTournament2026(
   }
 }
 
+export async function setTournamentActive2026(
+  input: SetTournamentActiveInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  if (input.isActive) {
+    const { error: deactivateError } = await client
+      .from('tournaments')
+      .update({ is_active: false })
+      .eq('is_active', true);
+
+    throwIfSupabaseError(deactivateError, 'Failed to deactivate existing tournaments');
+  }
+
+  const { error } = await client
+    .from('tournaments')
+    .update({ is_active: input.isActive })
+    .eq('id', input.tournamentId);
+
+  throwIfSupabaseError(
+    error,
+    input.isActive ? 'Failed to activate tournament' : 'Failed to deactivate tournament'
+  );
+}
+
 export async function createPlayer2026(
   input: CreatePlayerInput,
   client: SupabaseClient<Database> = getSupabaseClient()
@@ -454,6 +511,38 @@ export async function updatePlayer2026(
     .eq('linked_player_id', input.playerId);
 
   throwIfSupabaseError(profileError, 'Failed to update linked profile teams');
+}
+
+export async function createPlayerTournamentStat2026(
+  input: CreatePlayerTournamentStatInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client
+    .from('player_tournament_stats')
+    .insert(buildPlayerTournamentStatPayload(input));
+
+  throwIfSupabaseError(error, 'Failed to create player history row');
+}
+
+export async function updatePlayerTournamentStat2026(
+  input: UpdatePlayerTournamentStatInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client
+    .from('player_tournament_stats')
+    .update(buildPlayerTournamentStatPayload(input))
+    .eq('id', input.statId);
+
+  throwIfSupabaseError(error, 'Failed to update player history row');
+}
+
+export async function deletePlayerTournamentStat2026(
+  statId: string,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client.from('player_tournament_stats').delete().eq('id', statId);
+
+  throwIfSupabaseError(error, 'Failed to delete player history row');
 }
 
 export async function updateFixture2026(
@@ -1056,6 +1145,25 @@ function getCpiBefore(stat: PlayerTournamentStatsRow): number | null {
   return null;
 }
 
+function buildPlayerTournamentStatPayload(
+  input: PlayerTournamentStatFields
+): PlayerTournamentStatsInsert {
+  return {
+    player_id: input.playerId,
+    tournament_id: input.tournamentId,
+    source: input.source.trim() || 'manual',
+    completion_year: input.completionYear,
+    singles_holes_played: input.singlesHolesPlayed,
+    singles_strokes: input.singlesStrokes,
+    singles_average: input.singlesAverage,
+    holes_won: input.holesWon,
+    holes_halved: input.holesHalved,
+    cpi_after: input.cpiAfter,
+    completed_at: input.completedAt,
+    legacy_payload: input.legacyPayload ?? { manual_editor: true },
+  };
+}
+
 function getSegmentCpiInput(
   tournament: TournamentRow,
   segment: SegmentRow,
@@ -1137,6 +1245,18 @@ async function fetchPlayers(client: SupabaseClient<Database>): Promise<PlayerRow
   const { data, error } = await client.from('players').select('*').order('name');
 
   throwIfSupabaseError(error, 'Failed to load players');
+
+  return data ?? [];
+}
+
+async function fetchTournaments(client: SupabaseClient<Database>): Promise<TournamentRow[]> {
+  const { data, error } = await client
+    .from('tournaments')
+    .select('*')
+    .order('year', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  throwIfSupabaseError(error, 'Failed to load tournaments');
 
   return data ?? [];
 }

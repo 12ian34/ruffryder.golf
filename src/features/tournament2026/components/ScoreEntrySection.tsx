@@ -251,7 +251,7 @@ function FixtureScoreCard({
             <FixtureParticipantsLine fixture={fixture} />
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.16em] text-[#A1A1AA]">
+            <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.16em] tabular-nums text-[#A1A1AA]">
               {progress.completedHoles}/{progress.totalHoles}
             </span>
             <button
@@ -266,7 +266,7 @@ function FixtureScoreCard({
                   return next;
                 });
               }}
-              className="border border-[#27272A] px-2 py-1 font-data text-[10px] tracking-[0.16em] text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#3FB950]"
+              className="min-h-11 border border-[#27272A] px-3 py-2 font-data text-[10px] tracking-[0.16em] text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#3FB950]"
             >
               {isOpen ? 'Hide' : 'Open'}
             </button>
@@ -279,7 +279,7 @@ function FixtureScoreCard({
       {isOpen && (
         <div>
           {hasFrontAndBack && (
-            <div className="flex gap-2 border-t border-[#27272A] bg-[#050505] px-3 py-3">
+            <div className="flex gap-2 border-t border-[#27272A] bg-[#050506] px-3 py-3">
               <ScoreViewButton
                 label="Front 9"
                 isActive={activeView === 'front'}
@@ -521,7 +521,7 @@ function ScoreViewButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-3 py-2 text-xs font-bold tracking-[0.14em] ${
+      className={`min-h-11 rounded-md border px-3 py-2 text-xs font-bold tracking-[0.14em] ${
         isActive
           ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
           : 'border-[#27272A] text-[#8B949E]'
@@ -741,7 +741,7 @@ function SegmentScoreCard({
   };
 
   return (
-    <div className="border-t border-[#27272A] bg-[#050505]">
+    <div className="border-t border-[#27272A] bg-[#050506]">
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
@@ -777,7 +777,7 @@ function SegmentScoreCard({
               disabled={isSavingAny}
               className="rounded-md bg-[#3FB950] px-3 py-2 font-data text-xs font-bold text-[#09090B] disabled:opacity-60"
             >
-              {isSavingAny ? 'Saving...' : `Save all (${dirtyHoles.length})`}
+              {isSavingAny ? 'Saving…' : `Save all (${dirtyHoles.length})`}
             </button>
           )}
           <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] tracking-[0.18em] text-[#A1A1AA]">
@@ -849,7 +849,7 @@ function BackNineGroupedScoreCard({
   );
 
   return (
-    <div className="border-t border-[#27272A] bg-[#050505]">
+    <div className="border-t border-[#27272A] bg-[#050506]">
       <div className="px-3 py-3">
         <p className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
           Back 9 Singles
@@ -1158,7 +1158,7 @@ function HoleScoreForm({
             <p className="truncate text-sm font-bold text-[#FAFAFA]">
               {rowLabel ?? `H${holeNumber}`}
             </p>
-            <p className="mt-1 text-xs text-[#8B949E]">
+            <p className="mt-1 text-xs tabular-nums text-[#8B949E]">
               {scoreLabels.usa} {score.usa_score ?? '--'} - {scoreLabels.europe} {score.europe_score ?? '--'} ·{' '}
               {formatOutcome(score.outcome, scoreLabels)}
             </p>
@@ -1181,7 +1181,7 @@ function HoleScoreForm({
                 setIsEditingSaved(true);
                 track2026('score_saved_row_edit_started', { hole_number: holeNumber });
               }}
-              className="rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
+              className="min-h-11 rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
             >
               Edit
             </button>
@@ -1191,7 +1191,7 @@ function HoleScoreForm({
                 onClick={() => {
                   void onClear();
                 }}
-                className="rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#F85149]"
+                className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#F85149]"
               >
                 Clear
               </button>
@@ -1207,7 +1207,7 @@ function HoleScoreForm({
       <div className="grid gap-3 lg:grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-center">
         <div className="flex items-baseline justify-between gap-3 lg:block">
           <div
-            className={`font-data font-bold text-[#FAFAFA] ${
+            className={`font-data font-bold tabular-nums text-[#FAFAFA] ${
               rowLabel
                 ? 'text-lg tracking-[-0.04em] lg:text-base'
                 : 'text-2xl tracking-[-0.07em] lg:text-xl'
@@ -1244,7 +1244,7 @@ function HoleScoreForm({
               type="button"
               onClick={onSave}
               disabled={saveState === 'incomplete'}
-              className="rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+              className="min-h-11 rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
             >
               {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
             </button>
@@ -1255,7 +1255,7 @@ function HoleScoreForm({
               onClick={() => {
                 void onClear();
               }}
-              className="rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold text-[#F85149]"
+              className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold text-[#F85149]"
             >
               Clear
             </button>

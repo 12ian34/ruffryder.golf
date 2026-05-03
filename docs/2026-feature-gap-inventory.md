@@ -29,6 +29,7 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Sortable 2026 player stats/history view with team filtering and current-player highlighting.
 - Highlights/fun-facts reel derived from 2026 match-play score data.
 - Live score-movement timeline derived from saved hole updates.
+- Full live score curve using Chart.js, derived from saved 2026 hole-score update order.
 - Persisted AI tournament overview, player overviews, and AI Newsroom cards using the Ruff Ryders tone guide.
 - Offline/degraded-connection status in the 2026 shell and score workflow.
 - PostHog event coverage for 2026 auth, tab views, score saves, setup actions, finalization, profile changes, and connection changes.
@@ -36,15 +37,14 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Profile self-service for display name/avatar through a locked-down Supabase RPC.
 - Admin profile management for display names, avatars, roles, and player links.
 - Player/stat archive rows alongside legacy tournament drilldowns.
+- Multi-tournament Supabase admin list with activation/deactivation controls.
+- Manual player history/stat editor for `player_tournament_stats`.
+- Supabase Auth user access admin through a server-side Netlify function for deactivation, reactivation, and deletion.
 
 ## Missing Before Tournament Day
 
 - Mobile score-entry QA on real devices for outdoor use.
-- Full tournament progress chart. The 2025 app had a Chart.js USA/EUR line chart backed by `tournament.progress`; the 2026 console currently has a compact score-movement text timeline derived from `hole_scores.updated_at`, and does not yet write/read `tournament_progress` snapshots for a true chart.
 - Full offline scoring queue. The 2025 Firebase app leaned on Firestore IndexedDB persistence; the 2026 console now keeps unsaved score drafts locally, exposes failed/unsaved rows, retries failed saves, and warns before leaving, but it still does not have a true ordered background write queue for extended offline scoring sessions.
-- Full 2026 tournament admin list. Admins should be able to view/manage Supabase tournaments beyond the single active event workflow.
-- Manual player history/stat editor. Admins should be able to correct `player_tournament_stats` and migrated player history without direct database access.
-- Supabase user deactivation/deletion admin flow. Admins should be able to disable or remove user access through a server-side/service-role action rather than only editing profile metadata.
 
 ## Nice To Have
 

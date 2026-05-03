@@ -28,6 +28,20 @@ describe('PageShell', () => {
 
     expect(onTabChange).toHaveBeenCalledWith('archive');
   });
+
+  it('does not show the brand header for authenticated no-nav states', () => {
+    const { container } = render(
+      <PageShell userEmail="ian@example.com" isOnline onSignOut={vi.fn()}>
+        <div>Create profile</div>
+      </PageShell>
+    );
+    const view = within(container);
+
+    expect(view.getByText('Create profile')).toBeInTheDocument();
+    expect(view.getByText('ian@example.com')).toBeInTheDocument();
+    expect(view.getByText('Sign out')).toBeInTheDocument();
+    expect(view.queryByText('ruff ryders cup 2026')).not.toBeInTheDocument();
+  });
 });
 
 const navItems: AppNavItem<'score' | 'archive'>[] = [

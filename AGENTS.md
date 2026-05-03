@@ -119,6 +119,7 @@ The current Supabase schema is managed through migrations in `supabase/migration
 - `20260503190000_ai_overviews.sql` creates persisted AI player and tournament overview tables with RLS and Realtime publication entries.
 - `20260503201000_tournament_activity_feed.sql` exposes a sanitized `get_tournament_activity` RPC for authenticated users so the Scores tab can show full activity without exposing raw audit row JSON.
 - `20260503203000_ai_newsroom_artifacts.sql` creates persisted AI newsroom artifacts for highlights commentary, moment of the round, cheese detector, rivalry watch, captain's briefing, and post-round reports.
+- `20260503211500_profile_access_admin.sql` adds profile access-disabled metadata used by the server-side Supabase Auth admin flow.
 
 When adding tables that should update the main Supabase console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
 
@@ -156,7 +157,7 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/PlayerAiOverview.tsx` displays persisted AI player overviews in own Profile and player history popovers. Linked players and admins can regenerate with an optional short prompt; saved output is visible to all authenticated users.
 - `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture score entry as collapsible work cards with front/back switches, grouped back-nine singles by hole, Supabase-backed course metadata, compact saved-by/saved-time audit metadata, admin single-hole clear controls, and autosaves each hole through the 2026 query service. Supabase saves are only considered saved after server acknowledgment; keep local draft persistence, save timeouts, global sync/error status, reconnect retry, retry-all, and leave-page warnings intact. It must remain locked when `tournaments.is_complete` is true.
 - `src/features/tournament2026/components/StatsSection.tsx` is legacy/unused after the Archive consolidation; prefer the Archive player-history view for new work unless this file is removed.
-- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Course shows current par/yardage and lets admins correct metadata. Activity reads recent DB-backed audit logs. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role edits belong in the Players section, not the user Profile page.
+- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Tournament includes the all-tournaments activation list. Players includes profile linking/access admin and the manual `player_tournament_stats` history editor. Course shows current par/yardage and lets admins correct metadata. Activity reads recent DB-backed audit logs. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role/access edits belong in the Players section, not the user Profile page.
 - `src/features/tournament2026/components/ProfileSection.tsx` supports self-service profile display name/avatar through the `update_own_profile` RPC and account sign-out. Keep it scoped to the signed-in user's own account.
 - PostHog for the main Supabase app identifies Supabase users by email and registers profile/player super properties after profile load. Keep new AI, profile, archive, score-entry, and admin interactions tracked with `track2026()` using flat snake_case event properties.
 - `src/utils/analytics.ts` must stay Firebase-free so the main app can load without legacy Firebase config. Firebase-specific tracking belongs in `src/utils/legacyAnalytics.ts`.
@@ -165,7 +166,8 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/insights.ts` derives 2026 highlights and score-movement timeline data from fixture segments and hole scores.
 - `src/features/tournament2026/activity.ts` formats sanitized audit rows and inferred match milestones for the user-facing tournament activity feed.
 - `src/features/tournament2026/viewUtils.ts` holds UI-only formatting, totals, hole-range, and parsing helpers.
-- `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/fixtures, loads `course_holes`, player stats, AI overviews/newsroom artifacts, audit logs, and score editor profiles, handles profile/admin corrections/finalization, and upserts/deletes hole scores through the pure scoring core. When tournament CPI threshold changes, existing scored rows should be recalculated so saved CPI outcomes stay consistent. Scored segment membership edits must explicitly clear that segment's saved scores before replacing the players; never silently reassign saved scores to different players.
+- `src/services/adminUserService.ts` calls the `admin-user-access` Netlify Function for Supabase Auth deactivation/reactivation/deletion. Browser code must never call Supabase Auth admin APIs or use the service-role key directly.
+- `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/fixtures, loads all admin-visible tournaments, `course_holes`, player stats, AI overviews/newsroom artifacts, audit logs, and score editor profiles, handles profile/admin corrections/finalization/player-history edits, and upserts/deletes hole scores through the pure scoring core. When tournament CPI threshold changes, existing scored rows should be recalculated so saved CPI outcomes stay consistent. Scored segment membership edits must explicitly clear that segment's saved scores before replacing the players; never silently reassign saved scores to different players.
 - `audit_logs` is database-triggered, not client-authored. The browser should read it for admin/player activity views, but app code should not insert, update, or delete audit rows directly.
 - `src/services/tournament2026Service.ts` owns fixture setup persistence orchestration and rollback around fixture, fixture-player, segment, and segment-player inserts.
 - `src/domain/2026/scoring.ts` is the pure scoring core for CPI, foursomes, singles, halved/unplayed outcomes, and fixture summaries.
@@ -190,6 +192,9 @@ Add focused tests for behavior changes:
 - Only back-nine singles scores feed player history and CPI updates.
 - Any fixture player can update fixture scores; unrelated players cannot.
 - Admin correction actions update player details, keep linked profile teams in sync, and can clear or delete accidental fixture data.
+- Admin tournament list actions activate one Supabase tournament at a time and can leave all tournaments inactive during setup.
+- Manual player history edits create/update/delete `player_tournament_stats` rows without weakening authenticated read access.
+- Supabase Auth user access changes go through the server-side admin function and never expose service-role credentials to browser code.
 - Flexible fixture and segment membership works for normal 4-balls and possible 6-balls.
 - Course metadata import preserves Firebase `config/holeDistances` yardages and stroke indices.
 - Audit logs are created by database triggers for score/setup/profile/course/finalization changes and remain read-only to browser clients.
@@ -210,6 +215,7 @@ Current focused 2026 tests live in:
 - `src/__tests__/tournament2026Insights.test.ts`
 - `src/__tests__/tournament2026AiRecap.test.ts`
 - `src/__tests__/tournament2026AiOverview.test.ts`
+- `src/__tests__/adminUserService.test.ts`
 - `src/__tests__/firebaseExportMigration.test.ts`
 - `src/__tests__/Tournament2026AuthPanels.test.tsx`
 - `src/__tests__/Tournament2026Layout.test.tsx`

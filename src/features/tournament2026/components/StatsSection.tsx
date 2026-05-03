@@ -113,7 +113,7 @@ export function StatsSection({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#27272A] bg-[#050505]">
+            <tbody className="divide-y divide-[#27272A] bg-[#050506]">
               {visibleRows.map((row) => {
                 const isCurrentPlayer = row.player.id === profile.linked_player_id;
 

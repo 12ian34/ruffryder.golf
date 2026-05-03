@@ -114,7 +114,7 @@ function TournamentArchive({
         <details
           key={tournament.id}
           open={openTournamentId === tournament.id}
-          className="group border-t border-[#27272A] bg-[#050505] first:border-t-0"
+          className="group border-t border-[#27272A] bg-[#050506] first:border-t-0"
         >
           <summary
             onClick={(event) => {
@@ -146,7 +146,7 @@ function TournamentArchive({
             <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
               <HistoryScore label="Raw" usa={tournament.total_raw_usa} europe={tournament.total_raw_europe} />
               <HistoryScore
-                label="Handicap"
+                label="Legacy adjusted"
                 usa={tournament.total_legacy_adjusted_usa}
                 europe={tournament.total_legacy_adjusted_europe}
               />
@@ -233,7 +233,7 @@ function PlayerArchive({
           <details
             key={year}
             open={openPlayerYear === year}
-            className="group border-t border-[#27272A] bg-[#050505]"
+            className="group border-t border-[#27272A] bg-[#050506]"
           >
             <summary
               onClick={(event) => {
@@ -313,7 +313,8 @@ function PlayerArchive({
                     </th>
                     <th className="px-3 py-2">
                       <PlayerArchiveSortButton
-                        label="Handicap"
+                        label="Legacy adj."
+                        ariaLabel="Legacy handicap score"
                         field="scoreHandicap"
                         activeField={sortField}
                         direction={sortDirection}
@@ -331,7 +332,8 @@ function PlayerArchive({
                     </th>
                     <th className="px-3 py-2">
                       <PlayerArchiveSortButton
-                        label="Handicap"
+                        label="Legacy adj."
+                        ariaLabel="Legacy handicap points"
                         field="pointsHandicap"
                         activeField={sortField}
                         direction={sortDirection}
@@ -349,8 +351,8 @@ function PlayerArchive({
                     const pointsHandicap = getPlayerArchivePoints(stat, 'handicap');
 
                     return (
-                      <tr key={stat.id} className="bg-[#050505]">
-                        <td className="sticky left-0 z-10 whitespace-nowrap bg-[#050505] px-3 py-2 text-[#FAFAFA]">
+                      <tr key={stat.id} className="bg-[#050506]">
+                        <td className="sticky left-0 z-10 whitespace-nowrap bg-[#050506] px-3 py-2 text-[#FAFAFA]">
                           <PlayerArchiveName
                             player={player}
                           />
@@ -594,7 +596,7 @@ function LegacyGameRow({
           />
           {game.use_legacy_handicap && (
             <p className="mt-1 text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
-              Handicap stroke gap: <span className="whitespace-nowrap tabular-nums text-[#A1A1AA]">{game.legacy_handicap_strokes}</span>
+              Legacy stroke gap: <span className="whitespace-nowrap tabular-nums text-[#A1A1AA]">{game.legacy_handicap_strokes}</span>
             </p>
           )}
         </div>
@@ -666,7 +668,7 @@ function HistoryScoreSet({
       <div className="mt-1 grid grid-cols-[4.75rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs leading-5">
         <span className="tracking-[0.14em] text-[#8B949E]">Raw</span>
         <TeamNumberPair usa={rawUsa} europe={rawEurope} />
-        <span className="tracking-[0.14em] text-[#8B949E]">Handicap</span>
+        <span className="tracking-[0.14em] text-[#8B949E]">Legacy adj.</span>
         <TeamNumberPair usa={handicapUsa} europe={handicapEurope} />
       </div>
     </div>

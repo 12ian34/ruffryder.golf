@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { updateAdminUserAccess2026, type AdminUserAccessAction } from '../../../services/adminUserService';
 import {
   updateOwnProfile2026,
   updateProfileAdmin2026,
@@ -212,7 +213,7 @@ function OwnProfileForm({
 
   const avatarFeedback =
     avatarSaveState === 'saving'
-      ? 'Saving...'
+      ? 'Saving…'
       : avatarSaveState === 'saved'
         ? 'Saved'
         : avatarSaveState === 'error'
@@ -238,7 +239,7 @@ function OwnProfileForm({
             type="button"
             onClick={saveProfile}
             disabled={!hasChanged || isSaving}
-            className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
           >
             {isSaving ? 'Saving' : 'Save'}
           </button>
@@ -307,11 +308,13 @@ function ProfileLinkRow({
   const [customEmoji, setCustomEmoji] = useState(profile.custom_emoji ?? '');
   const [isAdmin, setIsAdmin] = useState(profile.is_admin);
   const [isSaving, setIsSaving] = useState(false);
+  const [accessAction, setAccessAction] = useState<AdminUserAccessAction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const selectedPlayer = useMemo(
     () => players.find((player) => player.id === playerId) ?? null,
     [playerId, players]
   );
+  const isDisabled = Boolean(profile.access_disabled_at);
   const hasChanged =
     playerId !== (profile.linked_player_id ?? '') ||
     displayName !== profile.display_name ||
@@ -380,12 +383,69 @@ function ProfileLinkRow({
     }
   };
 
+  const updateAccess = async (action: AdminUserAccessAction) => {
+    const reason =
+      action === 'deactivate'
+        ? window.prompt(`Reason for deactivating ${profile.display_name}?`, 'No longer needs access') ?? ''
+        : '';
+
+    if (action === 'delete') {
+      const confirmation = window.prompt(
+        `Type DELETE to permanently remove ${profile.display_name}'s Supabase auth account.`
+      );
+
+      if (confirmation !== 'DELETE') {
+        return;
+      }
+    } else {
+      const confirmed = window.confirm(
+        action === 'reactivate'
+          ? `Reactivate ${profile.display_name}'s sign-in access?`
+          : `Deactivate ${profile.display_name}'s sign-in access and remove fixture permissions?`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setAccessAction(action);
+    setError(null);
+
+    try {
+      await updateAdminUserAccess2026({
+        profileId: profile.id,
+        action,
+        reason,
+      });
+      track2026('profile_access_updated', {
+        profile_id: profile.id,
+        action,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setAccessAction(null);
+    }
+  };
+
   return (
     <div className="border-t border-[#27272A] px-3 py-3">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(12rem,0.9fr)_auto_auto] lg:items-end">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
+            {isDisabled ? (
+              <span className="rounded border border-[#F85149] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#F85149]">
+                Disabled
+              </span>
+            ) : null}
+          </div>
           <p className="truncate text-xs text-[#8B949E]">{profile.email}</p>
+          {profile.access_disabled_reason ? (
+            <p className="mt-1 text-xs text-[#F59E0B]">{profile.access_disabled_reason}</p>
+          ) : null}
           {selectedPlayer && (
             <p className="mt-1 text-xs tracking-[0.14em] text-[#A1A1AA]">
               {selectedPlayer.team}
@@ -422,10 +482,40 @@ function ProfileLinkRow({
         <button
           type="button"
           onClick={saveProfile}
-          disabled={!hasChanged || isSaving}
+          disabled={!hasChanged || isSaving || Boolean(accessAction)}
           className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : hasChanged ? 'Save' : 'Linked'}
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-[#27272A] pt-3">
+        <button
+          type="button"
+          onClick={() => {
+            void updateAccess(isDisabled ? 'reactivate' : 'deactivate');
+          }}
+          disabled={isSaving || Boolean(accessAction)}
+          className={`min-h-11 rounded-md border px-3 py-2 text-xs font-bold tracking-[0.14em] ${
+            isDisabled ? 'border-[#3FB950] text-[#3FB950]' : 'border-[#F59E0B] text-[#F59E0B]'
+          } disabled:border-[#27272A] disabled:text-[#484F58]`}
+        >
+          {accessAction === 'deactivate'
+            ? 'Deactivating'
+            : accessAction === 'reactivate'
+              ? 'Reactivating'
+              : isDisabled
+                ? 'Reactivate access'
+                : 'Deactivate access'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void updateAccess('delete');
+          }}
+          disabled={isSaving || Boolean(accessAction)}
+          className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 text-xs font-bold tracking-[0.14em] text-[#F85149] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {accessAction === 'delete' ? 'Deleting' : 'Delete auth user'}
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
