@@ -30,8 +30,8 @@ Avoid:
 - **Body/UI:** `Geist Mono`, `SF Mono`, `Menlo`, fallback `monospace`.
 - **Data/Tables:** `Geist Mono`, `JetBrains Mono`, `SF Mono`, fallback `monospace`.
 - **Loading strategy:** Use local/system monospace first. Hosted fonts are optional, not required.
-- **Rule:** Use one mono family everywhere for the 2026 app. Weight, scale, color, and spacing create hierarchy.
-- **Casing:** Do not force all-caps typography anywhere in the app. Use natural casing in source copy and avoid Tailwind `uppercase` or equivalent text transforms.
+- **Rule:** Use one mono family everywhere for the 2026 app. Weight, scale, color, spacing, and machine-label tracking create hierarchy.
+- **Casing:** Do not force all-caps typography anywhere in the app. Use natural casing in source copy and avoid Tailwind `uppercase` or equivalent text transforms. The current 2026 auth hero and bottom nav intentionally use lower-case display treatment; keep that treatment local to those brand/navigation surfaces.
 
 Type scale:
 
@@ -141,13 +141,13 @@ Rules:
 - **Approach:** Grid-disciplined terminal.
 - **App screens:** Dense, aligned, predictable, and stable.
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
-- **Max content width:** `1180px` for desktop admin/dashboard pages.
+- **Max content width:** The authenticated 2026 shell can use `max-w-screen-2xl` for wide tournament/admin surfaces. Keep individual cards and forms narrower when the task is simple.
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
-- **Navigation:** Authenticated 2026 screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 app is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons. Player nav labels should be task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
+- **Navigation:** Authenticated 2026 screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 app is active. Hide native scrollbars. The rail should read as a single transparent glass sheet: heavy backdrop blur/saturation, light top border/sheen, low dark shadow, no boxed tab tiles, no gradient overlays, no chevrons, and no decorative top dot. Active state is a thin terminal-green underline/glow. Render labels lower-case in the rail while keeping source nav labels task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
 - **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Scores` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
 - **Profile vs Admin:** `Profile` is self-service only: own display name/avatar, linked player summary, and sign-out. Editing other users, admin roles, and profile-player links belongs in `Admin` → `Players`.
 - **Horizontal overflow:** App pages should not horizontally scroll. The only intentional horizontal scrolling surfaces are the bottom nav and explicitly contained tables/lists with local `overflow-x-auto`.
-- **Auth screen:** The unauthenticated `/2026` entry screen should be flat, minimal, and brand-led. Do not wrap it in the shared app shell or show a top header. Use `the al reynolds` as the small line and `ruff ryders cup 2026` as the main title. Keep copy brief: email field, send-link action, concise validation/status/error messages, and the minimal source/donation footer only. Email placeholders can use one lore reference, but should still look like plausible email addresses.
+- **Auth screen:** The unauthenticated app entry screen should be flat, minimal, and brand-led. Do not wrap it in the shared app shell or show a top header. Use `the al reynolds` as the small line and `ruff ryders cup 2026` as the main title. Keep copy brief: email field, send-link action, concise validation/status/error messages, and the minimal source/donation footer only. Email placeholders can use one lore reference, but should still look like plausible email addresses. Avoid visible backend/vendor language in normal player-facing auth copy.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:
@@ -185,6 +185,15 @@ Use:
 - Body with one primary task.
 - Footer only when actions need separation.
 - Thin borders, dark nested surfaces, no heavy shadow.
+
+### Empty States
+
+Empty states should be compact and singular:
+
+- Use one `StatusCard` or one short status row, not a grid of placeholder cards.
+- Do not render repeated "waiting" cards for content that does not exist yet.
+- Tell the user what will make the surface wake up, using product language: saved holes, imported history, linked profiles, or setup changes.
+- Keep empty-state copy short. It should reassure, not explain the database.
 
 ### Score Entry
 
@@ -239,6 +248,29 @@ Leaderboard surfaces should feel more like a live terminal readout than a card d
 - Minimal decoration.
 - Obvious live/update state.
 
+### Live Score Charts
+
+The live score curve should preserve the useful behavior from the legacy tournament progress chart while matching the 2026 terminal style:
+
+- Plot two team lines, one for USA and one for Europe.
+- Derive points from saved 2026 hole-score update order, not from legacy tournament progress snapshots.
+- Keep the y-axis zero-based with integer tick steps.
+- Keep x-axis labels sparse. On mobile, show fewer visible ticks than desktop.
+- Show the date on an x-axis tick only when that visible tick crosses into a new day; otherwise show time only.
+- Tooltips should show the full timestamp plus cumulative team totals, holes scored, and halved holes when relevant.
+- Use the standard team colors: USA `#F2B84B`, Europe `#58A6FF`.
+- The chart may use a subtle team-color wash, but it should still feel like an instrument panel, not a marketing graphic.
+
+### Highlights, Newsroom, And Activity
+
+Keep the three score-story surfaces distinct:
+
+- **Highlights Reel:** A curated, derived summary for quick scanning. It does not need every event.
+- **AI Newsroom:** Persisted commentary cards generated from the live board. Show only real generated cards. If none exist, show one compact status state.
+- **Tournament Activity:** The complete user-facing event feed. It should include timestamps and cover score saves, corrections, clears, setup changes, finalization, and inferred match starts/finishes.
+
+Avoid backend/vendor labels in these player-facing areas. Prefer `Live scoring`, `Full event feed`, `saved holes`, `scoreboard`, and `booth` language over storage/provider names.
+
 ### History
 
 Historical views must clearly label:
@@ -285,6 +317,7 @@ Respect reduced-motion preferences.
 - Prefer Tailwind utility classes backed by this system.
 - Add semantic Tailwind tokens before repeating raw hex values across components.
 - The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI. New 2026 UI should prefer `team-usa` and `team-europe`.
+- Existing 2026 components currently use many literal hex utility classes. When touching a component, align obvious drift with the semantic palette, but do not create noisy churn solely to convert stable raw hex classes.
 - New 2026 UI should bias toward mono typography, dark terminal surfaces, tighter radius, visible borders, and natural casing.
 - Read this file before building new UI.
 - If a component needs to deviate, document the reason in the decisions log.
@@ -298,3 +331,6 @@ Respect reduced-motion preferences.
 | 2026-05-02 | Kept team colors semantic rather than decorative | USA/EUR colors should clarify scores, not dominate every surface. |
 | 2026-05-02 | Shifted 2026 app toward dark terminal scoreboard | The first deployed app looked too generic and soft. The scoring flow needs sharper, cleaner, sexier terminal energy closer to `miniti`. |
 | 2026-05-03 | Flattened auth and removed forced all-caps | Login should be minimal and brand-led, with natural casing and no shared top header. |
+| 2026-05-03 | Made bottom navigation a transparent glass rail | The boxed tab treatment felt dated. The rail should be glassy, lower-case, and active via a thin underline, not tiles or dots. |
+| 2026-05-03 | Preserved legacy chart semantics in the 2026 live score curve | The old chart had useful x-axis/date behavior; the 2026 version keeps those rules while using the new scoreboard style. |
+| 2026-05-03 | Standardized compact empty states | Repeated placeholder grids create noise. Empty surfaces should be one concise status until real content exists. |

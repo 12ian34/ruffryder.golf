@@ -230,7 +230,7 @@ function PlayerHistoryPopover({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#27272A] px-3 py-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#3FB950]">Player history</p>
+            <p className="text-[10px] font-bold tracking-[0.22em] text-[#3FB950]">Player history</p>
             <h3 className="mt-1 truncate text-xl font-bold tracking-[-0.04em] text-[#FAFAFA]">
               <span aria-label={teamLabel} title={teamLabel}>{teamEmoji}</span>{' '}
               {player?.custom_emoji && <span>{player.custom_emoji} </span>}
@@ -240,7 +240,7 @@ function PlayerHistoryPopover({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[#27272A] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#E6EDF3]"
+            className="rounded-md border border-[#27272A] px-3 py-2 text-[10px] font-bold tracking-[0.14em] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#E6EDF3]"
           >
             Close
           </button>
@@ -262,7 +262,7 @@ function PlayerHistoryPopover({
             <p className="text-sm text-[#8B949E]">No historical rows for this player yet.</p>
           ) : (
             <table className="min-w-full text-left text-xs">
-              <thead className="border-b border-[#27272A] uppercase tracking-[0.16em] text-[#8B949E]">
+              <thead className="border-b border-[#27272A] tracking-[0.16em] text-[#8B949E]">
                 <tr>
                   <th className="whitespace-nowrap px-2 py-2">Year</th>
                   <th className="whitespace-nowrap px-2 py-2">Score raw</th>

@@ -277,7 +277,7 @@ export function ProfileLinkingPanel({
       </div>
       <div>
         {profiles.length === 0 ? (
-          <StatusCard>No Supabase profiles have been created yet.</StatusCard>
+          <StatusCard>No access profiles have been created yet.</StatusCard>
         ) : (
           profiles.map((profile) => (
             <ProfileLinkRow

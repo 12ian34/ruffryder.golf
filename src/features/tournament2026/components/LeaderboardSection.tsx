@@ -174,7 +174,7 @@ export function LeaderboardSection({
   ]);
 
   return (
-    <Panel title="Live Leaderboard" eyebrow="Supabase realtime">
+    <Panel title="Live Leaderboard" eyebrow="Live scoring">
       <div className="grid gap-3 md:grid-cols-3">
         <ScoreTile label="Overall" score={totals.overall} />
         <ScoreTile label="Foursomes" score={totals.foursomes} />
@@ -363,8 +363,8 @@ function ScoreTile({ label, score }: { label: string; score: TeamScore }) {
     <div className="rounded-lg border border-[#27272A] bg-[#18181B] p-3">
       <p className="text-xs tracking-[0.2em] text-[#8B949E]">{label}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <TeamTotal label="USA" value={score.USA} className="text-[#FACC15]" />
-        <TeamTotal label="Europe" value={score.EUROPE} className="text-[#60A5FA]" />
+        <TeamTotal label="USA" value={score.USA} className="text-[#F2B84B]" />
+        <TeamTotal label="Europe" value={score.EUROPE} className="text-[#58A6FF]" />
       </div>
       <p className="mt-3 text-xs text-[#8B949E]">
         {score.halved} halved, {score.unplayed} unplayed

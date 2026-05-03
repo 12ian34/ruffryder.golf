@@ -140,7 +140,7 @@ export default function Tournament2026() {
         throw signInError;
       }
 
-      setNotice('Check your email for the Supabase sign-in link.');
+      setNotice('Check your email for the Ruff Ryders access link.');
       track2026('signin_link_sent');
     } catch (err) {
       setError(getSignInErrorMessage(err));
@@ -289,7 +289,7 @@ function getSignInErrorMessage(error: unknown): string {
   const message = getErrorMessage(error);
 
   if (message.toLowerCase().includes('rate limit')) {
-    return 'Email rate limit exceeded. Wait a minute or use the most recent sign-in email Supabase already sent.';
+    return 'Email rate limit exceeded. Wait a minute or use the most recent Ruff Ryders access email.';
   }
 
   return message;
