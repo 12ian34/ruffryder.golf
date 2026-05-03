@@ -84,6 +84,41 @@ describe('ArchiveSection', () => {
     expect(dialogView.getAllByText('84')).not.toHaveLength(0);
     expect(dialogView.getAllByText('82')).not.toHaveLength(0);
   });
+
+  it('closes the player history popover with Escape', () => {
+    const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: fullHistoryPlayerStats });
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('2025'));
+    clickPlayerHistoryButton(container, 'sort-player-1');
+
+    expect(container.querySelector('[role="dialog"][aria-label="Tom history"]')).not.toBeNull();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(container.querySelector('[role="dialog"][aria-label="Tom history"]')).toBeNull();
+  });
+
+  it('closes the player history popover when clicking outside it', () => {
+    const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: fullHistoryPlayerStats });
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('2025'));
+    clickPlayerHistoryButton(container, 'sort-player-1');
+
+    const dialog = container.querySelector('[role="dialog"][aria-label="Tom history"]');
+    expect(dialog).not.toBeNull();
+
+    if (!dialog?.parentElement) {
+      throw new Error('Missing player history overlay');
+    }
+
+    fireEvent.pointerDown(dialog.parentElement);
+
+    expect(container.querySelector('[role="dialog"][aria-label="Tom history"]')).toBeNull();
+  });
 });
 
 function renderArchive({

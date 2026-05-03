@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type {
   AiPlayerOverviewRow,
   PlayerRow,
@@ -220,8 +220,33 @@ function PlayerHistoryPopover({
   const teamEmoji = player?.team === 'EUROPE' ? TEAM_EMOJI.EUROPE : TEAM_EMOJI.USA;
   const teamLabel = player?.team === 'EUROPE' ? 'Europe' : 'USA';
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    };
+
+    document.addEventListener('keydown', handleEscape, { capture: true });
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape, { capture: true });
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/70 px-3 py-4 sm:items-center sm:justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end bg-black/70 px-3 py-4 sm:items-center sm:justify-center"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
