@@ -48,27 +48,30 @@ describe('ScoreEntrySection', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('Length 367 m')).toBeInTheDocument();
-    expect(view.getByText('SI 3')).toBeInTheDocument();
-    expect(view.getAllByText('Par 4')).toHaveLength(2);
+    expect(view.getByText('Length 355 m')).toBeInTheDocument();
+    expect(view.getByText('SI 7')).toBeInTheDocument();
+    expect(view.getAllByText('Par 4')).toHaveLength(1);
     expect(view.getByText('1/2')).toBeInTheDocument();
     expect(view.getByText('USA dormie 1')).toBeInTheDocument();
     expect(view.getByText('1/2 played')).toBeInTheDocument();
+    expect(view.getByText(/USA 4 - Europe 5/)).toBeInTheDocument();
     expect(view.getByText(/Saved \d/)).toBeInTheDocument();
     expect(view.getByText('By Ian')).toBeInTheDocument();
+    expect(view.getByText('Edit')).toBeInTheDocument();
     expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
     fireEvent.click(view.getAllByLabelText('Show lengths in yards')[0]);
 
-    expect(view.getByText('Length 401 yds')).toBeInTheDocument();
     expect(view.getByText('Length 388 yds')).toBeInTheDocument();
 
+    fireEvent.click(view.getByText('Edit'));
     fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
 
     expect(view.getByText('Save now')).toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
+    fireEvent.change(view.getAllByLabelText('USA score')[1], { target: { value: '5' } });
     fireEvent.change(view.getAllByLabelText('Europe score')[1], { target: { value: '4' } });
 
     fireEvent.click(view.getByText('Save all (2)'));
@@ -94,6 +97,7 @@ describe('ScoreEntrySection', () => {
     const view = within(container);
 
     fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
+    fireEvent.change(view.getAllByLabelText('Europe score')[0], { target: { value: '5' } });
 
     await act(async () => {
       vi.advanceTimersByTime(700);
@@ -127,6 +131,29 @@ describe('ScoreEntrySection', () => {
       });
     });
     expect(onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it('groups concurrent back-nine singles by hole', () => {
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[groupedFixture]}
+        players={groupedPlayers}
+        courseHoles={[...courseHoles, { holeNumber: 10, yardage: 150, par: 3, strokeIndex: 12 }]}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Back 9'));
+
+    expect(view.getByText('Back 9 Singles')).toBeInTheDocument();
+    expect(view.getAllByText('H10')).toHaveLength(1);
+    expect(view.getByLabelText('Ian score')).toBeInTheDocument();
+    expect(view.getByLabelText('Tommy score')).toBeInTheDocument();
+    expect(view.getByLabelText('Sam score')).toBeInTheDocument();
+    expect(view.getByLabelText('Alex score')).toBeInTheDocument();
   });
 });
 
@@ -184,6 +211,64 @@ const fixture = {
           updated_at: '2026-05-02T20:00:00.000Z',
         },
       ],
+    },
+  ],
+} as unknown as FixtureView;
+
+const groupedPlayers = [
+  { id: 'player-1', name: 'Ian', team: 'USA', current_cpi: 82 },
+  { id: 'player-2', name: 'Tommy', team: 'EUROPE', current_cpi: 78 },
+  { id: 'player-3', name: 'Sam', team: 'USA', current_cpi: 88 },
+  { id: 'player-4', name: 'Alex', team: 'EUROPE', current_cpi: 84 },
+] as PlayerRow[];
+
+const groupedFixture = {
+  id: 'fixture-2',
+  name: 'Back nine group',
+  sort_order: 1,
+  participants: [],
+  segments: [
+    {
+      id: 'segment-front',
+      fixture_id: 'fixture-2',
+      name: 'Front nine',
+      kind: 'foursomes',
+      hole_start: 1,
+      hole_end: 1,
+      sort_order: 0,
+      cpi_enabled: false,
+      usa_player_id: null,
+      europe_player_id: null,
+      players: [],
+      holeScores: [],
+    },
+    {
+      id: 'segment-singles-a',
+      fixture_id: 'fixture-2',
+      name: 'Singles A',
+      kind: 'singles',
+      hole_start: 10,
+      hole_end: 10,
+      sort_order: 1,
+      cpi_enabled: true,
+      usa_player_id: 'player-1',
+      europe_player_id: 'player-2',
+      players: [],
+      holeScores: [],
+    },
+    {
+      id: 'segment-singles-b',
+      fixture_id: 'fixture-2',
+      name: 'Singles B',
+      kind: 'singles',
+      hole_start: 10,
+      hole_end: 10,
+      sort_order: 2,
+      cpi_enabled: true,
+      usa_player_id: 'player-3',
+      europe_player_id: 'player-4',
+      players: [],
+      holeScores: [],
     },
   ],
 } as unknown as FixtureView;

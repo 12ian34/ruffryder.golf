@@ -185,6 +185,9 @@ Score entry screens must optimize for speed:
 
 - Hole number and segment context always visible.
 - Current match status visible near score inputs.
+- Fixtures should behave like compact work cards: show participants, progress, and an open/closed state so admins are not forced through every fixture at once.
+- Fixtures with front-nine and back-nine work should expose a simple `Front 9` / `Back 9` switch instead of stacking every segment vertically.
+- When two back-nine singles matches are being scored in the same fixture, group entry by hole number and show both singles score pickers under that hole. The scorer's task is "score H10 for the group", not "finish one player's entire match before the other".
 - Large mobile score pickers. Avoid keyboard-first numeric entry during tournament play.
 - Score pickers should support thumb-friendly `-` / `+`, quick nearby score chips, and a native/select fallback for accessibility.
 - Clear halved-hole state.
@@ -195,7 +198,7 @@ Score entry screens must optimize for speed:
 - Manual retry/save controls are fallback actions, not the primary path.
 - A `Save all` action can appear when multiple rows have unsaved changes or failed saves need a bulk retry.
 - Dirty rows should be visually obvious with a subtle amber border or marker; failed rows should use red.
-- Saved rows should show a compact result chip, not verbose explanatory text.
+- Saved rows should collapse to a compact result summary with an explicit `Edit` action. Re-open full score pickers only when the scorer is changing that saved hole.
 - Rows should feel like terminal records: `H10`, distance, SI, USA score, Europe score, result, save state.
 - Score entry should use the full mobile width. Avoid nested fixture → segment → row boxes that waste horizontal space.
 
