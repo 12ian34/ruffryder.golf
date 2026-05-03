@@ -174,7 +174,7 @@ npx vitest run src/__tests__/ScoreEntrySection.test.tsx
 - `AGENTS.md`: canonical agent context for architecture, product direction, conventions, and testing expectations.
 - `DESIGN.md`: UI design system source of truth.
 - `docs/2026-rules-spec.md`: canonical 2026 tournament rules.
-- `CLAUDE.md`: legacy Firebase context. Useful for old behavior and migration reference, but not the current architecture source of truth.
+- `docs/legacy-firebase-reference.md`: compact legacy Firebase context for old behavior, archive display, and migration reference.
 
 ## Code Conventions
 

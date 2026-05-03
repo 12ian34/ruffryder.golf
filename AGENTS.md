@@ -4,9 +4,7 @@
 
 This file is the canonical agent guide for work in this repo going forward.
 
-`CLAUDE.md` is now legacy context. It describes the current Firebase app and is still useful for understanding old behavior, migration source data, and historical implementation details, but it should be treated as outdated during the 2026 Supabase rebuild. Prefer this file for current product rules, architecture direction, and implementation guidance.
-
-Eventually `CLAUDE.md` can be deleted once its useful legacy context has been migrated here or superseded.
+Legacy Firebase behavior and migration-source details live in `docs/legacy-firebase-reference.md`. Use that file only for `/legacy/*`, archive, or migration work. Prefer this file for current product rules, architecture direction, and implementation guidance.
 
 ## Documentation Ownership
 
@@ -17,7 +15,7 @@ Keep the root docs intentionally split by audience:
 - `AGENTS.md` is for coding agents. Keep architecture direction, product constraints, implementation guidance, and test expectations here.
 - `DESIGN.md` is the UI design source of truth.
 - `docs/2026-rules-spec.md` is the canonical 2026 tournament rules spec.
-- `CLAUDE.md` is legacy Firebase context and migration reference only.
+- `docs/legacy-firebase-reference.md` is compact legacy Firebase context and migration reference only.
 
 Do not move contributor setup, stack inventories, or agent-only rebuild notes back into the player README.
 
