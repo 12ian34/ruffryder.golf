@@ -2,12 +2,11 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { CreateProfilePanel, SignInPanel } from '../features/tournament2026/components/AuthPanels';
 import { AdminSetupSection } from '../features/tournament2026/components/AdminSetupSection';
-import { HistorySection } from '../features/tournament2026/components/HistorySection';
+import { ArchiveSection } from '../features/tournament2026/components/HistorySection';
 import { LeaderboardSection } from '../features/tournament2026/components/LeaderboardSection';
 import { PageShell, StatusCard, type AppNavItem } from '../features/tournament2026/components/Layout';
 import { ProfileSection } from '../features/tournament2026/components/ProfileSection';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
-import { StatsSection } from '../features/tournament2026/components/StatsSection';
 import { filterFixturesForScoreEntry, getErrorMessage } from '../features/tournament2026/viewUtils';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { getSupabaseClient, getSupabaseConfigStatus } from '../lib/supabase';
@@ -18,15 +17,21 @@ import {
 import type { Tournament2026Data } from '../services/tournament2026Queries';
 import { identifySupabaseUser, track2026 } from '../utils/analytics';
 
-type Tournament2026Tab = 'score' | 'leaderboard' | 'stats' | 'setup' | 'history' | 'profile';
+type Tournament2026Tab = 'score' | 'leaderboard' | 'archive' | 'setup' | 'profile';
 
-const APP_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
-  { id: 'score', label: 'Score' },
-  { id: 'leaderboard', label: 'Leaderboard', shortLabel: 'Board' },
-  { id: 'stats', label: 'Stats' },
-  { id: 'setup', label: 'Setup' },
-  { id: 'history', label: 'History' },
-  { id: 'profile', label: 'Profile', shortLabel: 'Me' },
+const PLAYER_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
+  { id: 'score', label: 'My Game' },
+  { id: 'leaderboard', label: 'Scores' },
+  { id: 'archive', label: 'Archive' },
+  { id: 'profile', label: 'Profile' },
+];
+
+const ADMIN_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
+  { id: 'score', label: 'My Game' },
+  { id: 'leaderboard', label: 'Scores' },
+  { id: 'archive', label: 'Archive' },
+  { id: 'setup', label: 'Admin' },
+  { id: 'profile', label: 'Profile' },
 ];
 
 export default function Tournament2026() {
@@ -139,6 +144,10 @@ export default function Tournament2026() {
   };
 
   const handleSignOut = async () => {
+    if (!window.confirm('Sign out of the 2026 tournament console?')) {
+      return;
+    }
+
     await getSupabaseClient().auth.signOut();
     track2026('signed_out');
     setData(null);
@@ -194,6 +203,7 @@ export default function Tournament2026() {
   }
 
   const scoreEntryFixtures = filterFixturesForScoreEntry(data.fixtures, data.profile);
+  const navItems = data.profile.is_admin ? ADMIN_NAV_ITEMS : PLAYER_NAV_ITEMS;
 
   return (
     <PageShell
@@ -201,7 +211,7 @@ export default function Tournament2026() {
       isOnline={isOnline}
       onSignOut={handleSignOut}
       activeTab={activeTab}
-      navItems={APP_NAV_ITEMS}
+      navItems={navItems}
       onTabChange={handleTabChange}
     >
       {!isOnline && (
@@ -228,17 +238,14 @@ export default function Tournament2026() {
           courseHoles={data.courseHoles}
         />
       )}
-      {activeTab === 'stats' && (
-        <StatsSection players={data.players} playerStats={data.playerStats} profile={data.profile} />
-      )}
       {activeTab === 'setup' &&
         (data.profile.is_admin ? (
           <AdminSetupSection data={data} onSaved={refreshData} />
         ) : (
           <StatusCard tone="warning">Setup is admin-only. Use Score during tournament play.</StatusCard>
         ))}
-      {activeTab === 'history' && (
-        <HistorySection
+      {activeTab === 'archive' && (
+        <ArchiveSection
           history={data.history}
           players={data.players}
           playerStats={data.playerStats}
@@ -250,6 +257,7 @@ export default function Tournament2026() {
           profile={data.profile}
           profiles={data.profiles}
           players={data.players}
+          onSignOut={handleSignOut}
           onSaved={refreshData}
         />
       )}

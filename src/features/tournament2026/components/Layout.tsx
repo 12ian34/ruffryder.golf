@@ -93,15 +93,6 @@ export function PageShell<T extends string>({
                 </button>
               );
             })}
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="min-w-[5.25rem] rounded-md border border-white/5 bg-white/[0.03] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#A1A1AA] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-[#F85149] hover:bg-[#1F0A0A]/70 hover:text-[#F85149] sm:min-w-[6.5rem] sm:text-xs"
-              >
-                Sign out
-              </button>
-            )}
           </div>
         </nav>
       )}

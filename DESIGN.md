@@ -141,7 +141,8 @@ Rules:
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
 - **Max content width:** `1180px` for desktop admin/dashboard pages.
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
-- **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons.
+- **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons. Player nav labels should be task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
+- **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Scores` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:

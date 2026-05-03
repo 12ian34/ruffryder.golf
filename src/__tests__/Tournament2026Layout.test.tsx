@@ -12,6 +12,7 @@ describe('PageShell', () => {
         navItems={navItems}
         onTabChange={onTabChange}
         userEmail="ian@example.com"
+        onSignOut={vi.fn()}
       >
         <div>Active panel</div>
       </PageShell>
@@ -19,17 +20,18 @@ describe('PageShell', () => {
     const view = within(container);
 
     expect(view.getByText('Active panel')).toBeInTheDocument();
-    expect(view.getAllByText('Score')).toHaveLength(1);
+    expect(view.getAllByText('My Game')).toHaveLength(1);
     expect(view.queryByText('2026 Tournament Console')).not.toBeInTheDocument();
+    expect(view.queryByText('Sign out')).not.toBeInTheDocument();
 
-    fireEvent.click(view.getByText('History'));
+    fireEvent.click(view.getByText('Archive'));
 
-    expect(onTabChange).toHaveBeenCalledWith('history');
+    expect(onTabChange).toHaveBeenCalledWith('archive');
   });
 });
 
-const navItems: AppNavItem<'score' | 'history'>[] = [
-  { id: 'score', label: 'Score' },
-  { id: 'history', label: 'History' },
+const navItems: AppNavItem<'score' | 'archive'>[] = [
+  { id: 'score', label: 'My Game' },
+  { id: 'archive', label: 'Archive' },
 ];
 

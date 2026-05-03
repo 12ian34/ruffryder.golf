@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import type { CourseHoleMetadata } from '../../../domain/2026/course';
 import {
   clearFixtureScores2026,
@@ -36,32 +36,102 @@ export function AdminSetupSection({
   }
 
   return (
-    <Panel title="Admin Setup" eyebrow="Tournament setup">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <TournamentForm onSaved={onSaved} />
-        <PlayerForm onSaved={onSaved} />
+    <Panel title="Admin" eyebrow="Tournament operations">
+      <p className="text-sm leading-6 text-[#A1A1AA]">
+        Work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing.
+      </p>
+      <div className="-mx-4 mt-4 sm:mx-0">
+        <AdminTaskSection
+          title="Tournament"
+          description="Create the active event, edit CPI settings, and finalize or reopen when scoring is done."
+          defaultOpen
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TournamentForm onSaved={onSaved} />
+            <TournamentCorrections
+              tournament={data.activeTournament}
+              fixtures={data.fixtures}
+              players={data.players}
+              profileId={data.profile.id}
+              onSaved={onSaved}
+            />
+          </div>
+          <FinalizationPanel
+            tournament={data.activeTournament}
+            fixtures={data.fixtures}
+            players={data.players}
+            onSaved={onSaved}
+          />
+        </AdminTaskSection>
+        <AdminTaskSection
+          title="Players"
+          description="Add players and correct names, teams, or current CPI values. Profile links live in Profile."
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PlayerForm onSaved={onSaved} />
+            <PlayerCorrections players={data.players} onSaved={onSaved} />
+          </div>
+        </AdminTaskSection>
+        <AdminTaskSection
+          title="Fixtures"
+          description="Create the next scoring group. Choose 1v1 for a full-course singles match or team fixture for front-nine foursomes plus back-nine singles."
+          defaultOpen={Boolean(data.activeTournament) && data.fixtures.length === 0}
+        >
         <CustomFixtureForm
           tournament={data.activeTournament}
           players={data.players}
           fixtureCount={data.fixtures.length}
           onSaved={onSaved}
         />
+        </AdminTaskSection>
+        <AdminTaskSection
+          title="Course"
+          description="Maintain hole par and yardage metadata used by score entry."
+        >
+          <CourseMetadataCorrections courseHoles={data.courseHoles} onSaved={onSaved} />
+        </AdminTaskSection>
+        <AdminTaskSection
+          title="Corrections"
+          description="Fix fixture mistakes, clear accidental score rows, or delete bad fixtures. Destructive actions ask for confirmation."
+        >
+          <CorrectionPanel
+            tournament={data.activeTournament}
+            fixtures={data.fixtures}
+            players={data.players}
+            onSaved={onSaved}
+          />
+        </AdminTaskSection>
       </div>
-      <FinalizationPanel
-        tournament={data.activeTournament}
-        fixtures={data.fixtures}
-        players={data.players}
-        onSaved={onSaved}
-      />
-      <CorrectionPanel
-        tournament={data.activeTournament}
-        players={data.players}
-        fixtures={data.fixtures}
-        profileId={data.profile.id}
-        courseHoles={data.courseHoles}
-        onSaved={onSaved}
-      />
     </Panel>
+  );
+}
+
+function AdminTaskSection({
+  title,
+  description,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="border-t border-[#27272A] bg-[#050505] first:border-t-0">
+      <summary className="cursor-pointer list-none px-4 py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">{title}</h3>
+            <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
+          </div>
+          <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
+            Open
+          </span>
+        </div>
+      </summary>
+      <div className="border-t border-[#27272A] px-4 py-4">{children}</div>
+    </details>
   );
 }
 
@@ -266,36 +336,15 @@ function CorrectionPanel({
   tournament,
   players,
   fixtures,
-  profileId,
-  courseHoles,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   players: PlayerRow[];
   fixtures: FixtureView[];
-  profileId: string;
-  courseHoles: CourseHoleMetadata[];
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="mt-5 border-t border-[#27272A] pt-4">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#3FB950]">Corrections</p>
-      <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
-        Fix setup mistakes from mobile without opening Supabase. Destructive fixture actions require confirmation.
-      </p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-        <TournamentCorrections
-          tournament={tournament}
-          fixtures={fixtures}
-          players={players}
-          profileId={profileId}
-          onSaved={onSaved}
-        />
-        <PlayerCorrections players={players} onSaved={onSaved} />
-        <FixtureCorrections tournament={tournament} fixtures={fixtures} players={players} onSaved={onSaved} />
-        <CourseMetadataCorrections courseHoles={courseHoles} onSaved={onSaved} />
-      </div>
-    </div>
+    <FixtureCorrections tournament={tournament} fixtures={fixtures} players={players} onSaved={onSaved} />
   );
 }
 

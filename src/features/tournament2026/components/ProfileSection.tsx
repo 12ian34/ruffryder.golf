@@ -16,12 +16,14 @@ export function ProfileSection({
   profile,
   profiles,
   players,
+  onSignOut,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   profile: ProfileRow;
   profiles: ProfileRow[];
   players: PlayerRow[];
+  onSignOut: () => Promise<void>;
   onSaved: () => Promise<void>;
 }) {
   const linkedPlayer = players.find((player) => player.id === profile.linked_player_id) ?? null;
@@ -48,10 +50,44 @@ export function ProfileSection({
         </div>
       </div>
       <OwnProfileForm profile={profile} onSaved={onSaved} />
+      <AccountActions onSignOut={onSignOut} />
       {profile.is_admin && (
         <ProfileLinkingPanel profiles={profiles} players={players} onSaved={onSaved} />
       )}
     </Panel>
+  );
+}
+
+function AccountActions({ onSignOut }: { onSignOut: () => Promise<void> }) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const signOut = async () => {
+    setIsSigningOut(true);
+
+    try {
+      await onSignOut();
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  return (
+    <div className="-mx-4 border-t border-[#27272A] px-4 py-4 sm:mx-0">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Account</p>
+      <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+        Sign out of this device. You can return with a fresh email link.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          void signOut();
+        }}
+        disabled={isSigningOut}
+        className="mt-3 min-h-11 rounded-md border border-[#F85149] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#F85149] disabled:border-[#27272A] disabled:text-[#484F58]"
+      >
+        {isSigningOut ? 'Signing out' : 'Sign out'}
+      </button>
+    </div>
   );
 }
 

@@ -112,16 +112,17 @@ Current 2026 UI/service layout:
 
 - `src/lib/supabase.ts` lazily creates the browser Supabase client so the legacy app can still load when Supabase env vars are absent.
 - `src/pages/Tournament2026.tsx` is the route-level orchestrator. It handles Supabase config checks, OTP sign-in, profile creation flow, auth state refresh, realtime subscription setup, and section composition.
+- The authenticated `/2026` nav is bottom-only and task-based: `My Game`, `Scores`, `Archive`, `Profile`, plus admin-only `Admin`. Do not show admin setup to non-admins in nav, and keep sign-out in Profile with confirmation.
 - `src/features/tournament2026/components/AuthPanels.tsx` contains sign-in and profile creation panels. The sign-in panel supports a resend cooldown and surfaces Supabase rate-limit guidance from the route.
 - `src/features/tournament2026/components/Layout.tsx` contains shared shell, panel, form, and status-card primitives for the 2026 console.
 - `src/features/tournament2026/components/Hero.tsx` shows active tournament/profile context.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, and score-movement timeline data for tournament-day scanning.
 - `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture score entry as collapsible work cards with front/back switches, grouped back-nine singles by hole, Supabase-backed course metadata, compact saved-by/saved-time audit metadata, admin single-hole clear controls, and autosaves each hole through the 2026 query service. It must remain locked when `tournaments.is_complete` is true.
-- `src/features/tournament2026/components/StatsSection.tsx` shows sortable 2026 player stats/history with team filtering and current-player highlighting.
-- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and currently creates active tournaments, players, flexible fixtures, finalizes/reopens tournaments, edits course hole par/yardage, and handles common correction flows for tournaments, players, fixtures, and segments.
+- `src/features/tournament2026/components/StatsSection.tsx` is legacy/unused after the Archive consolidation; prefer the Archive player-history view for new work unless this file is removed.
+- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, and Corrections. Keep destructive correction flows collapsed and confirmation-gated.
 - `src/features/tournament2026/components/ProfileSection.tsx` supports profile self-service for display name/avatar through the `update_own_profile` RPC and admin management for profile names, avatars, roles, and player links.
-- `src/features/tournament2026/components/HistorySection.tsx` shows imported `legacy_tournaments` summaries, game-level drilldowns from `legacy_games`, and player/stat archive rows.
+- `src/features/tournament2026/components/HistorySection.tsx` exports the Archive view. It combines historical tournament drilldowns from `legacy_tournaments`/`legacy_games` with player history from `player_tournament_stats`. Migrated score-only rows should display as historical scores/CPI, not as `0/0` 2026 hole-count stats.
 - `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
 - `src/features/tournament2026/insights.ts` derives 2026 highlights and score-movement timeline data from fixture segments and hole scores.
 - `src/features/tournament2026/viewUtils.ts` holds UI-only formatting, totals, hole-range, and parsing helpers.
