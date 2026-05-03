@@ -255,7 +255,6 @@ export default function Tournament2026() {
         <ProfileSection
           tournament={data.activeTournament}
           profile={data.profile}
-          profiles={data.profiles}
           players={data.players}
           onSignOut={handleSignOut}
           onSaved={refreshData}

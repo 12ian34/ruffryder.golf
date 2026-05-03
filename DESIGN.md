@@ -38,10 +38,10 @@ Type scale:
 - `xs`: 0.75rem / 12px, labels and helper text
 - `sm`: 0.8125rem / 13px, compact body
 - `base`: 0.9375rem / 15px, primary UI text
-- `lg`: 1.125rem / 18px, section titles
-- `xl`: 1.25rem / 20px, compact headers
+- `lg`: 1.125rem / 18px, fixture and card titles
+- `xl`: 1.25rem / 20px, section titles
 - `2xl`: 1.5rem / 24px, page titles
-- `score`: 2.75rem / 44px on mobile, 4rem / 64px on desktop
+- `score`: 2rem / 32px on mobile, 2.5rem / 40px on desktop
 
 Use tabular numbers for all scores, hole numbers, stroke indices, distances, and leaderboard totals.
 
@@ -133,6 +133,7 @@ Rules:
 - Score entry rows should be compact but scannable.
 - Data tables can be tighter, but row hit areas must remain touchable on mobile.
 - Prefer `8px`, `12px`, and `16px` gaps over broad `24px+` spacing inside data-heavy panels.
+- Default 2026 page panels should use compact padding (`12px` mobile, `16px` desktop). Avoid `text-4xl` and large card padding except for one-off hero score moments that truly need it.
 
 ## Layout
 
@@ -143,6 +144,9 @@ Rules:
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
 - **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons. Player nav labels should be task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
 - **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Scores` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
+- **Profile vs Admin:** `Profile` is self-service only: own display name/avatar, linked player summary, and sign-out. Editing other users, admin roles, and profile-player links belongs in `Admin` → `Players`.
+- **Horizontal overflow:** App pages should not horizontally scroll. The only intentional horizontal scrolling surfaces are the bottom nav and explicitly contained tables/lists with local `overflow-x-auto`.
+- **Auth screen:** The unauthenticated `/2026` entry screen should feel like a private Ruff Ryders Cup access card, not vendor auth. Avoid visible backend/vendor language such as "Supabase sign in"; use match-day language like access link, scoring console, invite-only, and player entry.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:

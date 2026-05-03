@@ -110,10 +110,10 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="border-y border-[#27272A] bg-[#0A0A0B] px-4 py-4 sm:rounded-lg sm:border sm:bg-[#0F0F11] sm:p-5">
-      <p className="text-[10px] uppercase tracking-[0.28em] text-[#3FB950]">{eyebrow}</p>
-      <h2 className="mt-1 text-3xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-4xl">{title}</h2>
-      <div className="mt-4">{children}</div>
+    <section className="border-y border-[#27272A] bg-[#0A0A0B] px-3 py-3 sm:rounded-lg sm:border sm:bg-[#0F0F11] sm:p-4">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-[#3FB950]">{eyebrow}</p>
+      <h2 className="mt-1 text-2xl font-bold tracking-[-0.05em] text-[#FAFAFA] sm:text-3xl">{title}</h2>
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
@@ -130,7 +130,7 @@ export function SetupForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-[#27272A] bg-[#18181B] p-4">
+    <form onSubmit={onSubmit} className="rounded-lg border border-[#27272A] bg-[#18181B] p-3">
       <h3 className="font-bold text-[#FAFAFA]">{title}</h3>
       <div className="mt-3 space-y-3">{children}</div>
       {error && <p className="mt-3 text-sm text-[#F85149]">{error}</p>}
@@ -152,5 +152,5 @@ export function StatusCard({
     error: 'border-[#F85149]/60 bg-[#1F0A0A] text-[#F85149]',
   }[tone];
 
-  return <div className={`mt-4 rounded-md border px-4 py-3 text-sm ${toneClass}`}>{children}</div>;
+  return <div className={`mt-3 rounded-md border px-3 py-2.5 text-sm ${toneClass}`}>{children}</div>;
 }

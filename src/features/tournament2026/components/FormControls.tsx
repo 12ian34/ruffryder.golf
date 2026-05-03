@@ -59,7 +59,7 @@ export function ScorePicker({
             value={selectedValue}
             onChange={(event) => onChange(event.target.value)}
             aria-label={`${label} score`}
-            className="h-10 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#18181B] px-2 text-center text-xl font-bold text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+            className="h-10 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#18181B] px-2 text-center text-lg font-bold text-[#FAFAFA] outline-none focus:border-[#3FB950]"
           >
             <option value="">--</option>
             {Array.from({ length: 12 }, (_, index) => index + 1).map((score) => (

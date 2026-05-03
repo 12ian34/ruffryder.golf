@@ -29,7 +29,11 @@ export function ArchiveSection({
           onClick={() => setActiveView('players')}
         />
       </div>
-      {activeView === 'tournaments' ? <TournamentArchive history={history} /> : <PlayerArchive players={players} playerStats={playerStats} />}
+      {activeView === 'tournaments' ? (
+        <TournamentArchive history={history} />
+      ) : (
+        <PlayerArchive players={players} playerStats={playerStats} />
+      )}
     </Panel>
   );
 }
@@ -47,7 +51,7 @@ function ArchiveViewButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+      className={`rounded-md border px-2.5 py-2 text-[11px] font-bold uppercase tracking-[0.14em] ${
         isActive
           ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
           : 'border-[#27272A] text-[#8B949E]'
@@ -64,18 +68,18 @@ function TournamentArchive({ history }: { history: Tournament2026Data['history']
   }
 
   return (
-    <div className="-mx-4 mt-4 sm:mx-0">
+    <div className="-mx-3 mt-3 sm:mx-0">
       {history.map((tournament) => (
         <details key={tournament.id} className="border-t border-[#27272A] bg-[#050505] first:border-t-0">
-          <summary className="cursor-pointer list-none px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">{tournament.year}</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <h3 className="text-xl font-bold tracking-[-0.04em] text-[#FAFAFA]">{tournament.name}</h3>
+          <summary className="cursor-pointer list-none px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#8B949E]">{tournament.year}</p>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <h3 className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{tournament.name}</h3>
               <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
                 {tournament.games.length} games
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
               <HistoryScore label="Raw" usa={tournament.total_raw_usa} europe={tournament.total_raw_europe} />
               <HistoryScore
                 label="Legacy adjusted"
@@ -86,7 +90,7 @@ function TournamentArchive({ history }: { history: Tournament2026Data['history']
           </summary>
           <div className="border-t border-[#27272A]">
             {tournament.games.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-[#8B949E]">No legacy game rows imported for this tournament.</p>
+              <p className="px-3 py-3 text-sm text-[#8B949E]">No legacy game rows imported for this tournament.</p>
             ) : (
               tournament.games.map((game) => <LegacyGameRow key={game.id} game={game} />)
             )}
@@ -108,21 +112,21 @@ function PlayerArchive({
   const statsByYear = useMemo(() => groupStatsByYear(playerStats, playerLookup), [playerStats, playerLookup]);
 
   return (
-    <div className="-mx-4 mt-4 border-t border-[#27272A] sm:mx-0">
-      <div className="px-4 py-4">
+    <div className="-mx-3 mt-3 border-t border-[#27272A] sm:mx-0">
+      <div className="px-3 py-3">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Player archive</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Finalized 2026 app stats and migrated historical score rows. Historical annual scores are shown as scores, not as 2026 hole-count records.
         </p>
       </div>
       {statsByYear.length === 0 ? (
-        <p className="px-4 pb-4 text-sm text-[#8B949E]">No player stat rows have been saved yet.</p>
+        <p className="px-3 pb-3 text-sm text-[#8B949E]">No player stat rows have been saved yet.</p>
       ) : (
         statsByYear.map(({ year, stats }, index) => (
           <details key={year} open={index === 0} className="border-t border-[#27272A] bg-[#050505]">
-            <summary className="cursor-pointer list-none px-4 py-3">
+            <summary className="cursor-pointer list-none px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{year}</p>
+                <p className="text-base font-bold tracking-[-0.03em] text-[#FAFAFA]">{year}</p>
                 <span className="border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#A1A1AA]">
                   {stats.length} rows
                 </span>
@@ -132,11 +136,11 @@ function PlayerArchive({
               <table className="min-w-full text-left text-xs">
                 <thead className="border-b border-[#27272A] bg-[#0C0C0E] uppercase tracking-[0.16em] text-[#8B949E]">
                   <tr>
-                    <th className="px-4 py-2">Player</th>
-                    <th className="px-4 py-2">Result</th>
-                    <th className="px-4 py-2">Won</th>
-                    <th className="px-4 py-2">CPI / score</th>
-                    <th className="px-4 py-2">Source</th>
+                    <th className="px-3 py-2">Player</th>
+                    <th className="px-3 py-2">Result</th>
+                    <th className="px-3 py-2">Won</th>
+                    <th className="px-3 py-2">CPI / score</th>
+                    <th className="px-3 py-2">Source</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#27272A]">
@@ -145,19 +149,19 @@ function PlayerArchive({
 
                     return (
                       <tr key={stat.id}>
-                        <td className="whitespace-nowrap px-4 py-2 text-[#FAFAFA]">
+                        <td className="whitespace-nowrap px-3 py-2 text-[#FAFAFA]">
                           {player?.name ?? 'Unknown player'}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
                           {formatPlayerResult(stat)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
                           {formatHolesWon(stat)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
                           {stat.cpi_after ?? '-'}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2 uppercase text-[#8B949E]">{formatSource(stat.source)}</td>
+                        <td className="whitespace-nowrap px-3 py-2 uppercase text-[#8B949E]">{formatSource(stat.source)}</td>
                       </tr>
                     );
                   })}
@@ -227,10 +231,12 @@ function getLegacyNumber(payload: Tournament2026Data['playerStats'][number]['leg
 
 function HistoryScore({ label, usa, europe }: { label: string; usa: number; europe: number }) {
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-[#8B949E]">{label}</p>
-      <p className="mt-1 text-lg text-[#E6EDF3]">
-        USA {usa} - EUR {europe}
+    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-2.5">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">{label}</p>
+      <p className="mt-1 text-sm leading-5 text-[#E6EDF3]">
+        <span className="whitespace-nowrap">USA {usa}</span>
+        <span className="text-[#8B949E]"> / </span>
+        <span className="whitespace-nowrap">EUR {europe}</span>
       </p>
     </div>
   );
@@ -242,7 +248,7 @@ function LegacyGameRow({
   game: Tournament2026Data['history'][number]['games'][number];
 }) {
   return (
-    <div className="border-t border-[#27272A] px-4 py-3 first:border-t-0">
+    <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-bold text-[#FAFAFA]">
@@ -252,7 +258,7 @@ function LegacyGameRow({
             {game.status} · {game.use_legacy_handicap ? `${game.legacy_handicap_strokes} legacy strokes` : 'No legacy handicap'}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs sm:min-w-72">
+        <div className="grid grid-cols-2 gap-2 text-xs sm:min-w-64">
           <HistoryScore label="Raw pts" usa={game.points_raw_usa} europe={game.points_raw_europe} />
           <HistoryScore
             label="Adj pts"

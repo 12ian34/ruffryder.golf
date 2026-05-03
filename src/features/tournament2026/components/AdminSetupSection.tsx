@@ -23,6 +23,7 @@ import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { Panel, SetupForm, StatusCard } from './Layout';
+import { ProfileLinkingPanel } from './ProfileSection';
 
 export function AdminSetupSection({
   data,
@@ -40,7 +41,7 @@ export function AdminSetupSection({
       <p className="text-sm leading-6 text-[#A1A1AA]">
         Work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing.
       </p>
-      <div className="-mx-4 mt-4 sm:mx-0">
+      <div className="-mx-3 mt-3 sm:mx-0">
         <AdminTaskSection
           title="Tournament"
           description="Create the active event, edit CPI settings, and finalize or reopen when scoring is done."
@@ -65,11 +66,14 @@ export function AdminSetupSection({
         </AdminTaskSection>
         <AdminTaskSection
           title="Players"
-          description="Add players and correct names, teams, or current CPI values. Profile links live in Profile."
+          description="Add players, correct player details, and link signed-in profiles to players."
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <PlayerForm onSaved={onSaved} />
             <PlayerCorrections players={data.players} onSaved={onSaved} />
+          </div>
+          <div className="mt-4">
+            <ProfileLinkingPanel profiles={data.profiles} players={data.players} onSaved={onSaved} />
           </div>
         </AdminTaskSection>
         <AdminTaskSection
@@ -119,10 +123,10 @@ function AdminTaskSection({
 }) {
   return (
     <details open={defaultOpen} className="border-t border-[#27272A] bg-[#050505] first:border-t-0">
-      <summary className="cursor-pointer list-none px-4 py-4">
+      <summary className="cursor-pointer list-none px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">{title}</h3>
+            <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">{title}</h3>
             <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
           </div>
           <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
@@ -130,7 +134,7 @@ function AdminTaskSection({
           </span>
         </div>
       </summary>
-      <div className="border-t border-[#27272A] px-4 py-4">{children}</div>
+      <div className="border-t border-[#27272A] px-3 py-3">{children}</div>
     </details>
   );
 }

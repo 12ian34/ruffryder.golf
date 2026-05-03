@@ -88,7 +88,7 @@ export function ScoreEntrySection({
 
   return (
     <Panel title="Score Entry" eyebrow="Fixture scores">
-      <div className="-mx-4 sm:mx-0">
+      <div className="-mx-3 sm:mx-0">
         {fixtures.length === 0 && (
           <StatusCard tone="warning">
             {profile.is_admin || profile.linked_player_id
@@ -161,11 +161,11 @@ function FixtureScoreCard({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="w-full px-4 py-4 text-left"
+        className="w-full px-3 py-3 text-left"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
+            <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">
               {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
             </h3>
             <p className="mt-1 text-xs leading-5 text-[#8B949E]">{formatParticipants(fixture.participants)}</p>
@@ -186,7 +186,7 @@ function FixtureScoreCard({
       {isOpen && (
         <div>
           {hasFrontAndBack && (
-            <div className="flex gap-2 border-t border-[#27272A] bg-[#050505] px-4 py-3">
+            <div className="flex gap-2 border-t border-[#27272A] bg-[#050505] px-3 py-3">
               <ScoreViewButton
                 label="Front 9"
                 isActive={activeView === 'front'}
@@ -437,7 +437,7 @@ function SegmentScoreCard({
 
   return (
     <div className="border-t border-[#27272A] bg-[#050505]">
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
             {segment.name ?? formatSegmentKind(segment.kind)}
@@ -480,7 +480,7 @@ function SegmentScoreCard({
           </span>
         </div>
       </div>
-      {saveAllError && <p className="px-4 pb-3 font-data text-xs text-[#F85149]">{saveAllError}</p>}
+      {saveAllError && <p className="px-3 pb-3 font-data text-xs text-[#F85149]">{saveAllError}</p>}
       <div>
         {holes.map((holeNumber) => {
           const score = segment.holeScores.find((row) => row.hole_number === holeNumber) ?? null;
@@ -544,7 +544,7 @@ function BackNineGroupedScoreCard({
 
   return (
     <div className="border-t border-[#27272A] bg-[#050505]">
-      <div className="px-4 py-4">
+      <div className="px-3 py-3">
         <p className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
           Back 9 Singles
         </p>
@@ -570,8 +570,8 @@ function BackNineGroupedScoreCard({
 
           return (
             <div key={holeNumber} className="border-t border-[#27272A] bg-[#0C0C0E]">
-              <div className="flex items-baseline justify-between gap-3 px-4 py-3">
-                <div className="font-data text-3xl font-bold tracking-[-0.08em] text-[#FAFAFA]">
+              <div className="flex items-baseline justify-between gap-3 px-3 py-3">
+                <div className="font-data text-2xl font-bold tracking-[-0.07em] text-[#FAFAFA]">
                   H{holeNumber}
                 </div>
                 <HoleMetadata
@@ -580,7 +580,7 @@ function BackNineGroupedScoreCard({
                   onLengthUnitToggle={onLengthUnitToggle}
                 />
               </div>
-              <div className="grid gap-2 px-2 pb-3 sm:px-4 lg:grid-cols-2">
+              <div className="grid gap-2 px-2 pb-3 sm:px-3 lg:grid-cols-2">
                 {segments.map((segment) => (
                   <SingleHoleScoreCard
                     key={`${segment.id}-${holeNumber}`}
@@ -809,7 +809,7 @@ function HoleScoreForm({
 
   if (score && saveState === 'saved' && !isEditingSaved) {
     return (
-      <div className={`border-t bg-[#101012] px-4 py-3 transition-colors ${borderClass}`}>
+      <div className={`border-t bg-[#101012] px-3 py-3 transition-colors ${borderClass}`}>
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-[#FAFAFA]">
@@ -857,14 +857,14 @@ function HoleScoreForm({
   }
 
   return (
-    <div className={`border-t bg-[#101012] px-4 py-4 transition-colors ${borderClass}`}>
+    <div className={`border-t bg-[#101012] px-3 py-3 transition-colors ${borderClass}`}>
       <div className="grid gap-3 lg:grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-center">
         <div className="flex items-baseline justify-between gap-3 lg:block">
           <div
             className={`font-data font-bold text-[#FAFAFA] ${
               rowLabel
                 ? 'text-lg tracking-[-0.04em] lg:text-base'
-                : 'text-3xl tracking-[-0.08em] lg:text-xl'
+                : 'text-2xl tracking-[-0.07em] lg:text-xl'
             }`}
           >
             {rowLabel ?? `H${holeNumber}`}

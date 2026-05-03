@@ -14,14 +14,12 @@ import { Panel, StatusCard } from './Layout';
 export function ProfileSection({
   tournament,
   profile,
-  profiles,
   players,
   onSignOut,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   profile: ProfileRow;
-  profiles: ProfileRow[];
   players: PlayerRow[];
   onSignOut: () => Promise<void>;
   onSaved: () => Promise<void>;
@@ -29,9 +27,9 @@ export function ProfileSection({
   const linkedPlayer = players.find((player) => player.id === profile.linked_player_id) ?? null;
 
   return (
-    <Panel title="Profile" eyebrow={profile.is_admin ? 'Admin access' : 'Player access'}>
-      <div className="-mx-4 border-t border-[#27272A] px-4 py-4 sm:mx-0">
-        <h3 className="text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA]">
+    <Panel title="Profile" eyebrow="Account">
+      <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+        <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">
           {profile.display_name}
         </h3>
         <p className="mt-1 text-sm text-[#A1A1AA]">{profile.email}</p>
@@ -51,9 +49,6 @@ export function ProfileSection({
       </div>
       <OwnProfileForm profile={profile} onSaved={onSaved} />
       <AccountActions onSignOut={onSignOut} />
-      {profile.is_admin && (
-        <ProfileLinkingPanel profiles={profiles} players={players} onSaved={onSaved} />
-      )}
     </Panel>
   );
 }
@@ -72,7 +67,7 @@ function AccountActions({ onSignOut }: { onSignOut: () => Promise<void> }) {
   };
 
   return (
-    <div className="-mx-4 border-t border-[#27272A] px-4 py-4 sm:mx-0">
+    <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Account</p>
       <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
         Sign out of this device. You can return with a fresh email link.
@@ -129,7 +124,7 @@ function OwnProfileForm({
   };
 
   return (
-    <div className="-mx-4 border-t border-[#27272A] px-4 py-4 sm:mx-0">
+    <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile settings</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
         <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
@@ -163,7 +158,7 @@ function OwnProfileForm({
   );
 }
 
-function ProfileLinkingPanel({
+export function ProfileLinkingPanel({
   profiles,
   players,
   onSaved,
@@ -173,8 +168,8 @@ function ProfileLinkingPanel({
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="-mx-4 border-t border-[#27272A] sm:mx-0">
-      <div className="px-4 py-4">
+    <div className="-mx-3 border-t border-[#27272A] sm:mx-0">
+      <div className="px-3 py-3">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile admin</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Edit signed-in profiles, roles, avatars, and player links. Player links control fixture score access.
@@ -253,7 +248,7 @@ function ProfileLinkRow({
   };
 
   return (
-    <div className="border-t border-[#27272A] px-4 py-4">
+    <div className="border-t border-[#27272A] px-3 py-3">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem_auto_auto] lg:items-end">
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
