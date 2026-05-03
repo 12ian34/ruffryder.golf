@@ -13,6 +13,7 @@ import {
   updatePlayer2026,
   updateSegment2026,
   updateTournament2026,
+  type AuditLogRow,
   type FixtureView,
   type PlayerRow,
   type Team,
@@ -95,6 +96,12 @@ export function AdminSetupSection({
           <CourseMetadataCorrections courseHoles={data.courseHoles} onSaved={onSaved} />
         </AdminTaskSection>
         <AdminTaskSection
+          title="Activity"
+          description="Recent database audit trail for score entry, setup, profile, course, and finalization changes."
+        >
+          <AuditLogPanel auditLogs={data.auditLogs} players={data.players} />
+        </AdminTaskSection>
+        <AdminTaskSection
           title="Corrections"
           description="Fix fixture mistakes, clear accidental score rows, or delete bad fixtures. Destructive actions ask for confirmation."
         >
@@ -107,6 +114,62 @@ export function AdminSetupSection({
         </AdminTaskSection>
       </div>
     </Panel>
+  );
+}
+
+function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; players: PlayerRow[] }) {
+  const playersById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+
+  if (auditLogs.length === 0) {
+    return (
+      <StatusCard tone="warning">
+        No audit logs yet. New score and setup changes will appear here after the audit migration is applied.
+      </StatusCard>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      {auditLogs.map((log) => {
+        const actorPlayer = log.actor_player_id ? playersById.get(log.actor_player_id) : null;
+        const targetPlayer = log.player_id ? playersById.get(log.player_id) : null;
+        const actorLabel = actorPlayer?.name ?? log.actor_display_name ?? 'Unknown user';
+        const changedFields = formatChangedFields(log.changed_fields);
+
+        return (
+          <article key={log.id} className="border border-[#27272A] bg-[#09090B] p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-data text-sm font-bold uppercase tracking-[0.12em] text-[#FAFAFA]">
+                  {formatAuditAction(log.action)} {formatAuditTable(log.table_name)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+                  {actorLabel}
+                  {log.actor_is_admin ? ' · admin' : ''}
+                  {targetPlayer ? ` · target ${targetPlayer.name}` : ''}
+                </p>
+              </div>
+              <time className="font-data text-[10px] uppercase tracking-[0.16em] text-[#8B949E]">
+                {formatAuditTime(log.created_at)}
+              </time>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
+              <span className="border border-[#27272A] px-2 py-1">Record {shortId(log.record_id)}</span>
+              {log.tournament_id ? (
+                <span className="border border-[#27272A] px-2 py-1">Tournament {shortId(log.tournament_id)}</span>
+              ) : null}
+              {log.fixture_id ? (
+                <span className="border border-[#27272A] px-2 py-1">Fixture {shortId(log.fixture_id)}</span>
+              ) : null}
+              {log.segment_id ? (
+                <span className="border border-[#27272A] px-2 py-1">Segment {shortId(log.segment_id)}</span>
+              ) : null}
+            </div>
+            {changedFields ? <p className="mt-2 text-xs text-[#A1A1AA]">Changed: {changedFields}</p> : null}
+          </article>
+        );
+      })}
+    </div>
   );
 }
 
@@ -137,6 +200,44 @@ function AdminTaskSection({
       <div className="border-t border-[#27272A] px-3 py-3">{children}</div>
     </details>
   );
+}
+
+function formatAuditAction(action: string): string {
+  switch (action) {
+    case 'insert':
+      return 'Created';
+    case 'update':
+      return 'Updated';
+    case 'delete':
+      return 'Deleted';
+    default:
+      return action;
+  }
+}
+
+function formatAuditTable(tableName: string): string {
+  return tableName.replace(/_/g, ' ');
+}
+
+function formatAuditTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function formatChangedFields(fields: string[] | null): string | null {
+  if (!fields?.length) {
+    return null;
+  }
+
+  return fields.map((field) => field.replace(/_/g, ' ')).join(', ');
+}
+
+function shortId(value: string): string {
+  return value.length <= 8 ? value : value.slice(0, 8);
 }
 
 function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
@@ -418,6 +519,9 @@ function CourseHoleCorrectionRow({
         <div>
           <p className="font-data text-sm font-bold text-[#FAFAFA]">H{hole.holeNumber}</p>
           <p className="text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">SI {hole.strokeIndex}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
+            Current: {formatCurrentCourseValue('Par', hole.par)} · {formatCurrentCourseValue('Yards', hole.yardage)}
+          </p>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-2">
           <TextField label="Par" value={par} onChange={setPar} type="number" />
@@ -435,6 +539,10 @@ function CourseHoleCorrectionRow({
       {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
     </div>
   );
+}
+
+function formatCurrentCourseValue(label: string, value: number | null): string {
+  return value === null ? `${label} not set` : `${label} ${value}`;
 }
 
 function TournamentCorrections({

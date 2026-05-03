@@ -21,6 +21,7 @@ export type SegmentRow = Database['public']['Tables']['segments']['Row'];
 export type SegmentPlayerRow = Database['public']['Tables']['segment_players']['Row'];
 export type HoleScoreRow = Database['public']['Tables']['hole_scores']['Row'];
 export type CourseHoleRow = Database['public']['Tables']['course_holes']['Row'];
+export type AuditLogRow = Database['public']['Tables']['audit_logs']['Row'];
 export type LegacyTournamentRow = Database['public']['Tables']['legacy_tournaments']['Row'];
 export type LegacyGameRow = Database['public']['Tables']['legacy_games']['Row'];
 export type PlayerTournamentStatsInsert =
@@ -65,6 +66,7 @@ export interface Tournament2026Data {
   profiles: ProfileRow[];
   players: PlayerRow[];
   playerStats: PlayerTournamentStatsRow[];
+  auditLogs: AuditLogRow[];
   courseHoles: CourseHoleMetadata[];
   activeTournament: TournamentRow | null;
   fixtures: FixtureView[];
@@ -223,6 +225,7 @@ export async function fetchTournament2026Data(
   const user = userData.user;
   const profile = user ? await fetchProfile(client, user.id) : null;
   const profiles = profile?.is_admin ? await fetchProfiles(client) : [];
+  const auditLogs = profile?.is_admin ? await fetchAuditLogs(client) : [];
   const fixtures = activeTournament
     ? await fetchFixturesForTournament(client, activeTournament.id, players)
     : [];
@@ -233,6 +236,7 @@ export async function fetchTournament2026Data(
     profiles,
     players,
     playerStats,
+    auditLogs,
     courseHoles,
     activeTournament,
     fixtures,
@@ -255,6 +259,7 @@ export function subscribeToTournament2026Changes(
     'segments',
     'segment_players',
     'hole_scores',
+    'audit_logs',
     'player_tournament_stats',
     'legacy_tournaments',
     'legacy_games',
@@ -1108,6 +1113,22 @@ async function fetchPlayerTournamentStats(
     .order('completion_year', { ascending: false });
 
   throwIfSupabaseError(error, 'Failed to load player stats');
+
+  return data ?? [];
+}
+
+async function fetchAuditLogs(client: SupabaseClient<Database>): Promise<AuditLogRow[]> {
+  const { data, error } = await client
+    .from('audit_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(80);
+
+  if (isMissingTableError(error)) {
+    return [];
+  }
+
+  throwIfSupabaseError(error, 'Failed to load audit logs');
 
   return data ?? [];
 }

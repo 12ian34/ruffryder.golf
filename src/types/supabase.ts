@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_display_name: string | null
+          actor_is_admin: boolean | null
+          actor_player_id: string | null
+          actor_profile_id: string | null
+          changed_fields: string[] | null
+          created_at: string
+          fixture_id: string | null
+          hole_score_id: string | null
+          id: string
+          player_id: string | null
+          record_id: string
+          row_after: Json | null
+          row_before: Json | null
+          segment_id: string | null
+          table_name: string
+          tournament_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_display_name?: string | null
+          actor_is_admin?: boolean | null
+          actor_player_id?: string | null
+          actor_profile_id?: string | null
+          changed_fields?: string[] | null
+          created_at?: string
+          fixture_id?: string | null
+          hole_score_id?: string | null
+          id?: string
+          player_id?: string | null
+          record_id: string
+          row_after?: Json | null
+          row_before?: Json | null
+          segment_id?: string | null
+          table_name: string
+          tournament_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_display_name?: string | null
+          actor_is_admin?: boolean | null
+          actor_player_id?: string | null
+          actor_profile_id?: string | null
+          changed_fields?: string[] | null
+          created_at?: string
+          fixture_id?: string | null
+          hole_score_id?: string | null
+          id?: string
+          player_id?: string | null
+          record_id?: string
+          row_after?: Json | null
+          row_before?: Json | null
+          segment_id?: string | null
+          table_name?: string
+          tournament_id?: string | null
+        }
+        Relationships: []
+      }
       course_holes: {
         Row: {
           created_at: string

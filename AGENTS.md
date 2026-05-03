@@ -90,6 +90,7 @@ The current Supabase schema is managed through migrations in `supabase/migration
 - `20260502202000_enable_realtime_publication.sql` adds live tables to the Supabase Realtime publication.
 - `20260502214500_lock_completed_tournament_scores.sql` updates RLS helpers/policies so completed tournaments block score writes.
 - `20260503081500_profile_self_service.sql` adds the `update_own_profile` RPC so users can edit display name/avatar without broad profile update permissions.
+- `20260503142000_audit_logs.sql` creates immutable trigger-backed audit logging for 2026 live tables and publishes `audit_logs` over Realtime.
 
 When adding tables that should update the `/2026` console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
 
@@ -122,13 +123,14 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, and score-movement timeline data for tournament-day scanning.
 - `src/features/tournament2026/components/ScoreEntrySection.tsx` renders fixture score entry as collapsible work cards with front/back switches, grouped back-nine singles by hole, Supabase-backed course metadata, compact saved-by/saved-time audit metadata, admin single-hole clear controls, and autosaves each hole through the 2026 query service. It must remain locked when `tournaments.is_complete` is true.
 - `src/features/tournament2026/components/StatsSection.tsx` is legacy/unused after the Archive consolidation; prefer the Archive player-history view for new work unless this file is removed.
-- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, and Corrections. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role edits belong in the Players section, not the user Profile page.
+- `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role edits belong in the Players section, not the user Profile page.
 - `src/features/tournament2026/components/ProfileSection.tsx` supports self-service profile display name/avatar through the `update_own_profile` RPC and account sign-out. Keep it scoped to the signed-in user's own account.
 - `src/features/tournament2026/components/HistorySection.tsx` exports the Archive view. It combines historical tournament drilldowns from `legacy_tournaments`/`legacy_games` with player history from `player_tournament_stats`. Migrated score-only rows should display as historical scores/CPI, not as `0/0` 2026 hole-count stats.
 - `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
 - `src/features/tournament2026/insights.ts` derives 2026 highlights and score-movement timeline data from fixture segments and hole scores.
 - `src/features/tournament2026/viewUtils.ts` holds UI-only formatting, totals, hole-range, and parsing helpers.
 - `src/services/tournament2026Queries.ts` reads live tournament data, subscribes to Supabase Realtime changes, creates tournaments/players/fixtures, loads `course_holes`, player stats, and score editor profiles, handles profile/admin corrections/finalization, and upserts/deletes hole scores through the pure scoring core. When tournament CPI threshold changes, existing scored rows should be recalculated so saved CPI outcomes stay consistent. Scored segment membership edits must explicitly clear that segment's saved scores before replacing the players; never silently reassign saved scores to different players.
+- `audit_logs` is database-triggered, not client-authored. The browser should read it for admin/player activity views, but app code should not insert, update, or delete audit rows directly.
 - `src/services/tournament2026Service.ts` owns fixture setup persistence orchestration and rollback around fixture, fixture-player, segment, and segment-player inserts.
 - `src/domain/2026/scoring.ts` is the pure scoring core for CPI, foursomes, singles, halved/unplayed outcomes, and fixture summaries.
 - `src/domain/2026/persistence.ts` maps scored holes into Supabase `hole_scores` insert/upsert payloads.
