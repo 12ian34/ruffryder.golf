@@ -17,8 +17,8 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Dormie/match-over segment status and fixture progress indicators.
 - CPI on singles only, with per-segment admin enable/disable.
 - Fixed course stroke index display.
-- Supabase-backed course metadata for stroke index, par, and yardage display, with admin editing for par and yardage.
-- Mobile tab navigation for score, leaderboard, setup, history, and profile.
+- Supabase-backed course metadata for stroke index, par, and Firebase-imported yardage display, with admin editing for par and yardage.
+- Mobile bottom navigation for My Game, Scores, Archive, Profile, and admin-only Admin.
 - Tap-first score picker with row-level dirty state, autosave, sync status, retry fallback, and segment-level `Save all`.
 - Admin profile-to-player linking, profile access display, and player-only Score tab fixture filtering.
 - Tournament finalization that locks score entry, saves back-nine singles player stats, and updates current CPI.
@@ -31,6 +31,7 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Live score-movement timeline derived from saved hole updates.
 - Offline/degraded-connection status in the 2026 shell and score workflow.
 - PostHog event coverage for 2026 auth, tab views, score saves, setup actions, finalization, profile changes, and connection changes.
+- Database-backed audit logs for score, setup, profile, course, finalization, and correction actions, with an admin Activity view.
 - Profile self-service for display name/avatar through a locked-down Supabase RPC.
 - Admin profile management for display names, avatars, roles, and player links.
 - Player/stat archive rows alongside legacy tournament drilldowns.
@@ -43,7 +44,6 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 
 - Autosave or optimistic save confirmation after stable tournament-day testing.
 - Better admin import/status tooling for Firebase archive data.
-- Full score edit history across multiple edits per hole.
 
 ## Intentionally Not 2026 Parity
 

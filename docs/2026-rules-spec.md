@@ -39,6 +39,12 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 - CPI never affects front-nine foursomes scoring, display, or totals.
 - Stroke index is course-defined and not editable during score entry.
 
+## Course Metadata
+
+- Every hole should have course-defined hole number, stroke index, par, and distance/yardage metadata when available.
+- Stroke index is fixed scoring data and should not be edited during live score entry.
+- Par and yardage are admin-maintained setup data and should be visible during score entry for player context.
+
 ## Hole Results
 
 - In foursomes, the lower combined/team score wins a hole.
@@ -52,6 +58,12 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 - Any player in a fixture can enter scores for that fixture.
 - Admins can enter or manage scores for all fixtures.
 - Players outside a fixture cannot enter scores for that fixture.
+
+## Auditability
+
+- Score, setup, profile, course metadata, finalization, and correction actions should be audit logged with actor, time, action, and affected record context.
+- Admins should be able to review recent audit activity.
+- Player-facing score rows should show compact last-saved metadata when available.
 
 ## Leaderboard
 
