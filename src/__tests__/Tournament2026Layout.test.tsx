@@ -20,11 +20,11 @@ describe('PageShell', () => {
     const view = within(container);
 
     expect(view.getByText('Active panel')).toBeInTheDocument();
-    expect(view.getAllByText('My Game')).toHaveLength(1);
+    expect(view.getAllByRole('button', { name: 'my game' })).toHaveLength(1);
     expect(view.queryByText('2026 Tournament Console')).not.toBeInTheDocument();
     expect(view.queryByText('Sign out')).not.toBeInTheDocument();
 
-    fireEvent.click(view.getByText('Archive'));
+    fireEvent.click(view.getByRole('button', { name: 'archive' }));
 
     expect(onTabChange).toHaveBeenCalledWith('archive');
   });
