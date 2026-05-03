@@ -19,15 +19,14 @@ export function useTheme() {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    return (localStorage.getItem('theme') as Theme) || 'dark';
+    return getStoredTheme();
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    localStorage.setItem('theme', theme);
+    storeTheme(theme);
   }, [theme]);
 
   return (
@@ -35,4 +34,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
+}
+
+function getStoredTheme(): Theme {
+  if (typeof window === 'undefined') return 'dark';
+
+  try {
+    const storedTheme = window.localStorage?.getItem?.('theme');
+    return storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
+function storeTheme(theme: Theme) {
+  try {
+    window.localStorage?.setItem?.('theme', theme);
+  } catch {
+    // Storage can be unavailable in restricted browsers or test runners.
+  }
 }
