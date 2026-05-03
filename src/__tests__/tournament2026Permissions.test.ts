@@ -6,10 +6,12 @@ import {
   createOwnProfile,
   deleteFixture2026,
   fetchTournament2026Data,
+  saveHoleScore2026,
   updateCourseHole2026,
   updateFixture2026,
   updatePlayer2026,
   updateProfilePlayerLink2026,
+  updateSegmentCpiEnabled,
   updateSegment2026,
   updateTournament2026,
   type FixtureView,
@@ -581,6 +583,194 @@ describe('2026 score permissions', () => {
     expect(tournamentEq).toHaveBeenCalledWith('id', 'tournament-1');
     expect(upsert).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ segment_id: 'segment-1', hole_number: 10 })]),
+      { onConflict: 'segment_id,hole_number' }
+    );
+  });
+
+  it('saves singles score rows with CPI when the segment has CPI enabled', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn(() => ({ upsert }));
+
+    await saveHoleScore2026(
+      {
+        tournament: {
+          id: 'tournament-1',
+          is_complete: false,
+          cpi_threshold: 7,
+        } as Database['public']['Tables']['tournaments']['Row'],
+        segment: {
+          id: 'segment-1',
+          kind: 'singles',
+          cpi_enabled: true,
+          usa_player_id: 'usa-1',
+          europe_player_id: 'europe-1',
+        } as Database['public']['Tables']['segments']['Row'],
+        players: [
+          { id: 'usa-1', current_cpi: 95 },
+          { id: 'europe-1', current_cpi: 80 },
+        ] as PlayerRow[],
+        holeNumber: 10,
+        strokeIndex: 1,
+        usaScore: 5,
+        europeScore: 4,
+        updatedBy: 'profile-1',
+      },
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(from).toHaveBeenCalledWith('hole_scores');
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segment_id: 'segment-1',
+        hole_number: 10,
+        usa_score: 5,
+        europe_score: 4,
+        usa_net_score: 4,
+        europe_net_score: 4,
+        outcome: 'halved',
+        cpi_applied: true,
+        cpi_difference: 15,
+        cpi_strokes_usa: 1,
+        cpi_strokes_europe: 0,
+        updated_by: 'profile-1',
+      }),
+      { onConflict: 'segment_id,hole_number' }
+    );
+  });
+
+  it('saves singles score rows without CPI when the segment CPI toggle is disabled', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn(() => ({ upsert }));
+
+    await saveHoleScore2026(
+      {
+        tournament: {
+          is_complete: false,
+          cpi_threshold: 7,
+        } as Database['public']['Tables']['tournaments']['Row'],
+        segment: {
+          id: 'segment-1',
+          kind: 'singles',
+          cpi_enabled: false,
+          usa_player_id: 'usa-1',
+          europe_player_id: 'europe-1',
+        } as Database['public']['Tables']['segments']['Row'],
+        players: [
+          { id: 'usa-1', current_cpi: 95 },
+          { id: 'europe-1', current_cpi: 80 },
+        ] as PlayerRow[],
+        holeNumber: 10,
+        strokeIndex: 1,
+        usaScore: 5,
+        europeScore: 4,
+        updatedBy: null,
+      },
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usa_net_score: 5,
+        europe_net_score: 4,
+        outcome: 'EUROPE',
+        cpi_applied: false,
+        cpi_difference: 0,
+        cpi_strokes_usa: 0,
+        cpi_strokes_europe: 0,
+      }),
+      { onConflict: 'segment_id,hole_number' }
+    );
+  });
+
+  it('blocks score saves when the tournament is complete', async () => {
+    const from = vi.fn();
+
+    await expect(
+      saveHoleScore2026(
+        {
+          tournament: { is_complete: true } as Database['public']['Tables']['tournaments']['Row'],
+          segment: { id: 'segment-1', kind: 'singles' } as Database['public']['Tables']['segments']['Row'],
+          players: [],
+          holeNumber: 10,
+          strokeIndex: 1,
+          usaScore: 5,
+          europeScore: 4,
+          updatedBy: 'profile-1',
+        },
+        { from } as unknown as SupabaseClient<Database>
+      )
+    ).rejects.toThrow('Tournament is complete. Scores are locked.');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('recalculates existing hole scores when segment CPI is toggled on', async () => {
+    const segmentEq = vi.fn().mockResolvedValue({ error: null });
+    const updateSegment = vi.fn(() => ({ eq: segmentEq }));
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'segments') {
+        return { update: updateSegment };
+      }
+
+      return { upsert };
+    });
+
+    await updateSegmentCpiEnabled(
+      {
+        tournament: {
+          is_complete: false,
+          cpi_threshold: 7,
+        } as Database['public']['Tables']['tournaments']['Row'],
+        segment: {
+          id: 'segment-1',
+          kind: 'singles',
+          cpi_enabled: false,
+          usa_player_id: 'usa-1',
+          europe_player_id: 'europe-1',
+          holeScores: [
+            {
+              hole_number: 10,
+              usa_score: 5,
+              europe_score: 4,
+            },
+            {
+              hole_number: 18,
+              usa_score: 5,
+              europe_score: 4,
+            },
+          ],
+        } as unknown as FixtureView['segments'][number],
+        players: [
+          { id: 'usa-1', current_cpi: 87 },
+          { id: 'europe-1', current_cpi: 80 },
+        ] as PlayerRow[],
+        enabled: true,
+        updatedBy: 'profile-1',
+      },
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(updateSegment).toHaveBeenCalledWith({ cpi_enabled: true });
+    expect(segmentEq).toHaveBeenCalledWith('id', 'segment-1');
+    expect(upsert).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          hole_number: 10,
+          usa_net_score: 4,
+          europe_net_score: 4,
+          outcome: 'halved',
+          cpi_applied: true,
+          cpi_strokes_usa: 1,
+        }),
+        expect.objectContaining({
+          hole_number: 18,
+          usa_net_score: 5,
+          europe_net_score: 4,
+          outcome: 'EUROPE',
+          cpi_applied: true,
+          cpi_strokes_usa: 0,
+        }),
+      ],
       { onConflict: 'segment_id,hole_number' }
     );
   });

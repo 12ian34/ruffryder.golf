@@ -104,6 +104,157 @@ describe('2026 tournament finalization', () => {
     ]);
   });
 
+  it('uses saved adjusted outcomes for holes won while deriving CPI from raw singles strokes', () => {
+    const draft = buildTournamentFinalizationDraft({
+      tournament,
+      players,
+      completedAt,
+      fixtures: [
+        {
+          name: 'Group 1',
+          sort_order: 0,
+          segments: [
+            {
+              kind: 'singles',
+              name: 'Singles A',
+              hole_start: 10,
+              hole_end: 12,
+              usa_player_id: 'usa-1',
+              europe_player_id: 'europe-1',
+              holeScores: [
+                { hole_number: 10, usa_score: 5, europe_score: 4, outcome: 'halved' },
+                { hole_number: 11, usa_score: 4, europe_score: 5, outcome: 'USA' },
+                { hole_number: 12, usa_score: 6, europe_score: 4, outcome: 'EUROPE' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(draft.missingScores).toEqual([]);
+    expect(draft.stats).toMatchObject([
+      {
+        player_id: 'usa-1',
+        singles_holes_played: 3,
+        singles_strokes: 15,
+        singles_average: 5,
+        holes_won: 1,
+        holes_halved: 1,
+        cpi_after: 90,
+      },
+      {
+        player_id: 'europe-1',
+        singles_holes_played: 3,
+        singles_strokes: 13,
+        singles_average: 4.33,
+        holes_won: 1,
+        holes_halved: 1,
+        cpi_after: 78,
+      },
+    ]);
+  });
+
+  it('rounds singles averages and 18-hole CPI updates to two decimals', () => {
+    const draft = buildTournamentFinalizationDraft({
+      tournament,
+      players,
+      completedAt,
+      fixtures: [
+        {
+          name: 'Group 1',
+          sort_order: 0,
+          segments: [
+            {
+              kind: 'singles',
+              name: 'Singles A',
+              hole_start: 10,
+              hole_end: 12,
+              usa_player_id: 'usa-1',
+              europe_player_id: 'europe-1',
+              holeScores: [
+                { hole_number: 10, usa_score: 4, europe_score: 5, outcome: 'USA' },
+                { hole_number: 11, usa_score: 5, europe_score: 4, outcome: 'EUROPE' },
+                { hole_number: 12, usa_score: 5, europe_score: 5, outcome: 'halved' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(draft.stats).toMatchObject([
+      {
+        player_id: 'usa-1',
+        singles_average: 4.67,
+        cpi_after: 84,
+      },
+      {
+        player_id: 'europe-1',
+        singles_average: 4.67,
+        cpi_after: 84,
+      },
+    ]);
+  });
+
+  it('treats unplayed outcomes as missing even when raw scores are present', () => {
+    const draft = buildTournamentFinalizationDraft({
+      tournament,
+      players,
+      completedAt,
+      fixtures: [
+        {
+          name: null,
+          sort_order: 1,
+          segments: [
+            {
+              kind: 'singles',
+              name: null,
+              hole_start: 10,
+              hole_end: 10,
+              usa_player_id: 'usa-1',
+              europe_player_id: 'europe-1',
+              holeScores: [{ hole_number: 10, usa_score: 5, europe_score: 5, outcome: 'unplayed' }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(draft.missingScores).toEqual(['Fixture 2 / Singles / H10']);
+    expect(draft.stats).toEqual([]);
+    expect(draft.playerCpiUpdates).toEqual([]);
+  });
+
+  it('does not derive stats from complete singles segments without both player assignments', () => {
+    const draft = buildTournamentFinalizationDraft({
+      tournament,
+      players,
+      completedAt,
+      fixtures: [
+        {
+          name: 'Group 1',
+          sort_order: 0,
+          segments: [
+            {
+              kind: 'singles',
+              name: 'Incomplete pairing',
+              hole_start: 10,
+              hole_end: 10,
+              usa_player_id: 'usa-1',
+              europe_player_id: null,
+              holeScores: [{ hole_number: 10, usa_score: 5, europe_score: 4, outcome: 'EUROPE' }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(draft.missingScores).toEqual([]);
+    expect(draft.stats).toEqual([]);
+    expect(draft.playerCpiUpdates).toEqual([]);
+  });
+
   it('writes stats and CPI before marking the tournament complete', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(completedAt));

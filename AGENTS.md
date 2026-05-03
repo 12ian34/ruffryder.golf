@@ -8,6 +8,19 @@ This file is the canonical agent guide for work in this repo going forward.
 
 Eventually `CLAUDE.md` can be deleted once its useful legacy context has been migrated here or superseded.
 
+## Documentation Ownership
+
+Keep the root docs intentionally split by audience:
+
+- `README.md` is for players. Keep it focused on how to use the live tournament app, read scores, enter scores, and understand the 2026 format.
+- `CONTRIBUTING.md` is for human developers. Put local setup, env vars, scripts, testing, and deployment workflow there.
+- `AGENTS.md` is for coding agents. Keep architecture direction, product constraints, implementation guidance, and test expectations here.
+- `DESIGN.md` is the UI design source of truth.
+- `docs/2026-rules-spec.md` is the canonical 2026 tournament rules spec.
+- `CLAUDE.md` is legacy Firebase context and migration reference only.
+
+Do not move contributor setup, stack inventories, or agent-only rebuild notes back into the player README.
+
 ## Project Direction
 
 Ruff Ryders Cup is being rebuilt for the 2026 tournament as a Supabase/Postgres-backed React app.
@@ -136,7 +149,7 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/PlayerHistory.tsx` owns the shared player-history popover for the 2026 console. Wrap authenticated `/2026` content in `PlayerHistoryProvider` and use `PlayerHistoryTrigger` for non-conflicting player-name displays instead of creating one-off popovers.
 - `src/features/tournament2026/components/Hero.tsx` is legacy/unused after the bottom-nav IA cleanup; do not build new flows around it unless it is reintroduced intentionally.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` derives live overall, foursomes, and singles totals from hole outcomes.
-- `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, and score-movement timeline data for tournament-day scanning.
+- `src/features/tournament2026/components/LeaderboardSection.tsx` also shows fixture progress, segment match status chips, 2026 highlights, a Chart.js live score curve, and score-movement timeline data for tournament-day scanning.
 - `src/features/tournament2026/components/LeaderboardSection.tsx` includes a persisted AI tournament overview card plus the AI Newsroom grid. It builds compact snapshots through `src/features/tournament2026/aiRecap.ts` and calls Netlify Functions after each 5 newly saved holes; do not call OpenAI directly from browser code.
 - `src/features/tournament2026/components/TournamentActivitySection.tsx` is the separate full tournament activity feed in Scores. It renders sanitized audit events plus inferred match started/finished milestones from `src/features/tournament2026/activity.ts`; keep it separate from the Highlights Reel.
 - `src/features/tournament2026/components/PlayerAiOverview.tsx` displays persisted AI player overviews in own Profile and player history popovers. Linked players and admins can regenerate with an optional short prompt; saved output is visible to all authenticated users.
@@ -187,8 +200,19 @@ Current focused 2026 tests live in:
 - `src/__tests__/tournament2026Scoring.test.ts`
 - `src/__tests__/tournament2026Persistence.test.ts`
 - `src/__tests__/tournament2026Fixtures.test.ts`
+- `src/__tests__/tournament2026CustomFixture.test.ts`
 - `src/__tests__/tournament2026Service.test.ts`
+- `src/__tests__/tournament2026Permissions.test.ts`
+- `src/__tests__/tournament2026Finalization.test.ts`
+- `src/__tests__/tournament2026MatchPlayStatus.test.ts`
+- `src/__tests__/tournament2026Insights.test.ts`
+- `src/__tests__/tournament2026AiRecap.test.ts`
+- `src/__tests__/tournament2026AiOverview.test.ts`
 - `src/__tests__/firebaseExportMigration.test.ts`
+- `src/__tests__/Tournament2026AuthPanels.test.tsx`
+- `src/__tests__/Tournament2026Layout.test.tsx`
+- `src/__tests__/Tournament2026Archive.test.tsx`
+- `src/__tests__/Tournament2026Panels.test.tsx`
 - `src/__tests__/ScoreEntrySection.test.tsx`
 
 ## Supabase Permission Model

@@ -28,6 +28,7 @@ import { buildProgressTimeline, generateTournamentHighlights } from '../insights
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
 import { Panel, StatusCard } from './Layout';
+import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
 import { MarkdownContent } from './MarkdownContent';
 
 export function LeaderboardSection({
@@ -51,6 +52,10 @@ export function LeaderboardSection({
   const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
   const timeline = buildProgressTimeline(fixtures);
   const recentTimeline = timeline.slice(-8);
+  const totalChartHoles = fixtures.reduce(
+    (total, fixture) => total + calculateFixtureProgress(fixture.segments).totalHoles,
+    0
+  );
   const scoredHoleCount = countScoredTournamentHoles(fixtures);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [isGeneratingOverview, setIsGeneratingOverview] = useState(false);
@@ -175,6 +180,7 @@ export function LeaderboardSection({
         <ScoreTile label="Foursomes" score={totals.foursomes} />
         <ScoreTile label="Singles" score={totals.singles} />
       </div>
+      <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <InsightCard title="Highlights Reel" items={highlights} />
         <AiTournamentOverviewCard
