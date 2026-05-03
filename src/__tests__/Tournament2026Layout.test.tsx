@@ -19,9 +19,10 @@ describe('PageShell', () => {
     const view = within(container);
 
     expect(view.getByText('Active panel')).toBeInTheDocument();
-    expect(view.getAllByText('Score')).toHaveLength(2);
+    expect(view.getAllByText('Score')).toHaveLength(1);
+    expect(view.queryByText('2026 Tournament Console')).not.toBeInTheDocument();
 
-    fireEvent.click(view.getAllByText('History')[0]);
+    fireEvent.click(view.getByText('History'));
 
     expect(onTabChange).toHaveBeenCalledWith('history');
   });
