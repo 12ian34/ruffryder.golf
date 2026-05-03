@@ -7,19 +7,23 @@ import { LeaderboardSection } from '../features/tournament2026/components/Leader
 import { PageShell, StatusCard, type AppNavItem } from '../features/tournament2026/components/Layout';
 import { ProfileSection } from '../features/tournament2026/components/ProfileSection';
 import { ScoreEntrySection } from '../features/tournament2026/components/ScoreEntrySection';
+import { StatsSection } from '../features/tournament2026/components/StatsSection';
 import { filterFixturesForScoreEntry, getErrorMessage } from '../features/tournament2026/viewUtils';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { getSupabaseClient, getSupabaseConfigStatus } from '../lib/supabase';
 import {
   fetchTournament2026Data,
   subscribeToTournament2026Changes,
 } from '../services/tournament2026Queries';
 import type { Tournament2026Data } from '../services/tournament2026Queries';
+import { identifySupabaseUser, track2026 } from '../utils/analytics';
 
-type Tournament2026Tab = 'score' | 'leaderboard' | 'setup' | 'history' | 'profile';
+type Tournament2026Tab = 'score' | 'leaderboard' | 'stats' | 'setup' | 'history' | 'profile';
 
 const APP_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
   { id: 'score', label: 'Score' },
   { id: 'leaderboard', label: 'Leaderboard', shortLabel: 'Board' },
+  { id: 'stats', label: 'Stats' },
   { id: 'setup', label: 'Setup' },
   { id: 'history', label: 'History' },
   { id: 'profile', label: 'Profile', shortLabel: 'Me' },
@@ -27,6 +31,7 @@ const APP_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
 
 export default function Tournament2026() {
   const configStatus = useMemo(() => getSupabaseConfigStatus(), []);
+  const isOnline = useOnlineStatus();
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<Tournament2026Data | null>(null);
   const [email, setEmail] = useState('');
@@ -62,10 +67,12 @@ export default function Tournament2026() {
 
     client.auth.getUser().then(({ data: userData }) => {
       setUser(userData.user);
+      identifySupabaseUser(userData.user);
       void refreshData();
     });
 
-    const { data: authListener } = client.auth.onAuthStateChange(() => {
+    const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
+      identifySupabaseUser(session?.user ?? null);
       void refreshData();
     });
 
@@ -81,6 +88,10 @@ export default function Tournament2026() {
       void refreshData();
     });
   }, [configStatus.isConfigured, refreshData, user]);
+
+  useEffect(() => {
+    track2026(isOnline ? 'connection_restored' : 'connection_lost');
+  }, [isOnline]);
 
   useEffect(() => {
     if (signInCooldownSeconds <= 0) return undefined;
@@ -105,6 +116,7 @@ export default function Tournament2026() {
     setSignInCooldownSeconds(60);
 
     try {
+      track2026('signin_link_requested', { email_domain: email.split('@')[1] ?? 'unknown' });
       const { error: signInError } = await getSupabaseClient().auth.signInWithOtp({
         email,
         options: {
@@ -117,8 +129,10 @@ export default function Tournament2026() {
       }
 
       setNotice('Check your email for the Supabase sign-in link.');
+      track2026('signin_link_sent');
     } catch (err) {
       setError(getSignInErrorMessage(err));
+      track2026('signin_link_failed', { error: getErrorMessage(err) });
     } finally {
       setIsSignInSubmitting(false);
     }
@@ -126,8 +140,14 @@ export default function Tournament2026() {
 
   const handleSignOut = async () => {
     await getSupabaseClient().auth.signOut();
+    track2026('signed_out');
     setData(null);
     setUser(null);
+  };
+
+  const handleTabChange = (tab: Tournament2026Tab) => {
+    setActiveTab(tab);
+    track2026('tab_viewed', { tab_name: tab });
   };
 
   if (!configStatus.isConfigured) {
@@ -166,7 +186,7 @@ export default function Tournament2026() {
 
   if (!data?.profile) {
     return (
-      <PageShell userEmail={user.email} onSignOut={handleSignOut}>
+      <PageShell userEmail={user.email} isOnline={isOnline} onSignOut={handleSignOut}>
         <CreateProfilePanel onSaved={refreshData} />
         {error && <StatusCard tone="error">{error}</StatusCard>}
       </PageShell>
@@ -178,11 +198,17 @@ export default function Tournament2026() {
   return (
     <PageShell
       userEmail={user.email}
+      isOnline={isOnline}
       onSignOut={handleSignOut}
       activeTab={activeTab}
       navItems={APP_NAV_ITEMS}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange}
     >
+      {!isOnline && (
+        <StatusCard tone="warning">
+          Offline mode: saved data may be stale and score writes can fail until connection returns.
+        </StatusCard>
+      )}
       {error && <StatusCard tone="error">{error}</StatusCard>}
       {activeTab === 'score' && (
         <ScoreEntrySection
@@ -194,14 +220,30 @@ export default function Tournament2026() {
           onSaved={refreshData}
         />
       )}
-      {activeTab === 'leaderboard' && <LeaderboardSection fixtures={data.fixtures} />}
+      {activeTab === 'leaderboard' && (
+        <LeaderboardSection
+          tournament={data.activeTournament}
+          fixtures={data.fixtures}
+          players={data.players}
+          courseHoles={data.courseHoles}
+        />
+      )}
+      {activeTab === 'stats' && (
+        <StatsSection players={data.players} playerStats={data.playerStats} profile={data.profile} />
+      )}
       {activeTab === 'setup' &&
         (data.profile.is_admin ? (
           <AdminSetupSection data={data} onSaved={refreshData} />
         ) : (
           <StatusCard tone="warning">Setup is admin-only. Use Score during tournament play.</StatusCard>
         ))}
-      {activeTab === 'history' && <HistorySection history={data.history} />}
+      {activeTab === 'history' && (
+        <HistorySection
+          history={data.history}
+          players={data.players}
+          playerStats={data.playerStats}
+        />
+      )}
       {activeTab === 'profile' && (
         <ProfileSection
           tournament={data.activeTournament}

@@ -19,6 +19,7 @@ import {
   type Tournament2026Data,
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
+import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { Panel, SetupForm, StatusCard } from './Layout';
@@ -83,6 +84,7 @@ function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
         cpiThreshold: Number(threshold),
         isActive: true,
       });
+      track2026('tournament_created', { year: Number(year) });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -119,6 +121,7 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
         team,
         currentCpi: cpi ? Number(cpi) : null,
       });
+      track2026('player_created', { team });
       setName('');
       setCpi('');
       await onSaved();
@@ -178,6 +181,7 @@ function FinalizationPanel({
 
     try {
       await completeTournament2026({ tournament, fixtures, players });
+      track2026('tournament_finalized', { tournament_id: tournament.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -201,6 +205,7 @@ function FinalizationPanel({
 
     try {
       await reopenTournament2026({ tournament });
+      track2026('tournament_reopened', { tournament_id: tournament.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -345,6 +350,7 @@ function CourseHoleCorrectionRow({
         par: par ? Number(par) : null,
         yardage: yardage ? Number(yardage) : null,
       });
+      track2026('course_hole_updated', { hole_number: hole.holeNumber });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -424,6 +430,7 @@ function TournamentCorrections({
         cpiThreshold: Number(threshold),
         updatedBy: profileId,
       });
+      track2026('tournament_updated', { tournament_id: tournament.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -525,6 +532,7 @@ function PlayerCorrectionRow({
         team,
         currentCpi: cpi ? Number(cpi) : null,
       });
+      track2026('player_updated', { player_id: player.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -634,6 +642,7 @@ function FixtureCorrectionRow({
         fixtureId: fixture.id,
         name: name.trim() || null,
       });
+      track2026('fixture_updated', { fixture_id: fixture.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -652,6 +661,7 @@ function FixtureCorrectionRow({
 
     try {
       await clearFixtureScores2026(fixture);
+      track2026('fixture_scores_cleared', { fixture_id: fixture.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -670,6 +680,7 @@ function FixtureCorrectionRow({
 
     try {
       await deleteFixture2026(fixture.id);
+      track2026('fixture_deleted', { fixture_id: fixture.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -801,6 +812,7 @@ function SegmentCorrectionRow({
         participantPlayerIds: frontNinePlayerIds,
         clearScoresOnPlayerChange: hasScores && hasMembershipChanged,
       });
+      track2026('segment_updated', { segment_id: segment.id, fixture_id: fixture.id });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -885,6 +897,8 @@ interface SinglesPairDraft {
   cpiEnabled: boolean;
 }
 
+type FixtureBuilderMode = 'team_fixture' | 'one_vs_one';
+
 function CustomFixtureForm({
   tournament,
   players,
@@ -902,8 +916,12 @@ function CustomFixtureForm({
     [players]
   );
   const [name, setName] = useState('');
+  const [mode, setMode] = useState<FixtureBuilderMode>('team_fixture');
   const [usaSlots, setUsaSlots] = useState<string[]>(['', '', '']);
   const [europeSlots, setEuropeSlots] = useState<string[]>(['', '', '']);
+  const [oneVsOneSideAPlayerId, setOneVsOneSideAPlayerId] = useState('');
+  const [oneVsOneSideBPlayerId, setOneVsOneSideBPlayerId] = useState('');
+  const [oneVsOneCpiEnabled, setOneVsOneCpiEnabled] = useState(true);
   const [frontNinePlayerIds, setFrontNinePlayerIds] = useState<string[]>([]);
   const [singlesPairs, setSinglesPairs] = useState<SinglesPairDraft[]>([
     { usaPlayerId: '', europePlayerId: '', cpiEnabled: true },
@@ -912,8 +930,18 @@ function CustomFixtureForm({
   ]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const selectedUsaPlayerIds = useMemo(() => compactUnique(usaSlots), [usaSlots]);
-  const selectedEuropePlayerIds = useMemo(() => compactUnique(europeSlots), [europeSlots]);
+  const isOneVsOneFixture = mode === 'one_vs_one';
+  const selectedUsaPlayerIds = useMemo(
+    () => (isOneVsOneFixture ? compactUnique([oneVsOneSideAPlayerId]) : compactUnique(usaSlots)),
+    [isOneVsOneFixture, oneVsOneSideAPlayerId, usaSlots]
+  );
+  const selectedEuropePlayerIds = useMemo(
+    () =>
+      isOneVsOneFixture
+        ? compactUnique([oneVsOneSideBPlayerId])
+        : compactUnique(europeSlots),
+    [europeSlots, isOneVsOneFixture, oneVsOneSideBPlayerId]
+  );
   const selectedPlayerIds = useMemo(
     () => [...selectedUsaPlayerIds, ...selectedEuropePlayerIds],
     [selectedEuropePlayerIds, selectedUsaPlayerIds]
@@ -922,13 +950,23 @@ function CustomFixtureForm({
     () => selectedPlayerIds.map((playerId) => players.find((player) => player.id === playerId)).filter(isPlayerRow),
     [players, selectedPlayerIds]
   );
-  const completeSinglesPairs = singlesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
+  const activeSinglesPairs = isOneVsOneFixture
+    ? [
+        {
+          usaPlayerId: oneVsOneSideAPlayerId,
+          europePlayerId: oneVsOneSideBPlayerId,
+          cpiEnabled: oneVsOneCpiEnabled,
+        },
+      ]
+    : singlesPairs;
+  const completeSinglesPairs = activeSinglesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
   const validationError = getCustomFixtureValidationError({
     tournament,
+    mode,
     selectedUsaPlayerIds,
     selectedEuropePlayerIds,
-    frontNinePlayerIds,
-    singlesPairs,
+    frontNinePlayerIds: isOneVsOneFixture ? [] : frontNinePlayerIds,
+    singlesPairs: activeSinglesPairs,
   });
   const isReady = !validationError;
 
@@ -939,22 +977,34 @@ function CustomFixtureForm({
 
   useEffect(() => {
     setFrontNinePlayerIds((current) => {
+      if (isOneVsOneFixture) {
+        return [];
+      }
+
       const retained = current.filter((playerId) => selectedPlayerIds.includes(playerId));
       const added = selectedPlayerIds.filter((playerId) => !retained.includes(playerId));
 
       return [...retained, ...added];
     });
-  }, [selectedPlayerIds]);
+  }, [isOneVsOneFixture, selectedPlayerIds]);
 
   useEffect(() => {
+    if (isOneVsOneFixture) {
+      return;
+    }
+
     setSinglesPairs((current) =>
       current.map((pair, index) => ({
         ...pair,
-        usaPlayerId: pair.usaPlayerId || selectedUsaPlayerIds[index] || '',
-        europePlayerId: pair.europePlayerId || selectedEuropePlayerIds[index] || '',
+        usaPlayerId: selectedUsaPlayerIds.includes(pair.usaPlayerId)
+          ? pair.usaPlayerId
+          : selectedUsaPlayerIds[index] || '',
+        europePlayerId: selectedEuropePlayerIds.includes(pair.europePlayerId)
+          ? pair.europePlayerId
+          : selectedEuropePlayerIds[index] || '',
       }))
     );
-  }, [selectedEuropePlayerIds, selectedUsaPlayerIds]);
+  }, [isOneVsOneFixture, selectedEuropePlayerIds, selectedUsaPlayerIds]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -970,9 +1020,14 @@ function CustomFixtureForm({
         name: name || `Fixture ${fixtureCount + 1}`,
         usaPlayerIds: selectedUsaPlayerIds,
         europePlayerIds: selectedEuropePlayerIds,
-        frontNinePlayerIds,
+        frontNinePlayerIds: isOneVsOneFixture ? [] : frontNinePlayerIds,
         singlesPairs: completeSinglesPairs,
         sortOrder: fixtureCount,
+      });
+      track2026('fixture_created', {
+        fixture_mode: mode,
+        player_count: selectedPlayerIds.length,
+        singles_count: completeSinglesPairs.length,
       });
       setName('');
       await onSaved();
@@ -987,40 +1042,154 @@ function CustomFixtureForm({
     <SetupForm title="Mobile Fixture Builder" onSubmit={handleSubmit} error={error}>
       {validationError && <StatusCard tone="warning">{validationError}</StatusCard>}
       <TextField label="Fixture name" value={name} onChange={setName} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TeamSlotPicker
-          label="USA slots"
-          players={usaPlayers}
-          slots={usaSlots}
-          onChange={setUsaSlots}
+      <FixtureModePicker mode={mode} onChange={setMode} />
+      {isOneVsOneFixture ? (
+        <OneVsOnePicker
+          players={players}
+          sideAPlayerId={oneVsOneSideAPlayerId}
+          sideBPlayerId={oneVsOneSideBPlayerId}
+          cpiEnabled={oneVsOneCpiEnabled}
+          onSideAPlayerChange={setOneVsOneSideAPlayerId}
+          onSideBPlayerChange={setOneVsOneSideBPlayerId}
+          onCpiEnabledChange={setOneVsOneCpiEnabled}
         />
-        <TeamSlotPicker
-          label="Europe slots"
-          players={europePlayers}
-          slots={europeSlots}
-          onChange={setEuropeSlots}
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TeamSlotPicker
+            label="USA slots"
+            players={usaPlayers}
+            slots={usaSlots}
+            onChange={setUsaSlots}
+          />
+          <TeamSlotPicker
+            label="Europe slots"
+            players={europePlayers}
+            slots={europeSlots}
+            onChange={setEuropeSlots}
+          />
+        </div>
+      )}
+      {isOneVsOneFixture ? (
+        <StatusCard>
+          1v1 full course selected. This creates one 18-hole singles match and skips front-nine foursomes.
+        </StatusCard>
+      ) : (
+        <FrontNinePicker
+          players={selectedPlayers}
+          selectedPlayerIds={frontNinePlayerIds}
+          onChange={setFrontNinePlayerIds}
         />
-      </div>
-      <FrontNinePicker
-        players={selectedPlayers}
-        selectedPlayerIds={frontNinePlayerIds}
-        onChange={setFrontNinePlayerIds}
-      />
-      <SinglesPairPicker
-        usaPlayers={selectedPlayers.filter((player) => player.team === 'USA')}
-        europePlayers={selectedPlayers.filter((player) => player.team === 'EUROPE')}
-        pairs={singlesPairs}
-        onChange={setSinglesPairs}
-      />
+      )}
+      {!isOneVsOneFixture && (
+        <SinglesPairPicker
+          usaPlayers={selectedPlayers.filter((player) => player.team === 'USA')}
+          europePlayers={selectedPlayers.filter((player) => player.team === 'EUROPE')}
+          pairs={singlesPairs}
+          onChange={setSinglesPairs}
+        />
+      )}
       <FixturePreview
         selectedPlayers={selectedPlayers}
-        frontNinePlayerIds={frontNinePlayerIds}
+        frontNinePlayerIds={isOneVsOneFixture ? [] : frontNinePlayerIds}
         singlesPairs={completeSinglesPairs}
+        isOneVsOneFixture={isOneVsOneFixture}
       />
       <SubmitButton isSaving={isSaving} disabled={!isReady}>
         Create fixture
       </SubmitButton>
     </SetupForm>
+  );
+}
+
+function FixtureModePicker({
+  mode,
+  onChange,
+}: {
+  mode: FixtureBuilderMode;
+  onChange: (mode: FixtureBuilderMode) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <FixtureModeButton
+        label="Team fixture"
+        description="Front-nine foursomes plus back-nine singles"
+        isSelected={mode === 'team_fixture'}
+        onClick={() => onChange('team_fixture')}
+      />
+      <FixtureModeButton
+        label="1v1 full course"
+        description="Any two players, one 18-hole singles match"
+        isSelected={mode === 'one_vs_one'}
+        onClick={() => onChange('one_vs_one')}
+      />
+    </div>
+  );
+}
+
+function FixtureModeButton({
+  label,
+  description,
+  isSelected,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-3 py-3 text-left ${
+        isSelected
+          ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+          : 'border-[#27272A] bg-[#0C0C0E] text-[#A1A1AA]'
+      }`}
+    >
+      <span className="block text-xs font-bold uppercase tracking-[0.14em]">{label}</span>
+      <span className="mt-1 block text-xs leading-5 text-[#8B949E]">{description}</span>
+    </button>
+  );
+}
+
+function OneVsOnePicker({
+  players,
+  sideAPlayerId,
+  sideBPlayerId,
+  cpiEnabled,
+  onSideAPlayerChange,
+  onSideBPlayerChange,
+  onCpiEnabledChange,
+}: {
+  players: PlayerRow[];
+  sideAPlayerId: string;
+  sideBPlayerId: string;
+  cpiEnabled: boolean;
+  onSideAPlayerChange: (playerId: string) => void;
+  onSideBPlayerChange: (playerId: string) => void;
+  onCpiEnabledChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">1v1 players</p>
+      <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+        Pick any two players. Side A and Side B are the two scoring sides for this match.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <PlayerSelect label="Side A" value={sideAPlayerId} players={players} onChange={onSideAPlayerChange} />
+        <PlayerSelect label="Side B" value={sideBPlayerId} players={players} onChange={onSideBPlayerChange} />
+      </div>
+      <button
+        type="button"
+        onClick={() => onCpiEnabledChange(!cpiEnabled)}
+        className={`mt-3 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] ${
+          cpiEnabled ? 'border-[#F59E0B] text-[#F59E0B]' : 'border-[#27272A] text-[#8B949E]'
+        }`}
+      >
+        CPI {cpiEnabled ? 'enabled' : 'disabled'}
+      </button>
+    </div>
   );
 }
 
@@ -1155,10 +1324,12 @@ function FixturePreview({
   selectedPlayers,
   frontNinePlayerIds,
   singlesPairs,
+  isOneVsOneFixture,
 }: {
   selectedPlayers: PlayerRow[];
   frontNinePlayerIds: string[];
   singlesPairs: SinglesPairDraft[];
+  isOneVsOneFixture?: boolean;
 }) {
   const playerLookup = new Map(selectedPlayers.map((player) => [player.id, player]));
 
@@ -1166,7 +1337,13 @@ function FixturePreview({
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8B949E]">Preview</p>
       <p className="mt-2 text-sm text-[#E6EDF3]">
-        {selectedPlayers.length} players · {frontNinePlayerIds.length} front-nine players · {singlesPairs.length} singles
+        {selectedPlayers.length} players ·{' '}
+        {isOneVsOneFixture
+          ? '18-hole singles'
+          : frontNinePlayerIds.length > 0
+          ? `${frontNinePlayerIds.length} front-nine players`
+          : 'singles-only'}{' '}
+        · {singlesPairs.length} singles
       </p>
       <div className="mt-2 space-y-1 text-xs text-[#A1A1AA]">
         {singlesPairs.map((pair, index) => (
@@ -1204,12 +1381,14 @@ function isPlayerRow(player: PlayerRow | undefined): player is PlayerRow {
 
 function getCustomFixtureValidationError({
   tournament,
+  mode,
   selectedUsaPlayerIds,
   selectedEuropePlayerIds,
   frontNinePlayerIds,
   singlesPairs,
 }: {
   tournament: TournamentRow | null;
+  mode: FixtureBuilderMode;
   selectedUsaPlayerIds: string[];
   selectedEuropePlayerIds: string[];
   frontNinePlayerIds: string[];
@@ -1217,28 +1396,20 @@ function getCustomFixtureValidationError({
 }): string | null {
   if (!tournament) return 'Create an active tournament before creating fixtures.';
   if (selectedUsaPlayerIds.length === 0 || selectedEuropePlayerIds.length === 0) {
-    return 'Select at least one player per team.';
+    return mode === 'one_vs_one'
+      ? 'Select two players for the 1v1 match.'
+      : 'Select at least one player per team.';
   }
   if (selectedUsaPlayerIds.length + selectedEuropePlayerIds.length > 6) {
     return 'A fixture can have at most six players.';
-  }
-  if (frontNinePlayerIds.length < 2) {
-    return 'Select at least two front-nine players.';
-  }
-
-  const frontNineTeams = new Set([
-    ...frontNinePlayerIds.filter((playerId) => selectedUsaPlayerIds.includes(playerId)).map(() => 'USA'),
-    ...frontNinePlayerIds.filter((playerId) => selectedEuropePlayerIds.includes(playerId)).map(() => 'EUROPE'),
-  ]);
-
-  if (!frontNineTeams.has('USA') || !frontNineTeams.has('EUROPE')) {
-    return 'Front-nine scoring needs at least one player from each team.';
   }
 
   const completePairs = singlesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
 
   if (completePairs.length === 0) {
-    return 'Add at least one back-nine singles match.';
+    return mode === 'one_vs_one'
+      ? 'Select two players for the 1v1 match.'
+      : 'Add at least one back-nine singles match.';
   }
 
   if (singlesPairs.some((pair) => Boolean(pair.usaPlayerId) !== Boolean(pair.europePlayerId))) {
@@ -1259,6 +1430,21 @@ function getCustomFixtureValidationError({
 
   if (new Set(singlesPlayerIds).size !== singlesPlayerIds.length) {
     return 'A player can only appear in one singles match.';
+  }
+
+  const isOneVsOneFixture = mode === 'one_vs_one';
+
+  if (!isOneVsOneFixture && frontNinePlayerIds.length < 2) {
+    return 'Select at least two front-nine players.';
+  }
+
+  const frontNineTeams = new Set([
+    ...frontNinePlayerIds.filter((playerId) => selectedUsaPlayerIds.includes(playerId)).map(() => 'USA'),
+    ...frontNinePlayerIds.filter((playerId) => selectedEuropePlayerIds.includes(playerId)).map(() => 'EUROPE'),
+  ]);
+
+  if (!isOneVsOneFixture && (!frontNineTeams.has('USA') || !frontNineTeams.has('EUROPE'))) {
+    return 'Front-nine scoring needs at least one player from each team.';
   }
 
   return null;

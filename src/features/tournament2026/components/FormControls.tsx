@@ -133,7 +133,7 @@ export function PlayerSelect({
         <option value="">Select player</option>
         {players.map((player) => (
           <option key={player.id} value={player.id}>
-            {player.name}
+            {player.name} · {player.team}
           </option>
         ))}
       </select>

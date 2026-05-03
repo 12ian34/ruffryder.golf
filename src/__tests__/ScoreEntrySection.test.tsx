@@ -48,7 +48,8 @@ describe('ScoreEntrySection', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('401 yds')).toBeInTheDocument();
+    expect(view.getByText('Length 367 m')).toBeInTheDocument();
+    expect(view.getByText('SI 3')).toBeInTheDocument();
     expect(view.getAllByText('Par 4')).toHaveLength(2);
     expect(view.getByText('1/2')).toBeInTheDocument();
     expect(view.getByText('USA dormie 1')).toBeInTheDocument();
@@ -57,6 +58,11 @@ describe('ScoreEntrySection', () => {
     expect(view.getByText('By Ian')).toBeInTheDocument();
     expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
+
+    fireEvent.click(view.getAllByLabelText('Show lengths in yards')[0]);
+
+    expect(view.getByText('Length 401 yds')).toBeInTheDocument();
+    expect(view.getByText('Length 388 yds')).toBeInTheDocument();
 
     fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
 

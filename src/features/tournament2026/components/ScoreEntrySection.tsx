@@ -20,6 +20,7 @@ import {
   type SegmentView,
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
+import { track2026 } from '../../../utils/analytics';
 import {
   createHoleRange,
   formatOutcome,
@@ -36,6 +37,13 @@ interface HoleDraft {
   usaScore: string;
   europeScore: string;
 }
+
+interface ScoreLabels {
+  usa: string;
+  europe: string;
+}
+
+type LengthUnit = 'metres' | 'yards';
 
 type HoleSaveState = 'dirty' | 'incomplete' | 'saving' | 'saved' | 'error';
 
@@ -54,6 +62,11 @@ export function ScoreEntrySection({
   profile: ProfileRow;
   onSaved: () => Promise<void>;
 }) {
+  const [lengthUnit, setLengthUnit] = useState<LengthUnit>('metres');
+  const toggleLengthUnit = () => {
+    setLengthUnit((unit) => (unit === 'metres' ? 'yards' : 'metres'));
+  };
+
   if (!tournament) {
     return (
       <Panel title="Score Entry" eyebrow="Fixture scores">
@@ -112,6 +125,8 @@ export function ScoreEntrySection({
                     players={players}
                     profile={profile}
                     courseHoles={courseHoles}
+                    lengthUnit={lengthUnit}
+                    onLengthUnitToggle={toggleLengthUnit}
                     onSaved={onSaved}
                   />
                 ))}
@@ -130,6 +145,8 @@ function SegmentScoreCard({
   players,
   profile,
   courseHoles,
+  lengthUnit,
+  onLengthUnitToggle,
   onSaved,
 }: {
   tournament: TournamentRow;
@@ -137,6 +154,8 @@ function SegmentScoreCard({
   players: PlayerRow[];
   profile: ProfileRow;
   courseHoles: CourseHoleMetadata[];
+  lengthUnit: LengthUnit;
+  onLengthUnitToggle: () => void;
   onSaved: () => Promise<void>;
 }) {
   const holes = createHoleRange(segment.hole_start, segment.hole_end);
@@ -154,8 +173,10 @@ function SegmentScoreCard({
   const [savingHoles, setSavingHoles] = useState<Set<number>>(new Set());
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [saveAllError, setSaveAllError] = useState<string | null>(null);
-  const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold);
+  const scoreLabels = getSegmentScoreLabels(segment, players);
+  const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold, scoreLabels);
   const matchStatus = calculateSegmentMatchPlayStatus(segment);
+  const matchStatusLabel = formatMatchStatusLabel(matchStatus, scoreLabels);
   const canConfigureCpi = profile.is_admin && segment.kind === 'singles';
   const dirtyHoles = holes.filter((holeNumber) =>
     isHoleDirty(drafts[holeNumber], scoreByHole.get(holeNumber))
@@ -175,6 +196,10 @@ function SegmentScoreCard({
       players,
       enabled: !segment.cpi_enabled,
       updatedBy: profile.id,
+    });
+    track2026('cpi_setting_changed', {
+      segment_id: segment.id,
+      enabled: !segment.cpi_enabled,
     });
     await onSaved();
   };
@@ -214,6 +239,11 @@ function SegmentScoreCard({
         holeNumber,
         draft,
       });
+      track2026('score_saved', {
+        segment_id: segment.id,
+        hole_number: holeNumber,
+        segment_kind: segment.kind,
+      });
       await onSaved();
     } catch (err) {
       const message = getErrorMessage(err);
@@ -252,6 +282,10 @@ function SegmentScoreCard({
         });
       }
       await onSaved();
+      track2026('scores_bulk_saved', {
+        segment_id: segment.id,
+        hole_count: dirtyHoles.length,
+      });
     } catch (err) {
       setSaveAllError(getErrorMessage(err));
     } finally {
@@ -272,6 +306,7 @@ function SegmentScoreCard({
 
     try {
       await clearHoleScore2026({ tournament, scoreId });
+      track2026('score_cleared', { segment_id: segment.id, hole_number: holeNumber });
       await onSaved();
     } catch (err) {
       setRowErrors((current) => ({ ...current, [holeNumber]: getErrorMessage(err) }));
@@ -293,7 +328,7 @@ function SegmentScoreCard({
           </h4>
           <p className="mt-1 font-data text-sm leading-6 text-[#A1A1AA]">{formatSegmentMatchup(segment, players)}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <MatchStatusBadge status={matchStatus.state} label={matchStatus.label} />
+            <MatchStatusBadge status={matchStatus.state} label={matchStatusLabel} />
             <span className="border border-[#27272A] px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
               {matchStatus.completedHoles}/{matchStatus.totalHoles} played
             </span>
@@ -348,7 +383,10 @@ function SegmentScoreCard({
               draft={draft}
               saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
               error={rowError}
+              scoreLabels={scoreLabels}
+              lengthUnit={lengthUnit}
               canClear={profile.is_admin && Boolean(score)}
+              onLengthUnitToggle={onLengthUnitToggle}
               onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
               onSave={() => saveHole(holeNumber)}
               onClear={() => {
@@ -370,7 +408,10 @@ function HoleScoreForm({
   draft,
   saveState,
   error,
+  scoreLabels,
+  lengthUnit,
   canClear,
+  onLengthUnitToggle,
   onDraftChange,
   onSave,
   onClear,
@@ -381,7 +422,10 @@ function HoleScoreForm({
   draft: HoleDraft;
   saveState: HoleSaveState;
   error: string | null;
+  scoreLabels: ScoreLabels;
+  lengthUnit: LengthUnit;
   canClear: boolean;
+  onLengthUnitToggle: () => void;
   onDraftChange: (draft: HoleDraft) => void;
   onSave: () => void;
   onClear: () => Promise<void>;
@@ -406,18 +450,29 @@ function HoleScoreForm({
         <div className="flex items-baseline justify-between gap-3 lg:block">
           <div className="font-data text-3xl font-bold tracking-[-0.08em] text-[#FAFAFA] lg:text-xl">H{holeNumber}</div>
           <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
-            {courseHole.yardage && <span>{courseHole.yardage} yds</span>}
+            {courseHole.yardage ? (
+              <button
+                type="button"
+                onClick={onLengthUnitToggle}
+                aria-label={`Show lengths in ${lengthUnit === 'metres' ? 'yards' : 'metres'}`}
+                className="-mx-1 rounded border border-transparent px-1 text-[#A1A1AA] underline decoration-dotted underline-offset-2 hover:border-[#3F3F46] hover:text-[#FAFAFA] focus:border-[#3FB950] focus:outline-none"
+              >
+                {formatLengthLabel(courseHole.yardage, lengthUnit)}
+              </button>
+            ) : (
+              <span>Length --</span>
+            )}
             {courseHole.par && <span>Par {courseHole.par}</span>}
             <span>SI {courseHole.strokeIndex}</span>
           </div>
         </div>
         <ScorePicker
-          label="USA"
+          label={scoreLabels.usa}
           value={draft.usaScore}
           onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
         />
         <ScorePicker
-          label="Europe"
+          label={scoreLabels.europe}
           value={draft.europeScore}
           onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
         />
@@ -452,7 +507,7 @@ function HoleScoreForm({
       {score && (
         <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] uppercase tracking-[0.12em] text-[#A1A1AA]">
           <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-            {formatOutcome(score.outcome)}
+            {formatOutcome(score.outcome, scoreLabels)}
           </span>
           {score.cpi_applied && (
             <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
@@ -508,6 +563,50 @@ function MatchStatusBadge({
       {label}
     </span>
   );
+}
+
+function getSegmentScoreLabels(segment: SegmentView, players: PlayerRow[]): ScoreLabels {
+  if (segment.kind !== 'singles') {
+    return { usa: 'USA', europe: 'Europe' };
+  }
+
+  const playerLookup = new Map(players.map((player) => [player.id, player.name]));
+
+  return {
+    usa: segment.usa_player_id ? (playerLookup.get(segment.usa_player_id) ?? 'Side A') : 'Side A',
+    europe: segment.europe_player_id ? (playerLookup.get(segment.europe_player_id) ?? 'Side B') : 'Side B',
+  };
+}
+
+function formatMatchStatusLabel(
+  status: ReturnType<typeof calculateSegmentMatchPlayStatus>,
+  labels: ScoreLabels
+): string {
+  if (!status.leader) {
+    return status.label;
+  }
+
+  const leaderLabel = status.leader === 'USA' ? labels.usa : labels.europe;
+
+  if (status.state === 'won') {
+    return status.holesRemaining === 0
+      ? `${leaderLabel} wins by ${status.margin}`
+      : `${leaderLabel} wins ${status.margin} & ${status.holesRemaining}`;
+  }
+
+  if (status.state === 'dormie') {
+    return `${leaderLabel} dormie ${status.margin}`;
+  }
+
+  return `${leaderLabel} ${status.margin} up`;
+}
+
+function formatLengthLabel(yardage: number, unit: LengthUnit): string {
+  if (unit === 'yards') {
+    return `Length ${yardage} yds`;
+  }
+
+  return `Length ${Math.round(yardage * 0.9144)} m`;
 }
 
 async function saveHoleDraft({
@@ -590,7 +689,8 @@ function formatAuditTime(value: string): string {
 function getSegmentCpiStatus(
   segment: SegmentView,
   players: PlayerRow[],
-  threshold: number
+  threshold: number,
+  labels: ScoreLabels
 ): string | null {
   if (segment.kind !== 'singles') {
     return 'CPI disabled for foursomes';
@@ -616,5 +716,7 @@ function getSegmentCpiStatus(
     return `CPI enabled, not applied. Gap ${cpi.difference}, threshold ${threshold}.`;
   }
 
-  return `CPI enabled. Gap ${cpi.difference}; ${cpi.higherCpiTeam} receives strokes.`;
+  const higherCpiPlayer = cpi.higherCpiTeam === 'USA' ? labels.usa : labels.europe;
+
+  return `CPI enabled. Gap ${cpi.difference}; ${higherCpiPlayer} receives strokes.`;
 }

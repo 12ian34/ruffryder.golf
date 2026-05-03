@@ -157,6 +157,45 @@ describe('2026 fixture setup builder', () => {
     });
   });
 
+  it('builds a 1v1 singles-only fixture without a front-nine segment', () => {
+    const payload = buildFixtureSetupPayload({
+      tournamentId: 'tournament-1',
+      fixtureName: 'Singles playoff',
+      sortOrder: 4,
+      idFactory: createIdFactory(['fixture-1v1', 'singles-1']),
+      participants: [
+        { playerId: 'usa-1', team: 'USA', slot: 1 },
+        { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+      ],
+      segments: [
+        {
+          kind: 'singles',
+          name: 'Singles A',
+          sortOrder: 1,
+          holeStart: 1,
+          holeEnd: 18,
+          usaPlayerId: 'usa-1',
+          europePlayerId: 'europe-1',
+          cpiEnabled: false,
+        },
+      ],
+    });
+
+    expect(payload.fixturePlayers).toHaveLength(2);
+    expect(payload.segments).toHaveLength(1);
+    expect(payload.segmentPlayers).toHaveLength(2);
+    expect(payload.segments[0]).toMatchObject({
+      id: 'singles-1',
+      kind: 'singles',
+      sort_order: 1,
+      hole_start: 1,
+      hole_end: 18,
+      cpi_enabled: false,
+      usa_player_id: 'usa-1',
+      europe_player_id: 'europe-1',
+    });
+  });
+
   it('rejects a singles segment with a player outside the fixture', () => {
     expect(() =>
       buildFixtureSetupPayload({

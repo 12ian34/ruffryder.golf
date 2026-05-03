@@ -2,13 +2,32 @@ import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
 } from '../../../domain/2026/matchPlayStatus';
-import type { FixtureView } from '../../../services/tournament2026Queries';
+import type {
+  FixtureView,
+  PlayerRow,
+  TournamentRow,
+} from '../../../services/tournament2026Queries';
+import type { CourseHoleMetadata } from '../../../domain/2026/course';
+import { buildProgressTimeline, generateTournamentHighlights } from '../insights';
 import { calculateTotals } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
-import { Panel } from './Layout';
+import { Panel, StatusCard } from './Layout';
 
-export function LeaderboardSection({ fixtures }: { fixtures: FixtureView[] }) {
+export function LeaderboardSection({
+  tournament,
+  fixtures,
+  players,
+  courseHoles,
+}: {
+  tournament: TournamentRow | null;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+  courseHoles: CourseHoleMetadata[];
+}) {
   const totals = calculateTotals(fixtures);
+  const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
+  const timeline = buildProgressTimeline(fixtures);
+  const recentTimeline = timeline.slice(-8);
 
   return (
     <Panel title="Live Leaderboard" eyebrow="Supabase realtime">
@@ -16,6 +35,10 @@ export function LeaderboardSection({ fixtures }: { fixtures: FixtureView[] }) {
         <ScoreTile label="Overall" score={totals.overall} />
         <ScoreTile label="Foursomes" score={totals.foursomes} />
         <ScoreTile label="Singles" score={totals.singles} />
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <InsightCard title="Highlights Reel" items={highlights} />
+        <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
       </div>
       <div className="-mx-4 mt-5 border-t border-[#27272A] sm:mx-0">
         {fixtures.length === 0 ? (
@@ -25,6 +48,63 @@ export function LeaderboardSection({ fixtures }: { fixtures: FixtureView[] }) {
         )}
       </div>
     </Panel>
+  );
+}
+
+function InsightCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">{title}</p>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => (
+          <p key={item} className="text-sm leading-6 text-[#E6EDF3]">
+            {item}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProgressTimeline({
+  points,
+  totalPoints,
+}: {
+  points: ReturnType<typeof buildProgressTimeline>;
+  totalPoints: number;
+}) {
+  if (points.length === 0) {
+    return (
+      <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-4">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">Score Movement</p>
+        <StatusCard>No score movement yet.</StatusCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#8B949E]">Score Movement</p>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-[#8B949E]">
+          Last {points.length} of {totalPoints}
+        </span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {points.map((point) => (
+          <div key={point.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs">
+            <div className="min-w-0">
+              <p className="truncate font-bold text-[#FAFAFA]">{point.label}</p>
+              <p className="text-[#8B949E]">{formatTime(point.updatedAt)}</p>
+            </div>
+            <p className="tabular-nums text-[#E6EDF3]">
+              USA {point.usa} - EUR {point.europe}
+              {point.halved > 0 ? ` (${point.halved} H)` : ''}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -96,4 +176,8 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
       </div>
     </div>
   );
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }

@@ -1,5 +1,6 @@
 import { auth } from '../config/firebase';
 import type { User } from 'firebase/auth';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import posthog from 'posthog-js';
 
 // Log the environment variables to help debug PostHog initialization
@@ -114,3 +115,36 @@ export function identifyUser(user: User | null) {
     posthog.reset();
   }
 } 
+
+export function track2026(eventName: string, properties: Record<string, unknown> = {}) {
+  try {
+    posthog.capture(eventName, {
+      surface: '2026_console',
+      ...properties,
+    });
+  } catch {
+    // Analytics must never block tournament-day workflows.
+  }
+}
+
+export function identifySupabaseUser(user: SupabaseUser | null) {
+  try {
+    if (!user?.email) {
+      posthog.reset();
+      return;
+    }
+
+    posthog.identify(user.email, {
+      email: user.email,
+      $email: user.email,
+      supabase_uid: user.id,
+    });
+    posthog.register({
+      surface: '2026_console',
+      user_email: user.email,
+      supabase_uid: user.id,
+    });
+  } catch {
+    // Analytics must never block auth state changes.
+  }
+}

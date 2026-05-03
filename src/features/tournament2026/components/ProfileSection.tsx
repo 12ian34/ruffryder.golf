@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  updateProfilePlayerLink2026,
+  updateOwnProfile2026,
+  updateProfileAdmin2026,
   type PlayerRow,
   type ProfileRow,
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
+import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { PlayerSelect } from './FormControls';
 import { Panel, StatusCard } from './Layout';
@@ -45,10 +47,83 @@ export function ProfileSection({
           </p>
         </div>
       </div>
+      <OwnProfileForm profile={profile} onSaved={onSaved} />
       {profile.is_admin && (
         <ProfileLinkingPanel profiles={profiles} players={players} onSaved={onSaved} />
       )}
     </Panel>
+  );
+}
+
+function OwnProfileForm({
+  profile,
+  onSaved,
+}: {
+  profile: ProfileRow;
+  onSaved: () => Promise<void>;
+}) {
+  const [displayName, setDisplayName] = useState(profile.display_name);
+  const [customEmoji, setCustomEmoji] = useState(profile.custom_emoji ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasChanged =
+    displayName !== profile.display_name || customEmoji !== (profile.custom_emoji ?? '');
+
+  useEffect(() => {
+    setDisplayName(profile.display_name);
+    setCustomEmoji(profile.custom_emoji ?? '');
+  }, [profile]);
+
+  const saveProfile = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateOwnProfile2026({
+        displayName,
+        customEmoji: customEmoji.trim() || null,
+      });
+      track2026('profile_updated', { self_service: true });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="-mx-4 border-t border-[#27272A] px-4 py-4 sm:mx-0">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile settings</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
+        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          Display name
+          <input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+          />
+        </label>
+        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          Avatar
+          <input
+            value={customEmoji}
+            onChange={(event) => setCustomEmoji(event.target.value)}
+            placeholder="Optional"
+            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={saveProfile}
+          disabled={!hasChanged || isSaving}
+          className="min-h-10 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : 'Save'}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+    </div>
   );
 }
 
@@ -64,10 +139,9 @@ function ProfileLinkingPanel({
   return (
     <div className="-mx-4 border-t border-[#27272A] sm:mx-0">
       <div className="px-4 py-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Player links</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Profile admin</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
-          Link each signed-in person to their player profile. This controls who can enter scores for
-          their fixture.
+          Edit signed-in profiles, roles, avatars, and player links. Player links control fixture score access.
         </p>
       </div>
       <div>
@@ -98,24 +172,42 @@ function ProfileLinkRow({
   onSaved: () => Promise<void>;
 }) {
   const [playerId, setPlayerId] = useState(profile.linked_player_id ?? '');
+  const [displayName, setDisplayName] = useState(profile.display_name);
+  const [customEmoji, setCustomEmoji] = useState(profile.custom_emoji ?? '');
+  const [isAdmin, setIsAdmin] = useState(profile.is_admin);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedPlayer = useMemo(
     () => players.find((player) => player.id === playerId) ?? null,
     [playerId, players]
   );
-  const hasChanged = playerId !== (profile.linked_player_id ?? '');
+  const hasChanged =
+    playerId !== (profile.linked_player_id ?? '') ||
+    displayName !== profile.display_name ||
+    customEmoji !== (profile.custom_emoji ?? '') ||
+    isAdmin !== profile.is_admin;
 
-  const saveLink = async () => {
+  useEffect(() => {
+    setPlayerId(profile.linked_player_id ?? '');
+    setDisplayName(profile.display_name);
+    setCustomEmoji(profile.custom_emoji ?? '');
+    setIsAdmin(profile.is_admin);
+  }, [profile]);
+
+  const saveProfile = async () => {
     setIsSaving(true);
     setError(null);
 
     try {
-      await updateProfilePlayerLink2026({
+      await updateProfileAdmin2026({
         profileId: profile.id,
+        displayName,
+        isAdmin,
+        customEmoji: customEmoji.trim() || null,
         playerId: playerId || null,
         players,
       });
+      track2026('profile_admin_updated', { profile_id: profile.id, is_admin: isAdmin });
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -126,11 +218,9 @@ function ProfileLinkRow({
 
   return (
     <div className="border-t border-[#27272A] px-4 py-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem_auto_auto] lg:items-end">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
-            {profile.display_name}
-          </p>
+          <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">{profile.display_name}</p>
           <p className="truncate text-xs text-[#8B949E]">{profile.email}</p>
           {selectedPlayer && (
             <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#A1A1AA]">
@@ -138,12 +228,37 @@ function ProfileLinkRow({
             </p>
           )}
         </div>
+        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          Display name
+          <input
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+          />
+        </label>
+        <label className="block font-data text-xs uppercase tracking-[0.14em] text-[#8B949E]">
+          Avatar
+          <input
+            value={customEmoji}
+            onChange={(event) => setCustomEmoji(event.target.value)}
+            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+          />
+        </label>
         <div className="flex-1">
           <PlayerSelect label="Linked player" value={playerId} players={players} onChange={setPlayerId} />
         </div>
         <button
           type="button"
-          onClick={saveLink}
+          onClick={() => setIsAdmin((current) => !current)}
+          className={`min-h-11 rounded-md border px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] ${
+            isAdmin ? 'border-[#F59E0B] text-[#F59E0B]' : 'border-[#27272A] text-[#8B949E]'
+          }`}
+        >
+          {isAdmin ? 'Admin' : 'Player'}
+        </button>
+        <button
+          type="button"
+          onClick={saveProfile}
           disabled={!hasChanged || isSaving}
           className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >

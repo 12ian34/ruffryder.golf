@@ -9,6 +9,7 @@ export interface AppNavItem<T extends string> {
 export function PageShell<T extends string>({
   children,
   userEmail,
+  isOnline = true,
   onSignOut,
   activeTab,
   navItems = [],
@@ -16,6 +17,7 @@ export function PageShell<T extends string>({
 }: {
   children: ReactNode;
   userEmail?: string | null;
+  isOnline?: boolean;
   onSignOut?: () => void;
   activeTab?: T;
   navItems?: AppNavItem<T>[];
@@ -57,6 +59,15 @@ export function PageShell<T extends string>({
           </div>
           {userEmail && (
             <div className="flex shrink-0 items-center gap-3 text-sm text-[#A1A1AA]">
+              <span
+                className={`hidden rounded border px-2 py-1 text-[10px] uppercase tracking-[0.14em] sm:inline ${
+                  isOnline
+                    ? 'border-[#3FB950]/60 text-[#3FB950]'
+                    : 'border-[#F59E0B]/60 text-[#F59E0B]'
+                }`}
+              >
+                {isOnline ? 'Live' : 'Offline'}
+              </span>
               <span className="hidden sm:inline">{userEmail}</span>
               <button
                 type="button"
@@ -74,7 +85,10 @@ export function PageShell<T extends string>({
       </main>
       {navItems.length > 0 && activeTab && onTabChange && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#27272A] bg-[#09090B]/95 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur sm:hidden">
-          <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          <div
+            className="mx-auto grid max-w-lg gap-1"
+            style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+          >
             {navItems.map((item) => {
               const isActive = item.id === activeTab;
 

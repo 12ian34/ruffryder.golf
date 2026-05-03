@@ -1,9 +1,18 @@
 import type { Tournament2026Data } from '../../../services/tournament2026Queries';
 import { Panel, StatusCard } from './Layout';
 
-export function HistorySection({ history }: { history: Tournament2026Data['history'] }) {
+export function HistorySection({
+  history,
+  players,
+  playerStats,
+}: {
+  history: Tournament2026Data['history'];
+  players: Tournament2026Data['players'];
+  playerStats: Tournament2026Data['playerStats'];
+}) {
   return (
     <Panel title="Historical Results" eyebrow="Legacy Firebase archive">
+      <PlayerArchive players={players} playerStats={playerStats} />
       {history.length === 0 ? (
         <StatusCard>No historical tournaments have been imported yet.</StatusCard>
       ) : (
@@ -43,6 +52,80 @@ export function HistorySection({ history }: { history: Tournament2026Data['histo
         </div>
       )}
     </Panel>
+  );
+}
+
+function PlayerArchive({
+  players,
+  playerStats,
+}: {
+  players: Tournament2026Data['players'];
+  playerStats: Tournament2026Data['playerStats'];
+}) {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const visibleStats = [...playerStats].sort((a, b) => {
+    if (a.completion_year !== b.completion_year) {
+      return b.completion_year - a.completion_year;
+    }
+
+    return (playerLookup.get(a.player_id)?.name ?? '').localeCompare(
+      playerLookup.get(b.player_id)?.name ?? ''
+    );
+  });
+
+  return (
+    <div className="-mx-4 border-t border-[#27272A] sm:mx-0">
+      <div className="px-4 py-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3FB950]">Player archive</p>
+        <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+          Finalized 2026 app stats, including migrated/imported rows when available.
+        </p>
+      </div>
+      {visibleStats.length === 0 ? (
+        <p className="px-4 pb-4 text-sm text-[#8B949E]">No player stat rows have been saved yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-xs">
+            <thead className="border-y border-[#27272A] bg-[#0C0C0E] uppercase tracking-[0.16em] text-[#8B949E]">
+              <tr>
+                <th className="px-4 py-2">Year</th>
+                <th className="px-4 py-2">Player</th>
+                <th className="px-4 py-2">Source</th>
+                <th className="px-4 py-2">Singles</th>
+                <th className="px-4 py-2">Won</th>
+                <th className="px-4 py-2">CPI after</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#27272A]">
+              {visibleStats.map((stat) => {
+                const player = playerLookup.get(stat.player_id);
+
+                return (
+                  <tr key={stat.id}>
+                    <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#E6EDF3]">
+                      {stat.completion_year}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 text-[#FAFAFA]">
+                      {player?.name ?? 'Unknown player'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 uppercase text-[#8B949E]">{stat.source}</td>
+                    <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                      {stat.singles_strokes}/{stat.singles_holes_played}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                      {stat.holes_won}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2 tabular-nums text-[#A1A1AA]">
+                      {stat.cpi_after ?? '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

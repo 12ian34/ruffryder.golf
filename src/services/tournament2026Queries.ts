@@ -64,6 +64,7 @@ export interface Tournament2026Data {
   profile: ProfileRow | null;
   profiles: ProfileRow[];
   players: PlayerRow[];
+  playerStats: PlayerTournamentStatsRow[];
   courseHoles: CourseHoleMetadata[];
   activeTournament: TournamentRow | null;
   fixtures: FixtureView[];
@@ -72,6 +73,20 @@ export interface Tournament2026Data {
 
 export interface CreateProfileInput {
   displayName: string;
+}
+
+export interface UpdateOwnProfileInput {
+  displayName: string;
+  customEmoji: string | null;
+}
+
+export interface UpdateProfileAdminInput {
+  profileId: string;
+  displayName: string;
+  isAdmin: boolean;
+  customEmoji: string | null;
+  playerId: string | null;
+  players: PlayerRow[];
 }
 
 export interface CreateTournamentInput {
@@ -195,13 +210,15 @@ export interface ClearHoleScoreInput {
 export async function fetchTournament2026Data(
   client: SupabaseClient<Database> = getSupabaseClient()
 ): Promise<Tournament2026Data> {
-  const [{ data: userData }, players, courseHoles, activeTournament, history] = await Promise.all([
-    client.auth.getUser(),
-    fetchPlayers(client),
-    fetchCourseHoles(client),
-    fetchActiveTournament(client),
-    fetchLegacyHistory(client),
-  ]);
+  const [{ data: userData }, players, playerStats, courseHoles, activeTournament, history] =
+    await Promise.all([
+      client.auth.getUser(),
+      fetchPlayers(client),
+      fetchPlayerTournamentStats(client),
+      fetchCourseHoles(client),
+      fetchActiveTournament(client),
+      fetchLegacyHistory(client),
+    ]);
 
   const user = userData.user;
   const profile = user ? await fetchProfile(client, user.id) : null;
@@ -215,6 +232,7 @@ export async function fetchTournament2026Data(
     profile,
     profiles,
     players,
+    playerStats,
     courseHoles,
     activeTournament,
     fixtures,
@@ -237,6 +255,7 @@ export function subscribeToTournament2026Changes(
     'segments',
     'segment_players',
     'hole_scores',
+    'player_tournament_stats',
     'legacy_tournaments',
     'legacy_games',
   ];
@@ -277,6 +296,39 @@ export async function createOwnProfile(
   }
 
   throwIfSupabaseError(error, 'Failed to create profile');
+}
+
+export async function updateOwnProfile2026(
+  input: UpdateOwnProfileInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const { error } = await client.rpc('update_own_profile', {
+    display_name_input: input.displayName,
+    custom_emoji_input: input.customEmoji ?? '',
+  });
+
+  throwIfSupabaseError(error, 'Failed to update profile');
+}
+
+export async function updateProfileAdmin2026(
+  input: UpdateProfileAdminInput,
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<void> {
+  const linkedPlayer = input.playerId
+    ? input.players.find((player) => player.id === input.playerId)
+    : null;
+  const { error } = await client
+    .from('profiles')
+    .update({
+      display_name: input.displayName,
+      custom_emoji: input.customEmoji,
+      is_admin: input.isAdmin,
+      linked_player_id: input.playerId,
+      team: linkedPlayer?.team ?? null,
+    })
+    .eq('id', input.profileId);
+
+  throwIfSupabaseError(error, 'Failed to update profile');
 }
 
 export async function createTournament2026(
@@ -627,19 +679,15 @@ export async function createCustomFixture2026(
 export function buildCustomFixtureSetupInput(input: CreateCustomFixtureInput): FixtureSetupInput {
   const participants = buildFixtureParticipants(input);
   const participantLookup = new Map(participants.map((participant) => [participant.playerId, participant]));
-  const frontNineParticipants = input.frontNinePlayerIds.map((playerId) => {
-    const participant = participantLookup.get(playerId);
-
-    if (!participant) {
-      throw new Error(`Front-nine player ${playerId} is not assigned to this fixture`);
-    }
-
-    return participant;
-  });
+  const frontNineParticipants = buildFrontNineParticipants(input.frontNinePlayerIds, participantLookup);
   const singlesPairs = input.singlesPairs.filter(
     (pair) => pair.usaPlayerId && pair.europePlayerId
   );
   const usedSinglesPlayers = new Set<string>();
+
+  if (singlesPairs.length === 0) {
+    throw new Error('Add at least one back-nine singles match.');
+  }
 
   for (const pair of singlesPairs) {
     for (const playerId of [pair.usaPlayerId, pair.europePlayerId]) {
@@ -651,26 +699,34 @@ export function buildCustomFixtureSetupInput(input: CreateCustomFixtureInput): F
     }
   }
 
-  const segments: SegmentSetup[] = [
-    {
+  const segments: SegmentSetup[] = [];
+  const hasFrontNineSegment = frontNineParticipants.length > 0;
+
+  if (hasFrontNineSegment) {
+    segments.push({
       kind: 'foursomes',
       name: 'Front 9 Foursomes',
       sortOrder: 1,
       holeStart: 1,
       holeEnd: 9,
       participants: frontNineParticipants,
-    },
+    });
+  }
+
+  const singlesSortOrderOffset = segments.length;
+
+  segments.push(
     ...singlesPairs.map<SegmentSetup>((pair, index) => ({
       kind: 'singles',
       name: `Singles ${String.fromCharCode(65 + index)}`,
-      sortOrder: index + 2,
-      holeStart: 10,
+      sortOrder: index + singlesSortOrderOffset + 1,
+      holeStart: hasFrontNineSegment ? 10 : 1,
       holeEnd: 18,
       usaPlayerId: pair.usaPlayerId,
       europePlayerId: pair.europePlayerId,
       cpiEnabled: pair.cpiEnabled,
-    })),
-  ];
+    }))
+  );
 
   return {
     tournamentId: input.tournamentId,
@@ -679,6 +735,21 @@ export function buildCustomFixtureSetupInput(input: CreateCustomFixtureInput): F
     participants,
     segments,
   };
+}
+
+function buildFrontNineParticipants(
+  playerIds: string[],
+  participantLookup: Map<string, FixtureParticipant>
+): FixtureParticipant[] {
+  return playerIds.map((playerId) => {
+    const participant = participantLookup.get(playerId);
+
+    if (!participant) {
+      throw new Error(`Front-nine player ${playerId} is not assigned to this fixture`);
+    }
+
+    return participant;
+  });
 }
 
 function buildFixtureParticipants(input: CreateCustomFixtureInput): FixtureParticipant[] {
@@ -1024,6 +1095,19 @@ async function fetchPlayers(client: SupabaseClient<Database>): Promise<PlayerRow
   const { data, error } = await client.from('players').select('*').order('name');
 
   throwIfSupabaseError(error, 'Failed to load players');
+
+  return data ?? [];
+}
+
+async function fetchPlayerTournamentStats(
+  client: SupabaseClient<Database>
+): Promise<PlayerTournamentStatsRow[]> {
+  const { data, error } = await client
+    .from('player_tournament_stats')
+    .select('*')
+    .order('completion_year', { ascending: false });
+
+  throwIfSupabaseError(error, 'Failed to load player stats');
 
   return data ?? [];
 }

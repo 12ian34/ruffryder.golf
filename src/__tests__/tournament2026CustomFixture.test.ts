@@ -32,6 +32,59 @@ describe('custom 2026 fixture setup', () => {
     });
   });
 
+  it('maps 1v1 input into one full-course singles-only segment', () => {
+    const setupInput = buildCustomFixtureSetupInput({
+      tournamentId: 'tournament-1',
+      name: 'Singles playoff',
+      sortOrder: 3,
+      usaPlayerIds: ['usa-1'],
+      europePlayerIds: ['europe-1'],
+      frontNinePlayerIds: [],
+      singlesPairs: [{ usaPlayerId: 'usa-1', europePlayerId: 'europe-1', cpiEnabled: false }],
+    });
+
+    expect(setupInput.participants).toEqual([
+      { playerId: 'usa-1', team: 'USA', slot: 1 },
+      { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+    ]);
+    expect(setupInput.segments).toEqual([
+      {
+        kind: 'singles',
+        name: 'Singles A',
+        sortOrder: 1,
+        holeStart: 1,
+        holeEnd: 18,
+        usaPlayerId: 'usa-1',
+        europePlayerId: 'europe-1',
+        cpiEnabled: false,
+      },
+    ]);
+  });
+
+  it('allows 1v1 players from any roster team by assigning match sides', () => {
+    const setupInput = buildCustomFixtureSetupInput({
+      tournamentId: 'tournament-1',
+      name: 'Same side match',
+      sortOrder: 4,
+      usaPlayerIds: ['usa-1'],
+      europePlayerIds: ['usa-2'],
+      frontNinePlayerIds: [],
+      singlesPairs: [{ usaPlayerId: 'usa-1', europePlayerId: 'usa-2', cpiEnabled: true }],
+    });
+
+    expect(setupInput.participants).toEqual([
+      { playerId: 'usa-1', team: 'USA', slot: 1 },
+      { playerId: 'usa-2', team: 'EUROPE', slot: 1 },
+    ]);
+    expect(setupInput.segments[0]).toMatchObject({
+      kind: 'singles',
+      holeStart: 1,
+      holeEnd: 18,
+      usaPlayerId: 'usa-1',
+      europePlayerId: 'usa-2',
+    });
+  });
+
   it('rejects duplicate singles players before persistence', () => {
     expect(() =>
       buildCustomFixtureSetupInput({

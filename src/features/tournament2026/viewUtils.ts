@@ -69,7 +69,16 @@ export function parseOptionalPositiveInteger(value: string): number | null {
 
 export function formatParticipants(participants: FixtureView['participants']): string {
   return participants
-    .map((participant) => `${participant.team}: ${participant.player?.name ?? 'Unknown player'}`)
+    .map((participant) => {
+      const playerName = participant.player?.name ?? 'Unknown player';
+      const playerTeam = participant.player?.team;
+      const sideLabel = playerTeam && playerTeam !== participant.team
+        ? `${participant.team} side`
+        : participant.team;
+      const teamLabel = playerTeam && playerTeam !== participant.team ? ` (${playerTeam})` : '';
+
+      return `${sideLabel}: ${playerName}${teamLabel}`;
+    })
     .join(' | ');
 }
 
@@ -100,7 +109,10 @@ export function formatSegmentMatchup(segment: SegmentView, players: PlayerRow[])
   return `${usaPlayer} vs ${europePlayer}`;
 }
 
-export function formatOutcome(outcome: HoleScoreRow['outcome']): string {
+export function formatOutcome(
+  outcome: HoleScoreRow['outcome'],
+  labels: { usa: string; europe: string } = { usa: 'USA', europe: 'Europe' }
+): string {
   if (outcome === 'halved') {
     return 'Halved';
   }
@@ -109,7 +121,7 @@ export function formatOutcome(outcome: HoleScoreRow['outcome']): string {
     return 'Unplayed';
   }
 
-  return `${outcome} wins`;
+  return outcome === 'USA' ? `${labels.usa} wins` : `${labels.europe} wins`;
 }
 
 export function getErrorMessage(error: unknown): string {

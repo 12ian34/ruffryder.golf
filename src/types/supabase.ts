@@ -711,6 +711,10 @@ export type Database = {
       }
       current_linked_player_id: { Args: never; Returns: string }
       current_profile_is_admin: { Args: never; Returns: boolean }
+      update_own_profile: {
+        Args: { custom_emoji_input: string; display_name_input: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_team: "USA" | "EUROPE"
