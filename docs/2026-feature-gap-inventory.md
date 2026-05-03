@@ -51,4 +51,3 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - Legacy 18-hole game records with `usaPlayerScore` / `europePlayerScore` fields.
 - Legacy fourball pairing as two separate paired games.
 - Legacy tournament-wide handicap behavior for live 2026 scoring.
-
