@@ -111,7 +111,7 @@ export function AdminSetupSection({
         </AdminTaskSection>
         <AdminTaskSection
           title="Activity"
-          description="Recent database audit trail for score entry, setup, profile, course, and finalization changes."
+          description="Recent admin activity for score entry, setup, profile, course, and finalization changes."
         >
           <AuditLogPanel auditLogs={data.auditLogs} players={data.players} />
         </AdminTaskSection>
@@ -137,7 +137,7 @@ function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; playe
   if (auditLogs.length === 0) {
     return (
       <StatusCard tone="warning">
-        No audit logs yet. New score and setup changes will appear here after the audit migration is applied.
+        No admin activity yet. New score and setup changes will appear here once activity logging is available.
       </StatusCard>
     );
   }
@@ -199,7 +199,7 @@ function AdminTaskSection({
   children: ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="border-t border-[#27272A] bg-[#050506] first:border-t-0">
+    <details open={defaultOpen} className="group border-t border-[#27272A] bg-[#050506] first:border-t-0">
       <summary className="cursor-pointer list-none px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -207,7 +207,8 @@ function AdminTaskSection({
             <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
           </div>
           <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.16em] text-[#8B949E]">
-            Open
+            <span className="group-open:hidden">Open</span>
+            <span className="hidden group-open:inline">Hide</span>
           </span>
         </div>
       </summary>
@@ -408,7 +409,7 @@ function TournamentList({
     return (
       <div className="mt-4 border-y border-[#27272A] bg-[#050506] px-3 py-3 sm:rounded-md sm:border">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament list</p>
-        <p className="mt-2 text-sm text-[#8B949E]">No Supabase tournaments have been created yet.</p>
+        <p className="mt-2 text-sm text-[#8B949E]">No tournaments have been created yet.</p>
       </div>
     );
   }
@@ -585,7 +586,7 @@ function PlayerStatsEditor({
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Player history editor</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
-          Correct app-generated or migrated player history without opening the database.
+          Correct app-generated or migrated player history without leaving the admin console.
         </p>
       </div>
       <PlayerStatCreateForm players={players} tournaments={tournaments} onSaved={onSaved} />

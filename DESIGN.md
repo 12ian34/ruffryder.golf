@@ -186,6 +186,18 @@ Use:
 - Footer only when actions need separation.
 - Thin borders, dark nested surfaces, no heavy shadow.
 
+### Admin Setup
+
+Admin is a phone-first operations console, not a desktop control room:
+
+- Organize admin work as collapsible task sections in this order: Tournament, Players, Fixtures, Course, Activity, Corrections.
+- Each section should explain the job in one sentence and hide details until needed.
+- Keep the normal workflow top-to-bottom. Put dangerous repair work in `Corrections`, not beside everyday setup.
+- Course metadata, profile linking, access control, tournament activation, and player-history edits belong in `Admin`, not user `Profile`.
+- Admin `Activity` is an internal setup/audit trail. Keep it visually similar to the public activity feed, but label it as admin activity rather than exposing database or migration language.
+- Destructive admin actions need confirmation and should stay visually sparse. Outline danger/warning buttons are acceptable in dense admin correction rows to avoid accidental taps; use filled primary buttons for simple standalone form submits.
+- Never require admins to inspect or edit raw database records from the UI.
+
 ### Empty States
 
 Empty states should be compact and singular:
