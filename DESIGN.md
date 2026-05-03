@@ -141,7 +141,7 @@ Rules:
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
 - **Max content width:** `1180px` for desktop admin/dashboard pages.
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
-- **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active.
+- **Navigation:** Authenticated 2026 console screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 console is active. Hide native scrollbars; make horizontal movement obvious with glassy backdrop treatment, edge fades, and subtle chevrons.
 - **Breakpoints:** Follow Tailwind defaults unless a screen proves otherwise.
 
 Radius:

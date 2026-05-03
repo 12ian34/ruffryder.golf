@@ -66,8 +66,15 @@ export function PageShell<T extends string>({
         {children}
       </main>
       {navItems.length > 0 && activeTab && onTabChange && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#27272A] bg-[#09090B]/95 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur">
-          <div className="mx-auto flex max-w-screen-2xl gap-1 overflow-x-auto px-3">
+        <nav className="fixed inset-x-0 bottom-0 z-40 px-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-full border-t border-white/10 bg-[linear-gradient(180deg,rgba(9,9,11,0.72)_0%,rgba(9,9,11,0.96)_100%)] shadow-[0_-10px_30px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl backdrop-saturate-150" />
+          <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 flex w-12 items-center justify-start bg-gradient-to-r from-[#09090B]/95 to-transparent pl-2 text-lg text-[#3FB950]/50">
+            ‹
+          </div>
+          <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 flex w-12 items-center justify-end bg-gradient-to-l from-[#09090B]/95 to-transparent pr-2 text-lg text-[#3FB950]/50">
+            ›
+          </div>
+          <div className="relative z-20 mx-auto flex max-w-screen-2xl gap-1 overflow-x-auto px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {navItems.map((item) => {
               const isActive = item.id === activeTab;
 
@@ -76,10 +83,10 @@ export function PageShell<T extends string>({
                   key={item.id}
                   type="button"
                   onClick={() => onTabChange(item.id)}
-                  className={`min-w-[5.25rem] rounded-md border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] transition-colors sm:min-w-[6.5rem] sm:text-xs ${
+                  className={`min-w-[5.25rem] rounded-md border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors sm:min-w-[6.5rem] sm:text-xs ${
                     isActive
-                      ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
-                      : 'border-transparent text-[#8B949E] hover:border-[#27272A] hover:text-[#E6EDF3]'
+                      ? 'border-[#3FB950]/80 bg-[#06170B]/90 text-[#3FB950]'
+                      : 'border-white/5 bg-white/[0.03] text-[#A1A1AA] hover:border-[#27272A] hover:bg-white/[0.06] hover:text-[#E6EDF3]'
                   }`}
                 >
                   {item.shortLabel ?? item.label}
@@ -90,7 +97,7 @@ export function PageShell<T extends string>({
               <button
                 type="button"
                 onClick={onSignOut}
-                className="min-w-[5.25rem] rounded-md border border-transparent px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#8B949E] transition-colors hover:border-[#F85149] hover:text-[#F85149] sm:min-w-[6.5rem] sm:text-xs"
+                className="min-w-[5.25rem] rounded-md border border-white/5 bg-white/[0.03] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#A1A1AA] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-[#F85149] hover:bg-[#1F0A0A]/70 hover:text-[#F85149] sm:min-w-[6.5rem] sm:text-xs"
               >
                 Sign out
               </button>
