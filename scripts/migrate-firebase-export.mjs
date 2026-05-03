@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const args = process.argv.slice(2);
 const exportPath = args.find((arg) => !arg.startsWith('--'));
 const shouldApply = args.includes('--apply');
+const DEFAULT_STROKE_INDICES = [3, 7, 13, 15, 11, 5, 17, 1, 9, 6, 2, 14, 18, 8, 10, 16, 4, 12];
 
 if (!exportPath) {
   console.error('Usage: node scripts/migrate-firebase-export.mjs <firebase-export.json> [--apply]');
@@ -25,6 +26,7 @@ const exportData = normalizeExport(rawExport);
 const counts = {
   players: exportData.players.length,
   users: exportData.users.length,
+  config: exportData.config.length,
   tournaments: exportData.tournaments.length,
   games: Object.values(exportData.gamesByTournamentId).reduce((sum, games) => sum + games.length, 0),
 };
@@ -93,6 +95,16 @@ if (gameRows.length > 0) {
   throwIfError(gamesError, 'Failed to import legacy games');
 }
 
+const courseHoleRows = mapCourseHoles(exportData.config, exportData.gamesByTournamentId);
+
+if (courseHoleRows.length > 0) {
+  const { error: courseHolesError } = await supabase
+    .from('course_holes')
+    .upsert(courseHoleRows, { onConflict: 'hole_number' });
+
+  throwIfError(courseHolesError, 'Failed to import course holes');
+}
+
 const statsRows = exportData.players.flatMap((player) => {
   const playerId = playerIdByLegacyId.get(player.id);
   if (!playerId) return [];
@@ -117,6 +129,7 @@ console.log('Migration import complete:', {
   players: playerRows.length,
   legacyTournaments: tournamentRows.length,
   legacyGames: gameRows.length,
+  courseHoles: courseHoleRows.length,
   playerTournamentStats: statsRows.length,
 });
 
@@ -124,6 +137,7 @@ function normalizeExport(raw) {
   return {
     players: normalizeCollection(raw.players),
     users: normalizeCollection(raw.users),
+    config: normalizeCollection(raw.config),
     tournaments: normalizeCollection(raw.tournaments),
     gamesByTournamentId: normalizeGamesByTournament(raw.gamesByTournamentId ?? raw.games ?? {}),
   };
@@ -161,6 +175,59 @@ function validateExport(exportData) {
   return warnings;
 }
 
+function mapCourseHoles(configDocs, gamesByTournamentId) {
+  const configById = new Map(configDocs.map((doc) => [doc.id, doc.data]));
+  const distances = normalizeNumericArray(configById.get('holeDistances')?.indices);
+  const strokeIndices = normalizeNumericArray(configById.get('strokeIndices')?.indices);
+  const parScores = extractParScores(gamesByTournamentId);
+  const holes = [];
+
+  for (let index = 0; index < 18; index += 1) {
+    const holeNumber = index + 1;
+    const strokeIndex = strokeIndices[index];
+    const yardage = distances[index];
+
+    if (!strokeIndex && !yardage && !parScores[index]) {
+      continue;
+    }
+
+    holes.push({
+      hole_number: holeNumber,
+      stroke_index: strokeIndex ?? DEFAULT_STROKE_INDICES[index],
+      par: parScores[index] ?? null,
+      yardage: yardage ?? null,
+    });
+  }
+
+  return holes;
+}
+
+function normalizeNumericArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item) => (typeof item === 'number' && Number.isFinite(item) ? item : null));
+}
+
+function extractParScores(gamesByTournamentId) {
+  const parScores = Array(18).fill(null);
+
+  for (const games of Object.values(gamesByTournamentId)) {
+    for (const game of games) {
+      for (const hole of game.data.holes ?? []) {
+        const holeIndex = typeof hole.holeNumber === 'number' ? hole.holeNumber - 1 : -1;
+
+        if (holeIndex >= 0 && holeIndex < 18 && typeof hole.parScore === 'number') {
+          parScores[holeIndex] = hole.parScore;
+        }
+      }
+    }
+  }
+
+  return parScores;
+}
+
 function mapPlayer(doc) {
   if (!doc.data.name || !doc.data.team) {
     throw new Error(`Player ${doc.id} is missing name or team`);
@@ -174,6 +241,7 @@ function mapPlayer(doc) {
     custom_emoji: doc.data.customEmoji ?? null,
   };
 }
+
 
 function mapTournament(doc) {
   if (!doc.data.name || typeof doc.data.year !== 'number') {

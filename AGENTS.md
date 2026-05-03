@@ -91,6 +91,7 @@ The current Supabase schema is managed through migrations in `supabase/migration
 - `20260502214500_lock_completed_tournament_scores.sql` updates RLS helpers/policies so completed tournaments block score writes.
 - `20260503081500_profile_self_service.sql` adds the `update_own_profile` RPC so users can edit display name/avatar without broad profile update permissions.
 - `20260503142000_audit_logs.sql` creates immutable trigger-backed audit logging for 2026 live tables and publishes `audit_logs` over Realtime.
+- `20260503143000_seed_course_hole_yardage.sql` backfills course par/yardage from the legacy Firebase `config/holeDistances` data.
 
 When adding tables that should update the `/2026` console live, keep the Realtime publication migration pattern and `subscribeToTournament2026Changes()` in sync.
 
@@ -183,6 +184,7 @@ The schema currently uses helper functions such as `current_profile_is_admin()`,
 Migrate historical Firebase data into Supabase once the schema is stable:
 
 - Use `npm run export:firebase -- --out firebase-export.json` to create the JSON export expected by the importer.
+- The Firebase export includes the legacy `config` collection. `config/holeDistances.indices` maps to `course_holes.yardage`, and `config/strokeIndices.indices` maps to `course_holes.stroke_index`.
 - The Firebase export script needs either `FIREBASE_SERVICE_ACCOUNT_PATH` in `.env`, `GOOGLE_APPLICATION_CREDENTIALS`, or application default credentials.
 - Use `npm run migrate:firebase-export -- <firebase-export.json>` for a dry run.
 - Use `npm run migrate:firebase-export -- <firebase-export.json> --apply` only when ready to write to Supabase.

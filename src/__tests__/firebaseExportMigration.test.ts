@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   mapFirebaseGame,
+  mapFirebaseCourseHoles,
   mapFirebasePlayer,
   mapFirebaseTournament,
   mapFirebaseUserToProfile,
@@ -179,6 +180,35 @@ describe('Firebase export migration mapping', () => {
       cpi_after: 86,
       completed_at: '2025-12-31T00:00:00.000Z',
     });
+  });
+
+  it('maps Firebase course config into Supabase course holes', () => {
+    const courseHoles = mapFirebaseCourseHoles(
+      [
+        { id: 'holeDistances', data: { indices: [157, 124] } },
+        { id: 'strokeIndices', data: { indices: [3, 7] } },
+      ],
+      {
+        tournament1: [
+          {
+            id: 'game1',
+            data: {
+              usaPlayerName: 'Ian',
+              europePlayerName: 'Tom',
+              holes: [
+                { holeNumber: 1, parScore: 4 },
+                { holeNumber: 2, parScore: 3 },
+              ],
+            },
+          },
+        ],
+      }
+    );
+
+    expect(courseHoles.slice(0, 2)).toEqual([
+      { hole_number: 1, stroke_index: 3, par: 4, yardage: 157 },
+      { hole_number: 2, stroke_index: 7, par: 3, yardage: 124 },
+    ]);
   });
 
   it('warns about empty or incomplete export counts', () => {

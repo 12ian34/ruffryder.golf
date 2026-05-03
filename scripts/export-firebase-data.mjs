@@ -22,6 +22,7 @@ initializeFirebase({ projectId, serviceAccountPath });
 const db = getFirestore();
 const players = await exportCollection('players');
 const users = await exportCollection('users');
+const config = await exportCollection('config');
 const tournaments = await exportCollection('tournaments');
 const gamesByTournamentId = {};
 
@@ -38,6 +39,7 @@ const exportData = {
   projectId,
   players: toObjectById(players),
   users: toObjectById(users),
+  config: toObjectById(config),
   tournaments: toObjectById(tournaments),
   gamesByTournamentId: Object.fromEntries(
     Object.entries(gamesByTournamentId).map(([tournamentId, games]) => [
@@ -54,6 +56,7 @@ console.log('Firebase export complete:', {
   outputPath,
   players: players.length,
   users: users.length,
+  config: config.length,
   tournaments: tournaments.length,
   games: Object.values(gamesByTournamentId).reduce((sum, games) => sum + games.length, 0),
 });

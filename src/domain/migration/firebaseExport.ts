@@ -5,7 +5,10 @@ type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type LegacyTournamentInsert = Database['public']['Tables']['legacy_tournaments']['Insert'];
 type LegacyGameInsert = Database['public']['Tables']['legacy_games']['Insert'];
 type PlayerTournamentStatsInsert = Database['public']['Tables']['player_tournament_stats']['Insert'];
+type CourseHoleInsert = Database['public']['Tables']['course_holes']['Insert'];
 type Team = Database['public']['Enums']['app_team'];
+
+const DEFAULT_STROKE_INDICES = [3, 7, 13, 15, 11, 5, 17, 1, 9, 6, 2, 14, 18, 8, 10, 16, 4, 12];
 
 export interface FirebaseDocument<T> {
   id: string;
@@ -89,6 +92,10 @@ export interface LegacyTeamScores {
     USA?: number;
     EUROPE?: number;
   };
+}
+
+export interface LegacyConfigDocument {
+  indices?: unknown[];
 }
 
 export interface MigrationValidationResult {
@@ -234,6 +241,36 @@ export function mapHistoricalScoresToStats(
     }));
 }
 
+export function mapFirebaseCourseHoles(
+  configDocs: FirebaseDocument<LegacyConfigDocument>[],
+  gamesByTournamentId: Record<string, FirebaseDocument<LegacyGame>[]>
+): CourseHoleInsert[] {
+  const configById = new Map(configDocs.map((doc) => [doc.id, doc.data]));
+  const distances = normalizeNumericArray(configById.get('holeDistances')?.indices);
+  const strokeIndices = normalizeNumericArray(configById.get('strokeIndices')?.indices);
+  const parScores = extractParScores(gamesByTournamentId);
+  const holes: CourseHoleInsert[] = [];
+
+  for (let index = 0; index < 18; index += 1) {
+    const holeNumber = index + 1;
+    const strokeIndex = strokeIndices[index];
+    const yardage = distances[index];
+
+    if (!strokeIndex && !yardage && !parScores[index]) {
+      continue;
+    }
+
+    holes.push({
+      hole_number: holeNumber,
+      stroke_index: strokeIndex ?? DEFAULT_STROKE_INDICES[index],
+      par: parScores[index] ?? null,
+      yardage: yardage ?? null,
+    });
+  }
+
+  return holes;
+}
+
 export function validateFirebaseExportCounts(input: {
   players: FirebaseDocument<LegacyPlayer>[];
   tournaments: FirebaseDocument<LegacyTournament>[];
@@ -258,6 +295,48 @@ export function validateFirebaseExportCounts(input: {
   }
 
   return result;
+}
+
+function normalizeNumericArray(value: unknown[] | undefined): Array<number | null> {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item) => (typeof item === 'number' && Number.isFinite(item) ? item : null));
+}
+
+function extractParScores(
+  gamesByTournamentId: Record<string, FirebaseDocument<LegacyGame>[]>
+): Array<number | null> {
+  const parScores: Array<number | null> = Array(18).fill(null);
+
+  for (const games of Object.values(gamesByTournamentId)) {
+    for (const game of games) {
+      for (const hole of game.data.holes ?? []) {
+        if (!isLegacyHoleWithPar(hole)) {
+          continue;
+        }
+
+        const holeIndex = hole.holeNumber - 1;
+
+        if (holeIndex >= 0 && holeIndex < 18) {
+          parScores[holeIndex] = hole.parScore;
+        }
+      }
+    }
+  }
+
+  return parScores;
+}
+
+function isLegacyHoleWithPar(value: unknown): value is { holeNumber: number; parScore: number } {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const hole = value as { holeNumber?: unknown; parScore?: unknown };
+
+  return typeof hole.holeNumber === 'number' && typeof hole.parScore === 'number';
 }
 
 function toIsoString(value: unknown): string | null {
