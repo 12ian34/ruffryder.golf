@@ -24,12 +24,19 @@ import {
   shouldRegenerateTournamentOverview,
 } from '../aiOverview';
 import { buildAiRecapSnapshot } from '../aiRecap';
-import { buildProgressTimeline, generateTournamentHighlights } from '../insights';
+import {
+  buildProgressTimeline,
+  generateTournamentHighlights,
+  type ProgressPointPlayer,
+  type ProgressPointSide,
+} from '../insights';
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
+import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { CollapsibleSection, StatusCard } from './Layout';
 import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
 import { MarkdownContent } from './MarkdownContent';
+import { PlayerHistoryTrigger } from './PlayerHistory';
 
 export function LeaderboardSection({
   tournament,
@@ -50,7 +57,7 @@ export function LeaderboardSection({
 }) {
   const totals = calculateTotals(fixtures);
   const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
-  const timeline = buildProgressTimeline(fixtures);
+  const timeline = buildProgressTimeline(fixtures, players);
   const recentTimeline = timeline.slice(-8);
   const totalChartHoles = fixtures.reduce(
     (total, fixture) => total + calculateFixtureProgress(fixture.segments).totalHoles,
@@ -248,7 +255,7 @@ export function LeaderboardSection({
         {fixtures.length === 0 ? (
           <p className="px-3 py-3 text-sm text-[#8B949E] sm:px-4">No fixtures yet.</p>
         ) : (
-          fixtures.map((fixture) => <FixtureProgressRow key={fixture.id} fixture={fixture} />)
+          fixtures.map((fixture) => <FixtureProgressRow key={fixture.id} fixture={fixture} players={players} />)
         )}
       </CollapsibleSection>
     </section>
@@ -392,10 +399,12 @@ function ProgressTimeline({
     >
       <div className="space-y-2 px-3 py-3 sm:px-4">
         {points.map((point) => (
-          <div key={point.id} className="grid gap-1 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
+          <div key={point.id} className="grid gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
             <div className="min-w-0">
-              <p className="truncate font-bold text-[#FAFAFA]">{point.label}</p>
-              <p className="text-[#8B949E]">{formatTime(point.updatedAt)}</p>
+              <ProgressMatchup point={point} />
+              <p className="mt-1 text-[#8B949E]">
+                H{point.holeNumber} · {formatTime(point.updatedAt)}
+              </p>
             </div>
             <p className="tabular-nums text-[#E6EDF3] sm:text-right">
               USA {point.usa} - EUR {point.europe}
@@ -405,6 +414,61 @@ function ProgressTimeline({
         ))}
       </div>
     </CollapsibleSection>
+  );
+}
+
+function ProgressMatchup({ point }: { point: ReturnType<typeof buildProgressTimeline>[number] }) {
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-bold text-[#FAFAFA]">
+      {point.sides.map((side, index) => (
+        <span key={`${point.id}-${side.team}`} className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+          {index > 0 && <span className="text-[#3F3F46]">vs</span>}
+          <ProgressSide side={side} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ProgressSide({ side }: { side: ProgressPointSide }) {
+  const teamClassName = side.team === 'USA' ? 'text-[#F2B84B]' : 'text-[#58A6FF]';
+
+  return (
+    <span className="inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-1">
+      <span className={`shrink-0 text-[10px] tracking-[0.14em] ${teamClassName}`}>{formatTeamName(side.team)}</span>
+      {side.players.length === 0 ? (
+        <span className="text-[#A1A1AA]">Unknown players</span>
+      ) : (
+        side.players.map((player, index) => (
+          <ProgressPlayer key={`${side.team}-${player.playerId ?? player.name}-${index}`} player={player} index={index} />
+        ))
+      )}
+    </span>
+  );
+}
+
+function ProgressPlayer({
+  player,
+  index,
+}: {
+  player: ProgressPointPlayer;
+  index: number;
+}) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-x-1.5 whitespace-nowrap">
+      {index > 0 && <span className="text-[#3F3F46]">+</span>}
+      <PlayerHistoryTrigger
+        player={player.player}
+        playerId={player.playerId}
+        fallback={player.name}
+        className="pointer-events-auto min-w-0 font-bold text-[#FAFAFA]"
+      >
+        <span className="truncate">{player.name}</span>
+      </PlayerHistoryTrigger>
+      <span className="shrink-0 text-[10px] tracking-[0.12em] text-[#8B949E]">
+        HCP <span className="tabular-nums text-[#A1A1AA]">{formatHandicap(player.currentCpi)}</span>
+      </span>
+    </span>
   );
 }
 
@@ -485,19 +549,30 @@ function TeamTotal({
   );
 }
 
-function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
+function FixtureProgressRow({ fixture, players }: { fixture: FixtureView; players: PlayerRow[] }) {
   const progress = calculateFixtureProgress(fixture.segments);
+  const fixtureTitle = fixture.name ?? `Fixture ${fixture.sort_order + 1}`;
 
   return (
-    <div className="border-b border-[#27272A] px-3 py-3 last:border-b-0 sm:px-4">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_6rem] sm:items-start">
+    <div className="group relative border-b border-[#27272A] px-3 py-3 transition hover:bg-[#0C0C0E] last:border-b-0 sm:px-4">
+      <FixtureTitleTrigger
+        fixture={fixture}
+        players={players}
+        className="absolute inset-0 z-0 h-full w-full cursor-pointer"
+      >
+        <span className="sr-only">Open {fixtureTitle} details</span>
+      </FixtureTitleTrigger>
+      <div className="pointer-events-none relative z-10 grid gap-2 sm:grid-cols-[minmax(0,1fr)_6rem] sm:items-start">
         <div className="min-w-0">
-          <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
-            {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
+          <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA] group-hover:text-[#3FB950]">
+            {fixtureTitle}
           </p>
-          <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
-            {progress.completedHoles}/{progress.totalHoles} holes · {progress.percent}%
-          </p>
+          <FixtureProgressMatchup fixture={fixture} players={players} />
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.14em] text-[#8B949E]">
+            <span>
+              {progress.completedHoles}/{progress.totalHoles} holes · {progress.percent}%
+            </span>
+          </div>
         </div>
         <div>
           <div className="h-1.5 overflow-hidden rounded-full bg-[#18181B]">
@@ -505,7 +580,7 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
           </div>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="pointer-events-none relative z-10 mt-3 flex flex-wrap gap-2">
         {fixture.segments.map((segment) => {
           const status = calculateSegmentMatchPlayStatus(segment);
 
@@ -521,6 +596,78 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
       </div>
     </div>
   );
+}
+
+function FixtureProgressMatchup({ fixture, players }: { fixture: FixtureView; players: PlayerRow[] }) {
+  const sides = buildFixtureProgressSides(fixture, players);
+
+  return (
+    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.08em] text-[#A1A1AA]">
+      {sides.map((side, index) => (
+        <span key={`${fixture.id}-${side.team}`} className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+          {index > 0 && <span className="text-sm tracking-normal text-[#3F3F46]">vs</span>}
+          <ProgressSide side={side} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function buildFixtureProgressSides(fixture: FixtureView, players: PlayerRow[]): ProgressPointSide[] {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const sourcePlayers =
+    fixture.participants.length > 0
+      ? fixture.participants.map((participant) => ({
+          playerId: participant.player_id,
+          team: participant.team,
+          player: participant.player,
+        }))
+      : buildFallbackFixtureProgressPlayers(fixture, playerLookup);
+
+  return (['USA', 'EUROPE'] as const).map((team) => ({
+    team,
+    players: sourcePlayers
+      .filter((sourcePlayer) => sourcePlayer.team === team)
+      .map((sourcePlayer) => {
+        const player = sourcePlayer.player ?? playerLookup.get(sourcePlayer.playerId) ?? null;
+
+        return {
+          player,
+          playerId: sourcePlayer.playerId,
+          name: player?.name ?? 'Unknown player',
+          currentCpi: player?.current_cpi ?? null,
+        };
+      }),
+  }));
+}
+
+function buildFallbackFixtureProgressPlayers(
+  fixture: FixtureView,
+  playerLookup: Map<string, PlayerRow>
+): Array<{ playerId: string; team: ProgressPointSide['team']; player: PlayerRow | null }> {
+  const playersByKey = new Map<string, { playerId: string; team: ProgressPointSide['team']; player: PlayerRow | null }>();
+  const addPlayer = (playerId: string | null | undefined, team: ProgressPointSide['team'], player?: PlayerRow | null) => {
+    if (!playerId) {
+      return;
+    }
+
+    playersByKey.set(`${team}-${playerId}`, {
+      playerId,
+      team,
+      player: player ?? playerLookup.get(playerId) ?? null,
+    });
+  };
+
+  for (const segment of fixture.segments) {
+    for (const segmentPlayer of segment.players) {
+      addPlayer(segmentPlayer.player_id, segmentPlayer.team, segmentPlayer.player);
+    }
+
+    addPlayer(segment.usa_player_id, 'USA');
+    addPlayer(segment.europe_player_id, 'EUROPE');
+  }
+
+  return Array.from(playersByKey.values());
 }
 
 interface BoardStatusInput {
@@ -632,6 +779,14 @@ function getScoreSummary(score: TeamScore): { label: string; className: string }
   }
 
   return { label: `Europe +${lead}`, className: 'text-[#58A6FF]' };
+}
+
+function formatTeamName(team: 'USA' | 'EUROPE'): string {
+  return team === 'USA' ? 'USA' : 'Europe';
+}
+
+function formatHandicap(value: number | null): string {
+  return value === null ? '-' : value.toString();
 }
 
 function formatTime(value: string): string {

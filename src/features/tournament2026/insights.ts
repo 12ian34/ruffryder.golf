@@ -7,9 +7,23 @@ import type { CourseHoleMetadata } from '../../domain/2026/course';
 
 type Team = 'USA' | 'EUROPE';
 
+export interface ProgressPointPlayer {
+  player: PlayerRow | null;
+  playerId: string | null;
+  name: string;
+  currentCpi: number | null;
+}
+
+export interface ProgressPointSide {
+  team: Team;
+  players: ProgressPointPlayer[];
+}
+
 export interface ProgressPoint {
   id: string;
   label: string;
+  holeNumber: number;
+  sides: ProgressPointSide[];
   usa: number;
   europe: number;
   halved: number;
@@ -23,7 +37,8 @@ interface ScoredSide {
   par: number | null;
 }
 
-export function buildProgressTimeline(fixtures: FixtureView[]): ProgressPoint[] {
+export function buildProgressTimeline(fixtures: FixtureView[], players: PlayerRow[] = []): ProgressPoint[] {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
   const scoreRows = fixtures
     .flatMap((fixture) =>
       fixture.segments.flatMap((segment) =>
@@ -34,6 +49,7 @@ export function buildProgressTimeline(fixtures: FixtureView[]): ProgressPoint[] 
             fixtureName: fixture.name ?? `Fixture ${fixture.sort_order + 1}`,
             holeNumber: score.hole_number,
             outcome: score.outcome,
+            sides: buildProgressSides(fixture, segment, playerLookup),
             updatedAt: score.updated_at,
           }))
       )
@@ -53,12 +69,78 @@ export function buildProgressTimeline(fixtures: FixtureView[]): ProgressPoint[] 
     return {
       id: score.id,
       label: `${score.fixtureName} H${score.holeNumber}`,
+      holeNumber: score.holeNumber,
+      sides: score.sides,
       usa: totals.USA,
       europe: totals.EUROPE,
       halved: totals.halved,
       updatedAt: score.updatedAt,
     };
   });
+}
+
+function buildProgressSides(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number],
+  playerLookup: Map<string, PlayerRow>
+): ProgressPointSide[] {
+  if (segment.kind === 'foursomes') {
+    return (['USA', 'EUROPE'] as const).map((team) => ({
+      team,
+      players: buildFoursomesProgressPlayers(fixture, segment, team, playerLookup),
+    }));
+  }
+
+  return [
+    {
+      team: 'USA',
+      players: [buildProgressPlayer(segment.usa_player_id, 'USA player', playerLookup)],
+    },
+    {
+      team: 'EUROPE',
+      players: [buildProgressPlayer(segment.europe_player_id, 'Europe player', playerLookup)],
+    },
+  ];
+}
+
+function buildFoursomesProgressPlayers(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number],
+  team: Team,
+  playerLookup: Map<string, PlayerRow>
+): ProgressPointPlayer[] {
+  const segmentPlayers = segment.players.filter((segmentPlayer) => segmentPlayer.team === team);
+  const sourcePlayers =
+    segmentPlayers.length > 0
+      ? segmentPlayers
+      : fixture.participants.length <= 4
+        ? fixture.participants.filter((participant) => participant.team === team)
+        : [];
+
+  return sourcePlayers.map((sourcePlayer) =>
+    buildProgressPlayer(
+      sourcePlayer.player_id,
+      team === 'USA' ? 'USA player' : 'Europe player',
+      playerLookup,
+      sourcePlayer.player
+    )
+  );
+}
+
+function buildProgressPlayer(
+  playerId: string | null | undefined,
+  fallbackName: string,
+  playerLookup: Map<string, PlayerRow>,
+  sourcePlayer?: PlayerRow | null
+): ProgressPointPlayer {
+  const player = sourcePlayer ?? (playerId ? playerLookup.get(playerId) ?? null : null);
+
+  return {
+    player,
+    playerId: playerId ?? player?.id ?? null,
+    name: player?.name ?? fallbackName,
+    currentCpi: player?.current_cpi ?? null,
+  };
 }
 
 export function generateTournamentHighlights({

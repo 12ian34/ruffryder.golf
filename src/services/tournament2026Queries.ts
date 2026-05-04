@@ -177,10 +177,13 @@ export interface CustomSinglesPairInput {
   cpiEnabled: boolean;
 }
 
+export type FixtureTemplate = 'full_18_singles' | 'standard_4_player' | 'flexible_6_player';
+
 export interface CreateCustomFixtureInput {
   tournamentId: string;
   name: string;
   sortOrder: number;
+  template: FixtureTemplate;
   usaPlayerIds: string[];
   europePlayerIds: string[];
   frontNinePlayerIds: string[];
@@ -816,6 +819,8 @@ export function buildCustomFixtureSetupInput(input: CreateCustomFixtureInput): F
   );
   const usedSinglesPlayers = new Set<string>();
 
+  validateCustomFixtureTemplate(input, participants, frontNineParticipants, singlesPairs);
+
   if (singlesPairs.length === 0) {
     throw new Error('Add at least one back-nine singles match.');
   }
@@ -896,6 +901,124 @@ function buildFixtureParticipants(input: CreateCustomFixtureInput): FixtureParti
       slot: index + 1,
     })),
   ];
+}
+
+function validateCustomFixtureTemplate(
+  input: CreateCustomFixtureInput,
+  participants: FixtureParticipant[],
+  frontNineParticipants: FixtureParticipant[],
+  singlesPairs: CustomSinglesPairInput[]
+): void {
+  validateUniqueFixturePlayers(participants);
+  validateSinglesPlayersInFixture(singlesPairs, participants);
+
+  switch (input.template) {
+    case 'full_18_singles':
+      validateFullCourseSinglesTemplate(input, singlesPairs);
+      return;
+    case 'standard_4_player':
+      validateStandardFourPlayerTemplate(input, frontNineParticipants, singlesPairs);
+      return;
+    case 'flexible_6_player':
+      validateFlexibleSixPlayerTemplate(input, frontNineParticipants, singlesPairs);
+      return;
+    default: {
+      const exhaustiveCheck: never = input.template;
+      return exhaustiveCheck;
+    }
+  }
+}
+
+function validateUniqueFixturePlayers(participants: FixtureParticipant[]): void {
+  const playerIds = new Set<string>();
+
+  for (const participant of participants) {
+    if (playerIds.has(participant.playerId)) {
+      throw new Error(`Duplicate fixture player: ${participant.playerId}`);
+    }
+
+    playerIds.add(participant.playerId);
+  }
+}
+
+function validateSinglesPlayersInFixture(
+  singlesPairs: CustomSinglesPairInput[],
+  participants: FixtureParticipant[]
+): void {
+  const fixturePlayerIds = new Set(participants.map((participant) => participant.playerId));
+
+  for (const pair of singlesPairs) {
+    if (!fixturePlayerIds.has(pair.usaPlayerId) || !fixturePlayerIds.has(pair.europePlayerId)) {
+      throw new Error('Singles players must be selected in this fixture.');
+    }
+  }
+}
+
+function validateFullCourseSinglesTemplate(
+  input: CreateCustomFixtureInput,
+  singlesPairs: CustomSinglesPairInput[]
+): void {
+  if (input.usaPlayerIds.length !== 1 || input.europePlayerIds.length !== 1) {
+    throw new Error('A 2-player full 18 fixture needs exactly two players.');
+  }
+
+  if (input.frontNinePlayerIds.length !== 0) {
+    throw new Error('A 2-player full 18 fixture cannot include front-nine foursomes.');
+  }
+
+  if (singlesPairs.length !== 1) {
+    throw new Error('A 2-player full 18 fixture needs exactly one singles match.');
+  }
+}
+
+function validateStandardFourPlayerTemplate(
+  input: CreateCustomFixtureInput,
+  frontNineParticipants: FixtureParticipant[],
+  singlesPairs: CustomSinglesPairInput[]
+): void {
+  if (input.usaPlayerIds.length !== 2 || input.europePlayerIds.length !== 2) {
+    throw new Error('A 4-player standard match needs exactly 2 USA players and 2 Europe players.');
+  }
+
+  if (!hasSamePlayerSet(frontNineParticipants, input.usaPlayerIds, input.europePlayerIds)) {
+    throw new Error('A 4-player standard match uses all four players for front-nine foursomes.');
+  }
+
+  if (singlesPairs.length !== 2) {
+    throw new Error('A 4-player standard match needs exactly two back-nine singles matches.');
+  }
+}
+
+function validateFlexibleSixPlayerTemplate(
+  input: CreateCustomFixtureInput,
+  frontNineParticipants: FixtureParticipant[],
+  singlesPairs: CustomSinglesPairInput[]
+): void {
+  if (input.usaPlayerIds.length !== 3 || input.europePlayerIds.length !== 3) {
+    throw new Error('A 6-player flexible match needs exactly 3 USA players and 3 Europe players.');
+  }
+
+  const frontNineUsaCount = frontNineParticipants.filter((participant) => participant.team === 'USA').length;
+  const frontNineEuropeCount = frontNineParticipants.filter((participant) => participant.team === 'EUROPE').length;
+
+  if (frontNineParticipants.length !== 4 || frontNineUsaCount !== 2 || frontNineEuropeCount !== 2) {
+    throw new Error('A 6-player flexible match needs 2 USA and 2 Europe players for front-nine foursomes.');
+  }
+
+  if (singlesPairs.length !== 3) {
+    throw new Error('A 6-player flexible match needs exactly three back-nine singles matches.');
+  }
+}
+
+function hasSamePlayerSet(
+  frontNineParticipants: FixtureParticipant[],
+  usaPlayerIds: string[],
+  europePlayerIds: string[]
+): boolean {
+  const expectedPlayerIds = [...usaPlayerIds, ...europePlayerIds].sort();
+  const frontNinePlayerIds = frontNineParticipants.map((participant) => participant.playerId).sort();
+
+  return expectedPlayerIds.join('|') === frontNinePlayerIds.join('|');
 }
 
 export async function saveHoleScore2026(

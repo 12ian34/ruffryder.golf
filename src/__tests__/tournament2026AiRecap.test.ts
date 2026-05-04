@@ -19,7 +19,7 @@ describe('2026 AI recap helpers', () => {
       tournament,
       fixtures: [fixture],
       players,
-      courseHoles: [{ holeNumber: 10, strokeIndex: 6, par: 4, yardage: 390 }],
+      courseHoles: [{ holeNumber: 10, strokeIndex: 6, par: 3, yardage: 390 }],
       generatedAt: timestamp,
     });
 
@@ -48,7 +48,7 @@ describe('2026 AI recap helpers', () => {
       matchup: 'Ian vs Tommy',
       status: 'All square',
       recentHoles: [
-        'H10: 3-5 (USA won)',
+        'H10: 2-5 (USA won)',
         'H11: 4-4 (halved)',
         'H12: 6-5 (EUROPE won)',
       ],
@@ -136,7 +136,7 @@ const fixture: FixtureView = {
       usa_player_id: 'usa-1',
       players: [],
       holeScores: [
-        createHoleScore({ id: 'score-1', holeNumber: 10, usaScore: 3, europeScore: 5, outcome: 'USA' }),
+        createHoleScore({ id: 'score-1', holeNumber: 10, usaScore: 2, europeScore: 5, outcome: 'USA' }),
         createHoleScore({ id: 'score-2', holeNumber: 11, usaScore: 4, europeScore: 4, outcome: 'halved' }),
         createHoleScore({ id: 'score-3', holeNumber: 12, usaScore: 6, europeScore: 5, outcome: 'EUROPE' }),
       ],

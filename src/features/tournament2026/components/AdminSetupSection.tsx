@@ -15,9 +15,11 @@ import {
   updateFixture2026,
   updatePlayer2026,
   updatePlayerTournamentStat2026,
+  updateSegmentCpiEnabled,
   updateSegment2026,
   updateTournament2026,
   type AuditLogRow,
+  type FixtureTemplate,
   type FixtureView,
   type PlayerRow,
   type PlayerTournamentStatsRow,
@@ -27,6 +29,7 @@ import {
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
+import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { SetupForm, StatusCard, TerminalPageSection } from './Layout';
 import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
@@ -48,7 +51,7 @@ export function AdminSetupSection({
       title="admin"
       titleId="admin-title"
       eyebrow="tournament operations"
-      description="work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing."
+      description="work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then correct fixture setup when needed."
       actions={
         <span className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-[10px] tracking-[0.16em] text-[#3FB950]">
           operations
@@ -97,14 +100,25 @@ export function AdminSetupSection({
         </AdminTaskSection>
         <AdminTaskSection
           title="Fixtures"
-          description="Create the next scoring group. Choose 1v1 for a full-course singles match or team fixture for front-nine foursomes plus back-nine singles."
+          description="Create scoring groups, correct fixture setup, clear accidental scores, or update segment CPI."
         >
-          <CustomFixtureForm
+          <FixtureSetupPanel
             tournament={data.activeTournament}
             players={data.players}
+            fixtures={data.fixtures}
             fixtureCount={data.fixtures.length}
+            profileId={data.profile.id}
             onSaved={onSaved}
           />
+          <div className="mt-4">
+            <FixtureCorrections
+              tournament={data.activeTournament}
+              fixtures={data.fixtures}
+              players={data.players}
+              profileId={data.profile.id}
+              onSaved={onSaved}
+            />
+          </div>
         </AdminTaskSection>
         <AdminTaskSection
           title="Course"
@@ -117,17 +131,6 @@ export function AdminSetupSection({
           description="Recent admin activity for score entry, setup, profile, course, and finalization changes."
         >
           <AuditLogPanel auditLogs={data.auditLogs} players={data.players} />
-        </AdminTaskSection>
-        <AdminTaskSection
-          title="Corrections"
-          description="Fix fixture mistakes, clear accidental score rows, or delete bad fixtures. Destructive actions ask for confirmation."
-        >
-          <CorrectionPanel
-            tournament={data.activeTournament}
-            fixtures={data.fixtures}
-            players={data.players}
-            onSaved={onSaved}
-          />
         </AdminTaskSection>
       </div>
     </TerminalPageSection>
@@ -1113,22 +1116,6 @@ function FinalizationPanel({
   );
 }
 
-function CorrectionPanel({
-  tournament,
-  players,
-  fixtures,
-  onSaved,
-}: {
-  tournament: TournamentRow | null;
-  players: PlayerRow[];
-  fixtures: FixtureView[];
-  onSaved: () => Promise<void>;
-}) {
-  return (
-    <FixtureCorrections tournament={tournament} fixtures={fixtures} players={players} onSaved={onSaved} />
-  );
-}
-
 function CourseMetadataCorrections({
   courseHoles,
   onSaved,
@@ -1577,11 +1564,13 @@ function FixtureCorrections({
   tournament,
   fixtures,
   players,
+  profileId,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   fixtures: FixtureView[];
   players: PlayerRow[];
+  profileId: string;
   onSaved: () => Promise<void>;
 }) {
   return (
@@ -1598,6 +1587,7 @@ function FixtureCorrections({
             tournament={tournament}
             fixture={fixture}
             players={players}
+            profileId={profileId}
             onSaved={onSaved}
           />
         ))
@@ -1610,11 +1600,13 @@ function FixtureCorrectionRow({
   tournament,
   fixture,
   players,
+  profileId,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   fixture: FixtureView;
   players: PlayerRow[];
+  profileId: string;
   onSaved: () => Promise<void>;
 }) {
   const [name, setName] = useState(fixture.name ?? '');
@@ -1652,7 +1644,7 @@ function FixtureCorrectionRow({
   };
 
   const clearScores = async () => {
-    if (!window.confirm(`Clear all saved scores for ${fixture.name ?? 'this fixture'}?`)) {
+    if (!window.confirm(`Clear all saved scores for ${fixture.name ?? 'this fixture'}? This cannot be undone.`)) {
       return;
     }
 
@@ -1671,7 +1663,7 @@ function FixtureCorrectionRow({
   };
 
   const deleteFixture = async () => {
-    if (!window.confirm(`Delete ${fixture.name ?? 'this fixture'} and all its scores?`)) {
+    if (!window.confirm(`Delete ${fixture.name ?? 'this fixture'} and all its scores? This cannot be undone.`)) {
       return;
     }
 
@@ -1731,6 +1723,7 @@ function FixtureCorrectionRow({
             fixture={fixture}
             segment={segment}
             players={players}
+            profileId={profileId}
             onSaved={onSaved}
           />
         ))}
@@ -1745,12 +1738,14 @@ function SegmentCorrectionRow({
   fixture,
   segment,
   players,
+  profileId,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   fixture: FixtureView;
   segment: FixtureView['segments'][number];
   players: PlayerRow[];
+  profileId: string;
   onSaved: () => Promise<void>;
 }) {
   const fixturePlayerIds = new Set(fixture.participants.map((participant) => participant.player_id));
@@ -1821,6 +1816,32 @@ function SegmentCorrectionRow({
     }
   };
 
+  const toggleCpi = async () => {
+    if (!tournament || segment.kind !== 'singles') return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await updateSegmentCpiEnabled({
+        tournament,
+        segment,
+        players,
+        enabled: !segment.cpi_enabled,
+        updatedBy: profileId,
+      });
+      track2026('cpi_setting_changed', {
+        segment_id: segment.id,
+        enabled: !segment.cpi_enabled,
+      });
+      await onSaved();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="border-t border-[#27272A] pt-3">
       <div className="grid gap-2">
@@ -1828,11 +1849,27 @@ function SegmentCorrectionRow({
           <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">
             {segment.kind} · Holes {segment.hole_start}-{segment.hole_end}
           </p>
-          {hasScores && (
-            <span className="text-[10px] tracking-[0.14em] text-[#F59E0B]">
-              {segment.holeScores.length} scores
-            </span>
-          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {segment.kind === 'singles' && (
+              <button
+                type="button"
+                onClick={toggleCpi}
+                disabled={!tournament || isSaving || tournament.is_complete}
+                className={`rounded-md border px-2 py-1 text-[10px] font-bold tracking-[0.12em] disabled:border-[#27272A] disabled:text-[#484F58] ${
+                  segment.cpi_enabled
+                    ? 'border-[#F59E0B] text-[#F59E0B]'
+                    : 'border-[#27272A] text-[#8B949E]'
+                }`}
+              >
+                CPI {segment.cpi_enabled ? 'enabled' : 'disabled'}
+              </button>
+            )}
+            {hasScores && (
+              <span className="text-[10px] tracking-[0.14em] text-[#F59E0B]">
+                {segment.holeScores.length} scores
+              </span>
+            )}
+          </div>
         </div>
         <TextField label="Segment name" value={name} onChange={setName} />
         {segment.kind === 'singles' && (
@@ -1897,50 +1934,268 @@ interface SinglesPairDraft {
   cpiEnabled: boolean;
 }
 
-type FixtureBuilderMode = 'team_fixture' | 'one_vs_one';
+interface FixtureTemplateConfig {
+  template: FixtureTemplate;
+  title: string;
+  description: string;
+  detail: string;
+  teamSlotCount: number;
+  singlesPairCount: number;
+}
 
-function CustomFixtureForm({
+const DEFAULT_FIXTURE_TEMPLATE: FixtureTemplate = 'standard_4_player';
+
+const FIXTURE_TEMPLATE_CONFIGS: Record<FixtureTemplate, FixtureTemplateConfig> = {
+  full_18_singles: {
+    template: 'full_18_singles',
+    title: '2-player full 18',
+    description: 'One full-course singles match.',
+    detail:
+      'Pick any two distinct players. USA vs USA, Europe vs Europe, and USA vs Europe all work; the app assigns scoring sides for this match.',
+    teamSlotCount: 0,
+    singlesPairCount: 1,
+  },
+  standard_4_player: {
+    template: 'standard_4_player',
+    title: '4-player standard match',
+    description: 'Front-nine 2-ball foursomes, then two singles.',
+    detail:
+      'Pick 2 USA and 2 Europe players. All four play the front nine as alternate-shot foursomes, then split into two USA-vs-Europe singles matches on holes 10-18.',
+    teamSlotCount: 2,
+    singlesPairCount: 2,
+  },
+  flexible_6_player: {
+    template: 'flexible_6_player',
+    title: '6-player flexible match',
+    description: 'Selected front-nine foursomes, then three singles.',
+    detail:
+      'Pick 3 USA and 3 Europe players. Choose the 2 USA and 2 Europe players who play front-nine foursomes, then set three back-nine singles matches from the full group.',
+    teamSlotCount: 3,
+    singlesPairCount: 3,
+  },
+};
+
+const FIXTURE_TEMPLATE_OPTIONS = Object.values(FIXTURE_TEMPLATE_CONFIGS);
+
+function FixtureSetupPanel({
   tournament,
   players,
+  fixtures,
+  fixtureCount,
+  profileId,
+  onSaved,
+}: {
+  tournament: TournamentRow | null;
+  players: PlayerRow[];
+  fixtures: FixtureView[];
+  fixtureCount: number;
+  profileId: string;
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Current fixtures</p>
+          <p className="mt-1 text-xs leading-5 text-[#8B949E]">
+            Review the groups already created for this tournament before adding the next one.
+          </p>
+        </div>
+        <CreateFixtureButton
+          tournament={tournament}
+          players={players}
+          fixtures={fixtures}
+          fixtureCount={fixtureCount}
+          onSaved={onSaved}
+        />
+      </div>
+      {fixtures.length === 0 ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
+          No fixtures have been created yet.
+        </p>
+      ) : (
+        <div className="border-t border-[#27272A]">
+          {fixtures.map((fixture) => (
+            <FixtureSetupListRow
+              key={fixture.id}
+              tournament={tournament}
+              fixture={fixture}
+              players={players}
+              profileId={profileId}
+              onSaved={onSaved}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateFixtureButton({
+  tournament,
+  players,
+  fixtures,
   fixtureCount,
   onSaved,
 }: {
   tournament: TournamentRow | null;
   players: PlayerRow[];
+  fixtures: FixtureView[];
   fixtureCount: number;
   onSaved: () => Promise<void>;
 }) {
-  const usaPlayers = useMemo(() => players.filter((player) => player.team === 'USA'), [players]);
+  return (
+    <AdminActionPopover
+      buttonLabel="Create fixture"
+      title="Create fixture"
+      description="Choose a fixture template, assign players, then set the back-nine singles pairings."
+    >
+      {(close) => (
+        <CustomFixtureForm
+          tournament={tournament}
+          players={players}
+          fixtures={fixtures}
+          fixtureCount={fixtureCount}
+          onSaved={onSaved}
+          onComplete={close}
+        />
+      )}
+    </AdminActionPopover>
+  );
+}
+
+function FixtureSetupListRow({
+  tournament,
+  fixture,
+  players,
+  profileId,
+  onSaved,
+}: {
+  tournament: TournamentRow | null;
+  fixture: FixtureView;
+  players: PlayerRow[];
+  profileId: string;
+  onSaved: () => Promise<void>;
+}) {
+  const scoreCount = fixture.segments.reduce((total, segment) => total + segment.holeScores.length, 0);
+  const participants = fixture.participants
+    .slice()
+    .sort((a, b) => {
+      if (a.team === b.team) {
+        return a.slot - b.slot;
+      }
+
+      return a.team === 'USA' ? -1 : 1;
+    });
+
+  return (
+    <article className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <FixtureTitleTrigger
+            fixture={fixture}
+            players={players}
+            tournament={tournament}
+            canEdit
+            updatedByProfileId={profileId}
+            onSaved={onSaved}
+            className="font-data text-sm font-bold tracking-[-0.03em] text-[#FAFAFA]"
+          />
+          {participants.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {participants.map((participant) => (
+                <FixtureParticipantPill key={`${fixture.id}-${participant.player_id}`} participant={participant} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">No players assigned</p>
+          )}
+        </div>
+        <span className="rounded border border-[#27272A] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
+          #{fixture.sort_order + 1}
+        </span>
+      </div>
+      <p className="mt-2 text-[10px] tracking-[0.14em] text-[#8B949E]">
+        {fixture.participants.length} players · {fixture.segments.length} segments · {scoreCount} saved holes
+      </p>
+    </article>
+  );
+}
+
+function FixtureParticipantPill({ participant }: { participant: FixtureView['participants'][number] }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-2 rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1 text-xs text-[#A1A1AA]">
+      <PlayerHistoryTrigger player={participant.player} fallback="Unknown player" className="min-w-0 text-[#FAFAFA]">
+        <PlayerIdentity player={participant.player} fallback="Unknown player" />
+      </PlayerHistoryTrigger>
+      <span className="shrink-0 text-[10px] tracking-[0.12em] text-[#8B949E]">
+        HCP{' '}
+        <span className="tabular-nums text-[#A1A1AA]">
+          {participant.player?.current_cpi ?? '-'}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function CustomFixtureForm({
+  tournament,
+  players,
+  fixtures,
+  fixtureCount,
+  onSaved,
+  onComplete,
+}: {
+  tournament: TournamentRow | null;
+  players: PlayerRow[];
+  fixtures: FixtureView[];
+  fixtureCount: number;
+  onSaved: () => Promise<void>;
+  onComplete?: () => void;
+}) {
+  const unavailablePlayerIds = useMemo(() => getAssignedFixturePlayerIds(fixtures), [fixtures]);
+  const availablePlayers = useMemo(
+    () => players.filter((player) => !unavailablePlayerIds.has(player.id)),
+    [players, unavailablePlayerIds]
+  );
+  const availablePlayerIds = useMemo(
+    () => new Set(availablePlayers.map((player) => player.id)),
+    [availablePlayers]
+  );
+  const usaPlayers = useMemo(() => availablePlayers.filter((player) => player.team === 'USA'), [availablePlayers]);
   const europePlayers = useMemo(
-    () => players.filter((player) => player.team === 'EUROPE'),
-    [players]
+    () => availablePlayers.filter((player) => player.team === 'EUROPE'),
+    [availablePlayers]
   );
   const [name, setName] = useState('');
-  const [mode, setMode] = useState<FixtureBuilderMode>('team_fixture');
-  const [usaSlots, setUsaSlots] = useState<string[]>(['', '', '']);
-  const [europeSlots, setEuropeSlots] = useState<string[]>(['', '', '']);
+  const [template, setTemplate] = useState<FixtureTemplate>(DEFAULT_FIXTURE_TEMPLATE);
+  const templateConfig = FIXTURE_TEMPLATE_CONFIGS[template];
+  const [usaSlots, setUsaSlots] = useState<string[]>(() =>
+    createEmptySlots(FIXTURE_TEMPLATE_CONFIGS[DEFAULT_FIXTURE_TEMPLATE].teamSlotCount)
+  );
+  const [europeSlots, setEuropeSlots] = useState<string[]>(() =>
+    createEmptySlots(FIXTURE_TEMPLATE_CONFIGS[DEFAULT_FIXTURE_TEMPLATE].teamSlotCount)
+  );
   const [oneVsOneSideAPlayerId, setOneVsOneSideAPlayerId] = useState('');
   const [oneVsOneSideBPlayerId, setOneVsOneSideBPlayerId] = useState('');
   const [oneVsOneCpiEnabled, setOneVsOneCpiEnabled] = useState(true);
   const [frontNinePlayerIds, setFrontNinePlayerIds] = useState<string[]>([]);
-  const [singlesPairs, setSinglesPairs] = useState<SinglesPairDraft[]>([
-    { usaPlayerId: '', europePlayerId: '', cpiEnabled: true },
-    { usaPlayerId: '', europePlayerId: '', cpiEnabled: true },
-    { usaPlayerId: '', europePlayerId: '', cpiEnabled: true },
-  ]);
+  const [singlesPairs, setSinglesPairs] = useState<SinglesPairDraft[]>(() =>
+    createEmptySinglesPairs(FIXTURE_TEMPLATE_CONFIGS[DEFAULT_FIXTURE_TEMPLATE].singlesPairCount)
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isOneVsOneFixture = mode === 'one_vs_one';
+  const isFullCourseSingles = template === 'full_18_singles';
   const selectedUsaPlayerIds = useMemo(
-    () => (isOneVsOneFixture ? compactUnique([oneVsOneSideAPlayerId]) : compactUnique(usaSlots)),
-    [isOneVsOneFixture, oneVsOneSideAPlayerId, usaSlots]
+    () => (isFullCourseSingles ? compactUnique([oneVsOneSideAPlayerId]) : compactUnique(usaSlots)),
+    [isFullCourseSingles, oneVsOneSideAPlayerId, usaSlots]
   );
   const selectedEuropePlayerIds = useMemo(
     () =>
-      isOneVsOneFixture
+      isFullCourseSingles
         ? compactUnique([oneVsOneSideBPlayerId])
         : compactUnique(europeSlots),
-    [europeSlots, isOneVsOneFixture, oneVsOneSideBPlayerId]
+    [europeSlots, isFullCourseSingles, oneVsOneSideBPlayerId]
   );
   const selectedPlayerIds = useMemo(
     () => [...selectedUsaPlayerIds, ...selectedEuropePlayerIds],
@@ -1950,7 +2205,18 @@ function CustomFixtureForm({
     () => selectedPlayerIds.map((playerId) => players.find((player) => player.id === playerId)).filter(isPlayerRow),
     [players, selectedPlayerIds]
   );
-  const activeSinglesPairs = isOneVsOneFixture
+  const activeFrontNinePlayerIds = useMemo(() => {
+    if (template === 'full_18_singles') {
+      return [];
+    }
+
+    if (template === 'standard_4_player') {
+      return selectedPlayerIds;
+    }
+
+    return frontNinePlayerIds;
+  }, [frontNinePlayerIds, selectedPlayerIds, template]);
+  const activeSinglesPairs = isFullCourseSingles
     ? [
         {
           usaPlayerId: oneVsOneSideAPlayerId,
@@ -1962,49 +2228,45 @@ function CustomFixtureForm({
   const completeSinglesPairs = activeSinglesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
   const validationError = getCustomFixtureValidationError({
     tournament,
-    mode,
+    template,
     selectedUsaPlayerIds,
     selectedEuropePlayerIds,
-    frontNinePlayerIds: isOneVsOneFixture ? [] : frontNinePlayerIds,
+    frontNinePlayerIds: activeFrontNinePlayerIds,
     singlesPairs: activeSinglesPairs,
   });
   const isReady = !validationError;
 
   useEffect(() => {
-    setUsaSlots((current) => fillEmptySlots(current, usaPlayers));
-    setEuropeSlots((current) => fillEmptySlots(current, europePlayers));
-  }, [europePlayers, usaPlayers]);
+    setUsaSlots((current) => resizeSlots(current, templateConfig.teamSlotCount));
+    setEuropeSlots((current) => resizeSlots(current, templateConfig.teamSlotCount));
+  }, [templateConfig.teamSlotCount]);
+
+  useEffect(() => {
+    setUsaSlots((current) => clearUnavailablePlayerIds(current, availablePlayerIds));
+    setEuropeSlots((current) => clearUnavailablePlayerIds(current, availablePlayerIds));
+    setOneVsOneSideAPlayerId((current) => (availablePlayerIds.has(current) ? current : ''));
+    setOneVsOneSideBPlayerId((current) => (availablePlayerIds.has(current) ? current : ''));
+  }, [availablePlayerIds]);
 
   useEffect(() => {
     setFrontNinePlayerIds((current) => {
-      if (isOneVsOneFixture) {
+      if (template !== 'flexible_6_player') {
         return [];
       }
 
-      const retained = current.filter((playerId) => selectedPlayerIds.includes(playerId));
-      const added = selectedPlayerIds.filter((playerId) => !retained.includes(playerId));
-
-      return [...retained, ...added];
+      return current.filter((playerId) => selectedPlayerIds.includes(playerId));
     });
-  }, [isOneVsOneFixture, selectedPlayerIds]);
+  }, [selectedPlayerIds, template]);
 
   useEffect(() => {
-    if (isOneVsOneFixture) {
-      return;
-    }
-
     setSinglesPairs((current) =>
-      current.map((pair, index) => ({
+      resizeSinglesPairs(current, templateConfig.singlesPairCount).map((pair) => ({
         ...pair,
-        usaPlayerId: selectedUsaPlayerIds.includes(pair.usaPlayerId)
-          ? pair.usaPlayerId
-          : selectedUsaPlayerIds[index] || '',
-        europePlayerId: selectedEuropePlayerIds.includes(pair.europePlayerId)
-          ? pair.europePlayerId
-          : selectedEuropePlayerIds[index] || '',
+        usaPlayerId: selectedUsaPlayerIds.includes(pair.usaPlayerId) ? pair.usaPlayerId : '',
+        europePlayerId: selectedEuropePlayerIds.includes(pair.europePlayerId) ? pair.europePlayerId : '',
       }))
     );
-  }, [isOneVsOneFixture, selectedEuropePlayerIds, selectedUsaPlayerIds]);
+  }, [selectedEuropePlayerIds, selectedUsaPlayerIds, templateConfig.singlesPairCount]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -2018,19 +2280,28 @@ function CustomFixtureForm({
       await createCustomFixture2026({
         tournamentId: tournament.id,
         name: name || `Fixture ${fixtureCount + 1}`,
+        template,
         usaPlayerIds: selectedUsaPlayerIds,
         europePlayerIds: selectedEuropePlayerIds,
-        frontNinePlayerIds: isOneVsOneFixture ? [] : frontNinePlayerIds,
+        frontNinePlayerIds: activeFrontNinePlayerIds,
         singlesPairs: completeSinglesPairs,
         sortOrder: fixtureCount,
       });
       track2026('fixture_created', {
-        fixture_mode: mode,
+        fixture_template: template,
         player_count: selectedPlayerIds.length,
         singles_count: completeSinglesPairs.length,
       });
       setName('');
+      setUsaSlots(createEmptySlots(templateConfig.teamSlotCount));
+      setEuropeSlots(createEmptySlots(templateConfig.teamSlotCount));
+      setFrontNinePlayerIds([]);
+      setSinglesPairs(createEmptySinglesPairs(templateConfig.singlesPairCount));
+      setOneVsOneSideAPlayerId('');
+      setOneVsOneSideBPlayerId('');
+      setOneVsOneCpiEnabled(true);
       await onSaved();
+      onComplete?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -2042,10 +2313,10 @@ function CustomFixtureForm({
     <SetupForm title="Mobile Fixture Builder" onSubmit={handleSubmit} error={error}>
       {validationError && <StatusCard tone="warning">{validationError}</StatusCard>}
       <TextField label="Fixture name" value={name} onChange={setName} />
-      <FixtureModePicker mode={mode} onChange={setMode} />
-      {isOneVsOneFixture ? (
+      <FixtureTemplatePicker template={template} onChange={setTemplate} />
+      {isFullCourseSingles ? (
         <OneVsOnePicker
-          players={players}
+          players={availablePlayers}
           sideAPlayerId={oneVsOneSideAPlayerId}
           sideBPlayerId={oneVsOneSideBPlayerId}
           cpiEnabled={oneVsOneCpiEnabled}
@@ -2054,33 +2325,42 @@ function CustomFixtureForm({
           onCpiEnabledChange={setOneVsOneCpiEnabled}
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <TeamSlotPicker
-            label="USA slots"
-            players={usaPlayers}
-            slots={usaSlots}
-            onChange={setUsaSlots}
-          />
-          <TeamSlotPicker
-            label="Europe slots"
-            players={europePlayers}
-            slots={europeSlots}
-            onChange={setEuropeSlots}
-          />
-        </div>
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TeamSlotPicker
+              label="USA slots"
+              players={usaPlayers}
+              slots={usaSlots}
+              selectedPlayerIds={selectedPlayerIds}
+              onChange={setUsaSlots}
+            />
+            <TeamSlotPicker
+              label="Europe slots"
+              players={europePlayers}
+              slots={europeSlots}
+              selectedPlayerIds={selectedPlayerIds}
+              onChange={setEuropeSlots}
+            />
+          </div>
+          {template === 'standard_4_player' ? (
+            <StatusCard>
+              Front 9 uses all four selected players: USA pair alternate shot against Europe pair.
+            </StatusCard>
+          ) : (
+            <FrontNinePicker
+              players={selectedPlayers}
+              selectedPlayerIds={frontNinePlayerIds}
+              onChange={setFrontNinePlayerIds}
+            />
+          )}
+        </>
       )}
-      {isOneVsOneFixture ? (
+      {isFullCourseSingles ? (
         <StatusCard>
-          1v1 full course selected. This creates one 18-hole singles match and skips front-nine foursomes.
+          2-player full 18 selected. This creates one 18-hole singles match and skips front-nine foursomes.
         </StatusCard>
-      ) : (
-        <FrontNinePicker
-          players={selectedPlayers}
-          selectedPlayerIds={frontNinePlayerIds}
-          onChange={setFrontNinePlayerIds}
-        />
-      )}
-      {!isOneVsOneFixture && (
+      ) : null}
+      {!isFullCourseSingles && (
         <SinglesPairPicker
           usaPlayers={selectedPlayers.filter((player) => player.team === 'USA')}
           europePlayers={selectedPlayers.filter((player) => player.team === 'EUROPE')}
@@ -2089,10 +2369,10 @@ function CustomFixtureForm({
         />
       )}
       <FixturePreview
+        templateConfig={templateConfig}
         selectedPlayers={selectedPlayers}
-        frontNinePlayerIds={isOneVsOneFixture ? [] : frontNinePlayerIds}
+        frontNinePlayerIds={activeFrontNinePlayerIds}
         singlesPairs={completeSinglesPairs}
-        isOneVsOneFixture={isOneVsOneFixture}
       />
       <SubmitButton isSaving={isSaving} disabled={!isReady}>
         Create fixture
@@ -2101,39 +2381,33 @@ function CustomFixtureForm({
   );
 }
 
-function FixtureModePicker({
-  mode,
+function FixtureTemplatePicker({
+  template,
   onChange,
 }: {
-  mode: FixtureBuilderMode;
-  onChange: (mode: FixtureBuilderMode) => void;
+  template: FixtureTemplate;
+  onChange: (template: FixtureTemplate) => void;
 }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      <FixtureModeButton
-        label="Team fixture"
-        description="Front-nine foursomes plus back-nine singles"
-        isSelected={mode === 'team_fixture'}
-        onClick={() => onChange('team_fixture')}
-      />
-      <FixtureModeButton
-        label="1v1 full course"
-        description="Any two players, one 18-hole singles match"
-        isSelected={mode === 'one_vs_one'}
-        onClick={() => onChange('one_vs_one')}
-      />
+    <div className="grid gap-2">
+      {FIXTURE_TEMPLATE_OPTIONS.map((option) => (
+        <FixtureTemplateButton
+          key={option.template}
+          config={option}
+          isSelected={template === option.template}
+          onClick={() => onChange(option.template)}
+        />
+      ))}
     </div>
   );
 }
 
-function FixtureModeButton({
-  label,
-  description,
+function FixtureTemplateButton({
+  config,
   isSelected,
   onClick,
 }: {
-  label: string;
-  description: string;
+  config: FixtureTemplateConfig;
   isSelected: boolean;
   onClick: () => void;
 }) {
@@ -2147,8 +2421,9 @@ function FixtureModeButton({
           : 'border-[#27272A] bg-[#0C0C0E] text-[#A1A1AA]'
       }`}
     >
-      <span className="block text-xs font-bold tracking-[0.14em]">{label}</span>
-      <span className="mt-1 block text-xs leading-5 text-[#8B949E]">{description}</span>
+      <span className="block text-xs font-bold tracking-[0.14em]">{config.title}</span>
+      <span className="mt-1 block text-xs leading-5 text-[#E6EDF3]">{config.description}</span>
+      <span className="mt-1 block text-xs leading-5 text-[#8B949E]">{config.detail}</span>
     </button>
   );
 }
@@ -2170,6 +2445,9 @@ function OneVsOnePicker({
   onSideBPlayerChange: (playerId: string) => void;
   onCpiEnabledChange: (enabled: boolean) => void;
 }) {
+  const sideAPlayers = filterSelectedPlayerOptions(players, [sideBPlayerId], sideAPlayerId);
+  const sideBPlayers = filterSelectedPlayerOptions(players, [sideAPlayerId], sideBPlayerId);
+
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">1v1 players</p>
@@ -2177,8 +2455,8 @@ function OneVsOnePicker({
         Pick any two players. Side A and Side B are the two scoring sides for this match.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <PlayerSelect label="Side A" value={sideAPlayerId} players={players} onChange={onSideAPlayerChange} />
-        <PlayerSelect label="Side B" value={sideBPlayerId} players={players} onChange={onSideBPlayerChange} />
+        <PlayerSelect label="Side A" value={sideAPlayerId} players={sideAPlayers} onChange={onSideAPlayerChange} />
+        <PlayerSelect label="Side B" value={sideBPlayerId} players={sideBPlayers} onChange={onSideBPlayerChange} />
       </div>
       <button
         type="button"
@@ -2197,11 +2475,13 @@ function TeamSlotPicker({
   label,
   players,
   slots,
+  selectedPlayerIds,
   onChange,
 }: {
   label: string;
   players: PlayerRow[];
   slots: string[];
+  selectedPlayerIds: string[];
   onChange: (slots: string[]) => void;
 }) {
   return (
@@ -2213,7 +2493,7 @@ function TeamSlotPicker({
             key={index}
             label={`Slot ${index + 1}`}
             value={playerId}
-            players={players}
+            players={filterSelectedPlayerOptions(players, selectedPlayerIds, playerId)}
             onChange={(nextPlayerId) => {
               const nextSlots = [...slots];
               nextSlots[index] = nextPlayerId;
@@ -2279,6 +2559,8 @@ function SinglesPairPicker({
   pairs: SinglesPairDraft[];
   onChange: (pairs: SinglesPairDraft[]) => void;
 }) {
+  const selectedSinglesPlayerIds = pairs.flatMap((pair) => [pair.usaPlayerId, pair.europePlayerId]);
+
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Back 9 singles</p>
@@ -2292,13 +2574,13 @@ function SinglesPairPicker({
               <PlayerSelect
                 label="USA"
                 value={pair.usaPlayerId}
-                players={usaPlayers}
+                players={filterSelectedPlayerOptions(usaPlayers, selectedSinglesPlayerIds, pair.usaPlayerId)}
                 onChange={(usaPlayerId) => updatePair(pairs, index, { usaPlayerId }, onChange)}
               />
               <PlayerSelect
                 label="Europe"
                 value={pair.europePlayerId}
-                players={europePlayers}
+                players={filterSelectedPlayerOptions(europePlayers, selectedSinglesPlayerIds, pair.europePlayerId)}
                 onChange={(europePlayerId) => updatePair(pairs, index, { europePlayerId }, onChange)}
               />
             </div>
@@ -2321,15 +2603,15 @@ function SinglesPairPicker({
 }
 
 function FixturePreview({
+  templateConfig,
   selectedPlayers,
   frontNinePlayerIds,
   singlesPairs,
-  isOneVsOneFixture,
 }: {
+  templateConfig: FixtureTemplateConfig;
   selectedPlayers: PlayerRow[];
   frontNinePlayerIds: string[];
   singlesPairs: SinglesPairDraft[];
-  isOneVsOneFixture?: boolean;
 }) {
   const playerLookup = new Map(selectedPlayers.map((player) => [player.id, player]));
 
@@ -2337,12 +2619,10 @@ function FixturePreview({
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Preview</p>
       <p className="mt-2 text-sm text-[#E6EDF3]">
-        {selectedPlayers.length} players ·{' '}
-        {isOneVsOneFixture
+        {templateConfig.title} · {selectedPlayers.length} players ·{' '}
+        {templateConfig.template === 'full_18_singles'
           ? '18-hole singles'
-          : frontNinePlayerIds.length > 0
-          ? `${frontNinePlayerIds.length} front-nine players`
-          : 'singles-only'}{' '}
+          : `${frontNinePlayerIds.length} front-nine players`}{' '}
         · {singlesPairs.length} singles
       </p>
       <div className="mt-2 space-y-1 text-xs text-[#A1A1AA]">
@@ -2367,8 +2647,49 @@ function updatePair(
   onChange(pairs.map((pair, pairIndex) => (pairIndex === index ? { ...pair, ...patch } : pair)));
 }
 
-function fillEmptySlots(currentSlots: string[], players: PlayerRow[]): string[] {
-  return currentSlots.map((playerId, index) => playerId || players[index]?.id || '');
+function createEmptySlots(count: number): string[] {
+  return Array.from({ length: count }, () => '');
+}
+
+function resizeSlots(currentSlots: string[], count: number): string[] {
+  return [...currentSlots.slice(0, count), ...createEmptySlots(Math.max(count - currentSlots.length, 0))];
+}
+
+function createEmptySinglesPairs(count: number): SinglesPairDraft[] {
+  return Array.from({ length: count }, () => ({
+    usaPlayerId: '',
+    europePlayerId: '',
+    cpiEnabled: true,
+  }));
+}
+
+function resizeSinglesPairs(currentPairs: SinglesPairDraft[], count: number): SinglesPairDraft[] {
+  return [
+    ...currentPairs.slice(0, count),
+    ...createEmptySinglesPairs(Math.max(count - currentPairs.length, 0)),
+  ];
+}
+
+function getAssignedFixturePlayerIds(fixtures: FixtureView[]): Set<string> {
+  return new Set(
+    fixtures.flatMap((fixture) =>
+      fixture.participants.map((participant) => participant.player_id)
+    )
+  );
+}
+
+function filterSelectedPlayerOptions(
+  players: PlayerRow[],
+  selectedPlayerIds: string[],
+  currentPlayerId: string
+): PlayerRow[] {
+  const selectedIds = new Set(selectedPlayerIds.filter((playerId) => playerId && playerId !== currentPlayerId));
+
+  return players.filter((player) => !selectedIds.has(player.id));
+}
+
+function clearUnavailablePlayerIds(playerIds: string[], availablePlayerIds: Set<string>): string[] {
+  return playerIds.map((playerId) => (playerId && availablePlayerIds.has(playerId) ? playerId : ''));
 }
 
 function compactUnique(playerIds: string[]): string[] {
@@ -2381,35 +2702,25 @@ function isPlayerRow(player: PlayerRow | undefined): player is PlayerRow {
 
 function getCustomFixtureValidationError({
   tournament,
-  mode,
+  template,
   selectedUsaPlayerIds,
   selectedEuropePlayerIds,
   frontNinePlayerIds,
   singlesPairs,
 }: {
   tournament: TournamentRow | null;
-  mode: FixtureBuilderMode;
+  template: FixtureTemplate;
   selectedUsaPlayerIds: string[];
   selectedEuropePlayerIds: string[];
   frontNinePlayerIds: string[];
   singlesPairs: SinglesPairDraft[];
 }): string | null {
   if (!tournament) return 'Create an active tournament before creating fixtures.';
-  if (selectedUsaPlayerIds.length === 0 || selectedEuropePlayerIds.length === 0) {
-    return mode === 'one_vs_one'
-      ? 'Select two players for the 1v1 match.'
-      : 'Select at least one player per team.';
-  }
-  if (selectedUsaPlayerIds.length + selectedEuropePlayerIds.length > 6) {
-    return 'A fixture can have at most six players.';
-  }
-
+  const selectedPlayerIds = [...selectedUsaPlayerIds, ...selectedEuropePlayerIds];
   const completePairs = singlesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
 
-  if (completePairs.length === 0) {
-    return mode === 'one_vs_one'
-      ? 'Select two players for the 1v1 match.'
-      : 'Add at least one back-nine singles match.';
+  if (new Set(selectedPlayerIds).size !== selectedPlayerIds.length) {
+    return 'A player can only appear once in a fixture.';
   }
 
   if (singlesPairs.some((pair) => Boolean(pair.usaPlayerId) !== Boolean(pair.europePlayerId))) {
@@ -2432,19 +2743,57 @@ function getCustomFixtureValidationError({
     return 'A player can only appear in one singles match.';
   }
 
-  const isOneVsOneFixture = mode === 'one_vs_one';
+  switch (template) {
+    case 'full_18_singles':
+      if (selectedUsaPlayerIds.length !== 1 || selectedEuropePlayerIds.length !== 1) {
+        return 'Select two players for the full-18 singles match.';
+      }
 
-  if (!isOneVsOneFixture && frontNinePlayerIds.length < 2) {
-    return 'Select at least two front-nine players.';
-  }
+      if (completePairs.length !== 1) {
+        return 'The full-18 singles fixture needs one match.';
+      }
 
-  const frontNineTeams = new Set([
-    ...frontNinePlayerIds.filter((playerId) => selectedUsaPlayerIds.includes(playerId)).map(() => 'USA'),
-    ...frontNinePlayerIds.filter((playerId) => selectedEuropePlayerIds.includes(playerId)).map(() => 'EUROPE'),
-  ]);
+      return null;
+    case 'standard_4_player':
+      if (selectedUsaPlayerIds.length !== 2 || selectedEuropePlayerIds.length !== 2) {
+        return 'Select exactly 2 USA players and 2 Europe players.';
+      }
 
-  if (!isOneVsOneFixture && (!frontNineTeams.has('USA') || !frontNineTeams.has('EUROPE'))) {
-    return 'Front-nine scoring needs at least one player from each team.';
+      if (completePairs.length !== 2) {
+        return 'Add exactly two back-nine singles matches.';
+      }
+
+      return null;
+    case 'flexible_6_player': {
+      if (selectedUsaPlayerIds.length !== 3 || selectedEuropePlayerIds.length !== 3) {
+        return 'Select exactly 3 USA players and 3 Europe players.';
+      }
+
+      if (frontNinePlayerIds.length !== 4) {
+        return 'Select 2 USA and 2 Europe players for front-nine foursomes.';
+      }
+
+      const frontNineUsaCount = frontNinePlayerIds.filter((playerId) =>
+        selectedUsaPlayerIds.includes(playerId)
+      ).length;
+      const frontNineEuropeCount = frontNinePlayerIds.filter((playerId) =>
+        selectedEuropePlayerIds.includes(playerId)
+      ).length;
+
+      if (frontNineUsaCount !== 2 || frontNineEuropeCount !== 2) {
+        return 'Front-nine foursomes need exactly 2 USA and 2 Europe players.';
+      }
+
+      if (completePairs.length !== 3) {
+        return 'Add exactly three back-nine singles matches.';
+      }
+
+      return null;
+    }
+    default: {
+      const exhaustiveCheck: never = template;
+      return exhaustiveCheck;
+    }
   }
 
   return null;

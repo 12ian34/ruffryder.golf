@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { clearLocalStorage } from '../utils/storage';
+import { clearLocalStorage, getLocalStorageItem, setLocalStorageItem } from '../utils/storage';
 
 describe('Storage Utilities', () => {
   beforeEach(() => {
@@ -171,6 +171,55 @@ describe('Storage Utilities', () => {
       // Clean up mock to prevent affecting other tests
       vi.doUnmock('../utils/storage');
       vi.doUnmock('react');
+    });
+
+    it('should parse stored JSON values with a fallback for missing keys', () => {
+      vi.mocked(localStorage.getItem)
+        .mockReturnValueOnce('{"selectedTab":"tournament"}')
+        .mockReturnValueOnce(null);
+
+      expect(getLocalStorageItem('settings', { selectedTab: 'profile' })).toEqual({
+        selectedTab: 'tournament',
+      });
+      expect(getLocalStorageItem('missing', { selectedTab: 'profile' })).toEqual({
+        selectedTab: 'profile',
+      });
+    });
+
+    it('should return the fallback value when stored JSON cannot be parsed', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(localStorage.getItem).mockReturnValueOnce('{bad json');
+
+      expect(getLocalStorageItem('settings', { selectedTab: 'profile' })).toEqual({
+        selectedTab: 'profile',
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error getting localStorage item "settings":',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should write JSON values and report storage failures', () => {
+      expect(setLocalStorageItem('settings', { selectedTab: 'tournament' })).toBe(true);
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'settings',
+        JSON.stringify({ selectedTab: 'tournament' })
+      );
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(localStorage.setItem).mockImplementationOnce(() => {
+        throw new Error('quota exceeded');
+      });
+
+      expect(setLocalStorageItem('settings', { selectedTab: 'profile' })).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error setting localStorage item "settings":',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 }); 

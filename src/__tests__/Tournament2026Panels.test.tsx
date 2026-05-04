@@ -4,12 +4,20 @@ import { AI_NEWSROOM_ARTIFACT_KINDS } from '../features/tournament2026/aiOvervie
 import { AdminSetupSection } from '../features/tournament2026/components/AdminSetupSection';
 import { LeaderboardSection } from '../features/tournament2026/components/LeaderboardSection';
 import { PlayerAiOverview } from '../features/tournament2026/components/PlayerAiOverview';
+import { PlayerHistoryProvider } from '../features/tournament2026/components/PlayerHistory';
 import { TournamentActivitySection } from '../features/tournament2026/components/TournamentActivitySection';
 import {
   generateAiNewsroomArtifacts,
   generatePlayerAiOverview,
   generateTournamentAiOverview,
 } from '../services/aiOverviewService';
+import {
+  clearFixtureScores2026,
+  clearHoleScore2026,
+  deleteFixture2026,
+  saveHoleScore2026,
+  updateSegmentCpiEnabled,
+} from '../services/tournament2026Queries';
 import type {
   AiNewsroomArtifactRow,
   AiPlayerOverviewRow,
@@ -29,6 +37,22 @@ vi.mock('../services/aiOverviewService', () => ({
   generatePlayerAiOverview: vi.fn().mockResolvedValue({}),
   generateTournamentAiOverview: vi.fn().mockResolvedValue({}),
 }));
+
+vi.mock('../services/tournament2026Queries', async () => {
+  const actual = await vi.importActual<typeof import('../services/tournament2026Queries')>(
+    '../services/tournament2026Queries'
+  );
+
+  return {
+    ...actual,
+    clearFixtureScores2026: vi.fn().mockResolvedValue(undefined),
+    clearHoleScore2026: vi.fn().mockResolvedValue(undefined),
+    deleteFixture2026: vi.fn().mockResolvedValue(undefined),
+    saveHoleScore2026: vi.fn().mockResolvedValue(undefined),
+    updateFixture2026: vi.fn().mockResolvedValue(undefined),
+    updateSegmentCpiEnabled: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock('../features/tournament2026/components/LiveTournamentProgressChart', () => ({
   LiveTournamentProgressChart: () => <div>Mock score chart</div>,
@@ -61,18 +85,40 @@ describe('2026 leaderboard panel', () => {
     expect(view.getByText('Overall')).toBeInTheDocument();
     expect(view.getByText('Foursomes')).toBeInTheDocument();
     expect(view.getByText('Singles')).toBeInTheDocument();
-    expect(view.getByText('Group 1')).toBeInTheDocument();
-    expect(view.getByText('4/5 holes · 80%')).toBeInTheDocument();
+    expect(view.getByText(/4\/5 holes · 80%/)).toBeInTheDocument();
     expect(view.getByText('Front 9: Match halved')).toBeInTheDocument();
     expect(view.getByText('Singles A: All square')).toBeInTheDocument();
     expect(view.getByText('Captain note')).toBeInTheDocument();
     expect(view.getByText('Highlights Commentary')).toBeInTheDocument();
     expect(view.getByText('Tournament Overview')).toBeInTheDocument();
     expect(view.getByText('Newsroom')).toBeInTheDocument();
+    const scoreMovement = view.getByText('Score Movement').closest('details');
+    expect(scoreMovement).not.toBeNull();
+    expect(within(scoreMovement!).getAllByText('Ian').length).toBeGreaterThan(0);
+    expect(within(scoreMovement!).getAllByText('Tom').length).toBeGreaterThan(0);
+    expect(within(scoreMovement!).getAllByText('HCP').length).toBeGreaterThan(0);
+    expect(within(scoreMovement!).queryByText(/Group 1 H/)).not.toBeInTheDocument();
+    const fixtureProgress = view.getByText('Fixture Progress').closest('details');
+    expect(fixtureProgress).not.toBeNull();
+    expect(within(fixtureProgress!).getAllByText('Ian').length).toBeGreaterThan(0);
+    expect(within(fixtureProgress!).getAllByText('Tom').length).toBeGreaterThan(0);
+    expect(within(fixtureProgress!).getAllByText('HCP').length).toBeGreaterThan(0);
+    expect(within(fixtureProgress!).getByText('Group 1')).toBeInTheDocument();
     expect(view.queryByText('AI Tournament Overview')).not.toBeInTheDocument();
     expect(view.queryByText('AI Newsroom')).not.toBeInTheDocument();
     expect(generateTournamentAiOverview).not.toHaveBeenCalled();
     expect(generateAiNewsroomArtifacts).not.toHaveBeenCalled();
+
+    fireEvent.click(within(fixtureProgress!).getByText('Fixture Progress').closest('summary') as HTMLElement);
+    fireEvent.click(within(fixtureProgress!).getByRole('button', { name: 'Open Group 1 details', hidden: true }));
+
+    const dialog = document.body.querySelector('[role="dialog"][aria-label="Group 1 fixture details"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const dialogView = within(dialog);
+    expect(dialogView.getByText('Fixture details')).toBeInTheDocument();
+    expect(dialogView.getAllByText('Ian vs Tom').length).toBeGreaterThan(0);
+    expect(dialogView.getByText('H12')).toBeInTheDocument();
+    expect(dialogView.getByText('Unplayed')).toBeInTheDocument();
   });
 
   it('does not call an empty board live or all square when there is no active tournament', () => {
@@ -338,6 +384,11 @@ describe('2026 player AI overview panel', () => {
 });
 
 describe('2026 admin setup panel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
   it('renders a flat collapsed operations list by default', () => {
     const { container } = render(<AdminSetupSection data={adminData} onSaved={vi.fn()} />);
     const view = within(container);
@@ -345,7 +396,7 @@ describe('2026 admin setup panel', () => {
 
     expect(view.getByText('admin')).toBeInTheDocument();
     expect(view.getByText('tournament operations')).toBeInTheDocument();
-    expect(taskRows).toHaveLength(6);
+    expect(taskRows).toHaveLength(5);
     expect(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details[open]')).toHaveLength(0);
     expect(taskRows.map((row) => row.querySelector('h3')?.textContent)).toEqual([
       'Tournament',
@@ -353,8 +404,212 @@ describe('2026 admin setup panel', () => {
       'Fixtures',
       'Course',
       'Activity',
-      'Corrections',
     ]);
+  });
+
+  it('shows explicit fixture templates without auto-filling player slots', () => {
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          players: fixtureBuilderPlayers,
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    expect(view.getByRole('button', { name: 'Create fixture', hidden: true })).toBeInTheDocument();
+    expect(view.getByText('No fixtures have been created yet.')).toBeInTheDocument();
+    fireEvent.click(view.getByRole('button', { name: 'Create fixture', hidden: true }));
+
+    expect(view.getByText('2-player full 18')).toBeInTheDocument();
+    expect(view.getByText('4-player standard match')).toBeInTheDocument();
+    expect(view.getByText('6-player flexible match')).toBeInTheDocument();
+    expect(
+      view.getByText(/USA vs USA, Europe vs Europe, and USA vs Europe all work/)
+    ).toBeInTheDocument();
+
+    const usaSlotsPanel = view.getByText('USA slots').closest('div') as HTMLElement;
+    const europeSlotsPanel = view.getByText('Europe slots').closest('div') as HTMLElement;
+    const usaSlotSelects = within(usaSlotsPanel).getAllByLabelText(/Slot \d/);
+    const europeSlotSelects = within(europeSlotsPanel).getAllByLabelText(/Slot \d/);
+
+    expect(usaSlotSelects).toHaveLength(2);
+    expect(europeSlotSelects).toHaveLength(2);
+    for (const select of [...usaSlotSelects, ...europeSlotSelects]) {
+      expect(select).toHaveValue('');
+    }
+
+    fireEvent.click(view.getByText('6-player flexible match'));
+
+    expect(within(usaSlotsPanel).getAllByLabelText(/Slot \d/)).toHaveLength(3);
+    expect(within(europeSlotsPanel).getAllByLabelText(/Slot \d/)).toHaveLength(3);
+    expect(view.getByText('Front 9 players')).toBeInTheDocument();
+    for (const select of [
+      ...within(usaSlotsPanel).getAllByLabelText(/Slot \d/),
+      ...within(europeSlotsPanel).getAllByLabelText(/Slot \d/),
+    ]) {
+      expect(select).toHaveValue('');
+    }
+  });
+
+  it('hides players already assigned to the tournament and current fixture draft', () => {
+    const { container } = render(
+      <PlayerHistoryProvider players={fixtureBuilderPlayers} playerStats={[]}>
+        <AdminSetupSection
+          data={{
+            ...adminData,
+            activeTournament: activeAdminTournament,
+            players: fixtureBuilderPlayers,
+            fixtures: [fixtureWithAssignedPlayers],
+          }}
+          onSaved={vi.fn()}
+        />
+      </PlayerHistoryProvider>
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    expect(view.getByText('Assigned group')).toBeInTheDocument();
+    const fixtureRow = view.getByText('Assigned group').closest('article') as HTMLElement;
+    const fixtureRowView = within(fixtureRow);
+
+    expect(fixtureRowView.getByText('Ian')).toBeInTheDocument();
+    expect(fixtureRowView.getByText('Tom')).toBeInTheDocument();
+    expect(fixtureRowView.getByText('88')).toBeInTheDocument();
+    expect(fixtureRowView.getByText('78')).toBeInTheDocument();
+
+    fireEvent.click(fixtureRowView.getByLabelText('Open Ian history'));
+
+    expect(view.getByText('Current handicap')).toBeInTheDocument();
+    expect(container.querySelector('[role="dialog"][aria-label="Ian history"]')).not.toBeNull();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    fireEvent.click(view.getByRole('button', { name: 'Create fixture', hidden: true }));
+
+    const usaSlotsPanel = view.getByText('USA slots').closest('div') as HTMLElement;
+    const europeSlotsPanel = view.getByText('Europe slots').closest('div') as HTMLElement;
+    const usaSlotSelects = within(usaSlotsPanel).getAllByLabelText(/Slot \d/);
+    const europeSlotSelects = within(europeSlotsPanel).getAllByLabelText(/Slot \d/);
+
+    expect(getSelectOptionValues(usaSlotSelects[0])).toEqual(['', 'usa-2', 'usa-3']);
+    expect(getSelectOptionValues(europeSlotSelects[0])).toEqual(['', 'europe-2', 'europe-3']);
+
+    fireEvent.change(usaSlotSelects[0], { target: { value: 'usa-2' } });
+
+    const updatedUsaSlotSelects = within(usaSlotsPanel).getAllByLabelText(/Slot \d/);
+    expect(getSelectOptionValues(updatedUsaSlotSelects[0])).toContain('usa-2');
+    expect(getSelectOptionValues(updatedUsaSlotSelects[1])).not.toContain('usa-2');
+  });
+
+  it('keeps fixture correction and CPI controls in the admin Fixtures task', () => {
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          fixtures: [fixture],
+          players: fixtureBuilderPlayers,
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    expect(view.getByLabelText('Fixture name')).toHaveValue('Group 1');
+    expect(view.getByText('Clear scores')).toBeInTheDocument();
+    expect(view.getByText('CPI enabled')).toBeInTheDocument();
+    expect(view.queryByText('Corrections')).not.toBeInTheDocument();
+  });
+
+  it('requires confirmation before clearing fixture scores or deleting a fixture', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          fixtures: [fixture],
+          players,
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    fireEvent.click(view.getByText('Clear scores'));
+    fireEvent.click(view.getByText('Delete'));
+
+    expect(confirmSpy).toHaveBeenCalledTimes(2);
+    expect(clearFixtureScores2026).not.toHaveBeenCalled();
+    expect(deleteFixture2026).not.toHaveBeenCalled();
+  });
+
+  it('opens fixture details from the admin fixture title with edit controls', async () => {
+    const onSaved = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          fixtures: [fixture],
+          players,
+        }}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    fireEvent.click(view.getByRole('button', { name: 'Group 1', hidden: true }));
+
+    const dialog = document.body.querySelector('[role="dialog"][aria-label="Group 1 fixture details"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const dialogView = within(dialog);
+    expect(dialogView.getByText('Admin edit')).toBeInTheDocument();
+    expect(dialogView.getByLabelText('Fixture name')).toHaveValue('Group 1');
+    expect(dialogView.getByText('4/5 holes - 80%')).toBeInTheDocument();
+
+    const holeOne = dialogView.getByText('H1').parentElement?.parentElement as HTMLElement;
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(within(holeOne).getByText('Clear'));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear score for H1? This cannot be undone.');
+    expect(clearHoleScore2026).not.toHaveBeenCalled();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.change(within(holeOne).getByLabelText('USA score'), { target: { value: '6' } });
+    fireEvent.click(within(holeOne).getByText('Update'));
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith('Update H1 to USA 6, Europe 5?');
+      expect(saveHoleScore2026).toHaveBeenCalledWith(
+        expect.objectContaining({
+          holeNumber: 1,
+          usaScore: 6,
+          europeScore: 5,
+          updatedBy: 'profile-admin',
+        })
+      );
+    });
+
+    fireEvent.click(dialogView.getByText('CPI enabled'));
+
+    await waitFor(() => {
+      expect(updateSegmentCpiEnabled).toHaveBeenCalledWith(
+        expect.objectContaining({
+          segment: expect.objectContaining({ id: 'segment-singles' }),
+          enabled: false,
+          updatedBy: 'profile-admin',
+        })
+      );
+      expect(onSaved).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('shows tournament details read-only until edit opens the popover form', () => {
@@ -402,28 +657,52 @@ const tournament = {
   year: 2026,
 } as TournamentRow;
 
+const activeAdminTournament = {
+  id: 'tournament-1',
+  name: 'Ruff Ryders Cup 2026',
+  year: 2026,
+  cpi_threshold: 7,
+  is_active: true,
+  is_complete: false,
+  completed_at: null,
+  legacy_firebase_id: null,
+  created_at: '2026-05-03T08:00:00.000Z',
+  updated_at: '2026-05-03T08:00:00.000Z',
+} as TournamentRow;
+
 const players = [
-  {
-    id: 'player-1',
-    name: 'Ian',
-    team: 'USA',
-    current_cpi: 88,
-    custom_emoji: ':horse:',
-  },
-  {
-    id: 'player-2',
-    name: 'Tom',
-    team: 'EUROPE',
-    current_cpi: 78,
-    custom_emoji: null,
-  },
+  { ...createPlayerRow('player-1', 'Ian', 'USA', 88), custom_emoji: ':horse:' },
+  createPlayerRow('player-2', 'Tom', 'EUROPE', 78),
 ] as PlayerRow[];
+
+const fixtureBuilderPlayers = [
+  createPlayerRow('usa-1', 'Ian', 'USA', 88),
+  createPlayerRow('usa-2', 'Sam', 'USA', 82),
+  createPlayerRow('usa-3', 'Reyno', 'USA', 91),
+  createPlayerRow('europe-1', 'Tom', 'EUROPE', 78),
+  createPlayerRow('europe-2', 'Alex', 'EUROPE', 84),
+  createPlayerRow('europe-3', 'Max', 'EUROPE', 80),
+] as PlayerRow[];
+
+const fixtureWithAssignedPlayers = {
+  id: 'assigned-fixture-1',
+  name: 'Assigned group',
+  sort_order: 0,
+  participants: [
+    { player_id: 'usa-1', team: 'USA', slot: 1, player: fixtureBuilderPlayers[0] },
+    { player_id: 'europe-1', team: 'EUROPE', slot: 1, player: fixtureBuilderPlayers[3] },
+  ],
+  segments: [],
+} as unknown as FixtureView;
 
 const fixture = {
   id: 'fixture-1',
   name: 'Group 1',
   sort_order: 0,
-  participants: [],
+  participants: [
+    { player_id: 'player-1', team: 'USA', slot: 1, player: players[0] },
+    { player_id: 'player-2', team: 'EUROPE', slot: 1, player: players[1] },
+  ],
   segments: [
     {
       id: 'segment-front',
@@ -432,7 +711,11 @@ const fixture = {
       hole_start: 1,
       hole_end: 2,
       sort_order: 0,
-      players: [],
+      cpi_enabled: false,
+      players: [
+        { player_id: 'player-1', team: 'USA', slot: 1, player: players[0] },
+        { player_id: 'player-2', team: 'EUROPE', slot: 1, player: players[1] },
+      ],
       holeScores: [
         createHoleScore('score-1', 1, 'USA', '2026-05-03T08:00:00.000Z'),
         createHoleScore('score-2', 2, 'EUROPE', '2026-05-03T08:05:00.000Z'),
@@ -445,6 +728,9 @@ const fixture = {
       hole_start: 10,
       hole_end: 12,
       sort_order: 1,
+      cpi_enabled: true,
+      usa_player_id: 'player-1',
+      europe_player_id: 'player-2',
       players: [],
       holeScores: [
         createHoleScore('score-3', 10, 'USA', '2026-05-03T08:10:00.000Z'),
@@ -532,6 +818,35 @@ const adminData = {
   fixtures: [],
   history: [],
 } as Tournament2026Data;
+
+function createPlayerRow(id: string, name: string, team: 'USA' | 'EUROPE', currentCpi: number): PlayerRow {
+  return {
+    id,
+    name,
+    team,
+    current_cpi: currentCpi,
+    custom_emoji: null,
+    legacy_firebase_id: null,
+    created_at: '2026-05-03T08:00:00.000Z',
+    updated_at: '2026-05-03T08:00:00.000Z',
+  } as PlayerRow;
+}
+
+function getSelectOptionValues(select: HTMLElement): string[] {
+  return Array.from((select as HTMLSelectElement).options).map((option) => option.value);
+}
+
+function openAdminTask(container: HTMLElement, title: string): void {
+  const task = Array.from(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details')).find(
+    (details) => details.querySelector('h3')?.textContent === title
+  );
+
+  if (!task) {
+    throw new Error(`Missing admin task: ${title}`);
+  }
+
+  (task as HTMLDetailsElement).open = true;
+}
 
 function createHoleScore(
   id: string,

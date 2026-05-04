@@ -2,6 +2,8 @@ export const COURSE_STROKE_INDICES = [
   3, 7, 13, 15, 11, 5, 17, 1, 9, 6, 2, 14, 18, 8, 10, 16, 4, 12,
 ] as const;
 
+export const DEFAULT_COURSE_PAR = 3;
+
 export interface CourseHoleMetadata {
   holeNumber: number;
   strokeIndex: number;
@@ -13,7 +15,7 @@ export const DEFAULT_COURSE_HOLES: CourseHoleMetadata[] = COURSE_STROKE_INDICES.
   (strokeIndex, index) => ({
     holeNumber: index + 1,
     strokeIndex,
-    par: null,
+    par: DEFAULT_COURSE_PAR,
     yardage: null,
   })
 );

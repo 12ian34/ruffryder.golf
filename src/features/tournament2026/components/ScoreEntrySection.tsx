@@ -19,9 +19,7 @@ import {
 } from '../../../domain/2026/course';
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus';
 import {
-  clearHoleScore2026,
   saveHoleScore2026,
-  updateSegmentCpiEnabled,
   type FixtureView,
   type HoleScoreView,
   type PlayerRow,
@@ -38,6 +36,7 @@ import {
   getErrorMessage,
   parseOptionalPositiveInteger,
 } from '../viewUtils';
+import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { ScorePicker } from './FormControls';
 import { StatusCard, TerminalPageSection } from './Layout';
 import { PlayerHistoryTrigger } from './PlayerHistory';
@@ -235,9 +234,7 @@ export function ScoreEntrySection({
           {fixtures.length === 0 && (
             <div className="px-3 pb-3 sm:px-4">
               <StatusCard tone="warning">
-                {profile.is_admin || profile.linked_player_id
-                  ? 'No fixtures are available for score entry yet.'
-                  : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
+                {getNoScoreFixturesMessage(profile)}
               </StatusCard>
             </div>
           )}
@@ -277,6 +274,18 @@ function ScoreEntryStatusPill({
       {children}
     </span>
   );
+}
+
+function getNoScoreFixturesMessage(profile: ProfileRow): string {
+  if (profile.linked_player_id) {
+    return 'No fixtures are available for your player yet.';
+  }
+
+  if (profile.is_admin) {
+    return 'Your admin profile is not linked to a player yet. Link it in Admin before My Game can show your fixture.';
+  }
+
+  return 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.';
 }
 
 function FixtureScoreCard({
@@ -325,9 +334,12 @@ function FixtureScoreCard({
       <div className="px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">
-              {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
-            </h3>
+            <FixtureTitleTrigger
+              fixture={fixture}
+              players={players}
+              tournament={tournament}
+              className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]"
+            />
             <FixtureParticipantsLine fixture={fixture} />
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -650,8 +662,9 @@ function SegmentScoreCard({
   const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold, scoreLabels);
   const matchStatus = calculateSegmentMatchPlayStatus(segment);
   const matchStatusLabel = formatMatchStatusLabel(matchStatus, scoreLabels);
-  const canConfigureCpi = profile.is_admin && segment.kind === 'singles';
-  const dirtyHoles = holes.filter((holeNumber) =>
+  const currentHoleNumber = getCurrentHoleNumber(holes, scoreByHole);
+  const visibleHoles = currentHoleNumber ? [currentHoleNumber] : [];
+  const dirtyHoles = visibleHoles.filter((holeNumber) =>
     isHoleDirty(drafts[holeNumber], scoreByHole.get(holeNumber))
   );
   const isSavingAny = savingHoles.size > 0;
@@ -659,23 +672,6 @@ function SegmentScoreCard({
   useEffect(() => {
     setDrafts(createDrafts(holes, scoreByHole, tournament.id, segment.id));
   }, [holes.join(','), scoreByHole, segment.id, tournament.id]);
-
-  const handleCpiToggle = async () => {
-    if (!canConfigureCpi) return;
-
-    await updateSegmentCpiEnabled({
-      tournament,
-      segment,
-      players,
-      enabled: !segment.cpi_enabled,
-      updatedBy: profile.id,
-    });
-    track2026('cpi_setting_changed', {
-      segment_id: segment.id,
-      enabled: !segment.cpi_enabled,
-    });
-    await onSaved();
-  };
 
   const updateDraft = (holeNumber: number, nextDraft: HoleDraft) => {
     const rowKey = getScoreDraftKey(tournament.id, segment.id, holeNumber);
@@ -793,33 +789,6 @@ function SegmentScoreCard({
     }
   };
 
-  const clearHole = async (holeNumber: number, scoreId: string) => {
-    if (!window.confirm(`Clear saved scores for H${holeNumber}?`)) return;
-
-    setSaveAllError(null);
-    setRowErrors((current) => {
-      const next = { ...current };
-      delete next[holeNumber];
-      return next;
-    });
-    setSavingHoles((current) => new Set(current).add(holeNumber));
-
-    try {
-      await clearHoleScore2026({ tournament, scoreId });
-      track2026('score_cleared', { segment_id: segment.id, hole_number: holeNumber });
-      removePersistedDraft(getScoreDraftKey(tournament.id, segment.id, holeNumber));
-      await onSaved();
-    } catch (err) {
-      setRowErrors((current) => ({ ...current, [holeNumber]: getErrorMessage(err) }));
-    } finally {
-      setSavingHoles((current) => {
-        const next = new Set(current);
-        next.delete(holeNumber);
-        return next;
-      });
-    }
-  };
-
   return (
     <div className="border-t border-[#27272A] bg-[#050506]">
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -837,15 +806,6 @@ function SegmentScoreCard({
           {cpiStatus && (
             <p className="mt-1 font-data text-xs text-[#8B949E]">
               {cpiStatus}
-              {canConfigureCpi && (
-                <button
-                  type="button"
-                  onClick={handleCpiToggle}
-                  className="ml-2 rounded border border-[#27272A] px-2 py-0.5 text-[#E6EDF3] hover:border-[#3FB950]"
-                >
-                  {segment.cpi_enabled ? 'Disable CPI' : 'Enable CPI'}
-                </button>
-              )}
             </p>
           )}
         </div>
@@ -861,13 +821,13 @@ function SegmentScoreCard({
             </button>
           )}
           <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] tracking-[0.18em] text-[#A1A1AA]">
-            Holes {segment.hole_start}-{segment.hole_end}
+            {currentHoleNumber ? `Now H${currentHoleNumber}` : `Holes ${segment.hole_start}-${segment.hole_end}`}
           </span>
         </div>
       </div>
       {saveAllError && <p className="px-3 pb-3 font-data text-xs text-[#F85149]">{saveAllError}</p>}
       <div>
-        {holes.map((holeNumber) => {
+        {visibleHoles.map((holeNumber) => {
           const score = segment.holeScores.find((row) => row.hole_number === holeNumber) ?? null;
           const draft = drafts[holeNumber] ?? createDraft(score);
           const isDirty = dirtyHoles.includes(holeNumber);
@@ -887,14 +847,11 @@ function SegmentScoreCard({
               error={rowError}
               scoreLabels={scoreLabels}
               lengthUnit={lengthUnit}
-              canClear={profile.is_admin && Boolean(score)}
+              canClear={false}
               onLengthUnitToggle={onLengthUnitToggle}
               onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
               onSave={() => saveHole(holeNumber)}
-              onClear={() => {
-                if (!score) return Promise.resolve();
-                return clearHole(holeNumber, score.id);
-              }}
+              onClear={() => Promise.resolve()}
             />
           );
         })}
@@ -923,6 +880,7 @@ function BackNineGroupedScoreCard({
   onSaved: () => Promise<void>;
 }) {
   const holeNumbers = createGroupedHoleRange(segments);
+  const currentHoleNumber = getCurrentGroupedHoleNumber(segments, holeNumbers);
   const courseHoleLookup = useMemo(
     () => new Map(courseHoles.map((hole) => [hole.holeNumber, hole])),
     [courseHoles]
@@ -937,6 +895,11 @@ function BackNineGroupedScoreCard({
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Enter both singles matches by hole, so the group can score the hole they are actually playing.
         </p>
+        {currentHoleNumber && (
+          <p className="mt-2 font-data text-[10px] tracking-[0.16em] text-[#8B949E]">
+            Now H{currentHoleNumber}
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           {segments.map((segment) => (
             <SegmentStatusPill
@@ -944,14 +907,12 @@ function BackNineGroupedScoreCard({
               tournament={tournament}
               segment={segment}
               players={players}
-              profile={profile}
-              onSaved={onSaved}
             />
           ))}
         </div>
       </div>
       <div>
-        {holeNumbers.map((holeNumber) => {
+        {currentHoleNumber ? [currentHoleNumber].map((holeNumber) => {
           const courseHole = courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber);
 
           return (
@@ -982,7 +943,7 @@ function BackNineGroupedScoreCard({
               </div>
             </div>
           );
-        })}
+        }) : null}
       </div>
     </div>
   );
@@ -992,36 +953,14 @@ function SegmentStatusPill({
   tournament,
   segment,
   players,
-  profile,
-  onSaved,
 }: {
   tournament: TournamentRow;
   segment: SegmentView;
   players: PlayerRow[];
-  profile: ProfileRow;
-  onSaved: () => Promise<void>;
 }) {
   const labels = getSegmentScoreLabels(segment, players);
   const status = calculateSegmentMatchPlayStatus(segment);
   const cpiStatus = getSegmentCpiStatus(segment, players, tournament.cpi_threshold, labels);
-  const canConfigureCpi = profile.is_admin && segment.kind === 'singles';
-
-  const handleCpiToggle = async () => {
-    if (!canConfigureCpi) return;
-
-    await updateSegmentCpiEnabled({
-      tournament,
-      segment,
-      players,
-      enabled: !segment.cpi_enabled,
-      updatedBy: profile.id,
-    });
-    track2026('cpi_setting_changed', {
-      segment_id: segment.id,
-      enabled: !segment.cpi_enabled,
-    });
-    await onSaved();
-  };
 
   return (
     <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2">
@@ -1032,15 +971,6 @@ function SegmentStatusPill({
       {cpiStatus && (
         <p className="mt-1 text-[10px] text-[#8B949E]">
           {cpiStatus}
-          {canConfigureCpi && (
-            <button
-              type="button"
-              onClick={handleCpiToggle}
-              className="ml-2 rounded border border-[#27272A] px-1.5 py-0.5 text-[#E6EDF3] hover:border-[#3FB950]"
-            >
-              {segment.cpi_enabled ? 'Disable' : 'Enable'}
-            </button>
-          )}
         </p>
       )}
     </div>
@@ -1115,24 +1045,6 @@ function SingleHoleScoreCard({
     }
   };
 
-  const clearHole = async () => {
-    if (!score || !window.confirm(`Clear saved scores for H${holeNumber}?`)) return;
-
-    setError(null);
-    setIsSaving(true);
-
-    try {
-      await clearHoleScore2026({ tournament, scoreId: score.id });
-      track2026('score_cleared', { segment_id: segment.id, hole_number: holeNumber });
-      removePersistedDraft(rowKey);
-      await onSaved();
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <HoleScoreForm
       rowKey={rowKey}
@@ -1146,10 +1058,10 @@ function SingleHoleScoreCard({
       rowLabel={segment.name ?? formatSegmentMatchup(segment, players)}
       rowMeta={formatSegmentMatchup(segment, players)}
       showHoleMetadata={false}
-      canClear={profile.is_admin && Boolean(score)}
+      canClear={false}
       onDraftChange={updateDraft}
       onSave={saveHole}
-      onClear={clearHole}
+      onClear={() => Promise.resolve()}
     />
   );
 }
@@ -1449,7 +1361,7 @@ function hasUnplayedScores(segments: SegmentView[]): boolean {
   return segments.some((segment) => {
     const scoredHoles = new Set(
       segment.holeScores
-        .filter((score) => score.outcome !== 'unplayed')
+        .filter(isPlayedScore)
         .map((score) => score.hole_number)
     );
 
@@ -1457,6 +1369,27 @@ function hasUnplayedScores(segments: SegmentView[]): boolean {
       (holeNumber) => !scoredHoles.has(holeNumber)
     );
   });
+}
+
+function getCurrentHoleNumber(holes: number[], scoreByHole: Map<number, HoleScoreView>): number | null {
+  return holes.find((holeNumber) => !isPlayedScore(scoreByHole.get(holeNumber))) ?? getLastHoleNumber(holes);
+}
+
+function getCurrentGroupedHoleNumber(segments: SegmentView[], holeNumbers: number[]): number | null {
+  return (
+    holeNumbers.find((holeNumber) =>
+      segments.some((segment) => !isPlayedScore(segment.holeScores.find((score) => score.hole_number === holeNumber)))
+    ) ??
+    getLastHoleNumber(holeNumbers)
+  );
+}
+
+function getLastHoleNumber(holeNumbers: number[]): number | null {
+  return holeNumbers.length > 0 ? holeNumbers[holeNumbers.length - 1] : null;
+}
+
+function isPlayedScore(score: HoleScoreView | null | undefined): boolean {
+  return Boolean(score && score.outcome !== 'unplayed');
 }
 
 function shouldGroupSinglesByHole(segments: SegmentView[]): boolean {

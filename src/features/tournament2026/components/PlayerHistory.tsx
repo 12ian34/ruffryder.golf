@@ -251,7 +251,7 @@ function PlayerHistoryPopover({
         role="dialog"
         aria-modal="true"
         aria-label={`${player?.name ?? 'Player'} history`}
-        className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-lg border border-[#27272A] bg-[#09090B] shadow-[0_18px_42px_rgba(0,0,0,0.42)]"
+        className="max-h-[85vh] w-full max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-[#27272A] bg-[#09090B] shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:max-w-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[#27272A] px-3 py-3">
           <div className="min-w-0">
@@ -261,6 +261,9 @@ function PlayerHistoryPopover({
               {player?.custom_emoji && <span>{player.custom_emoji} </span>}
               {player?.name ?? 'Unknown player'}
             </h3>
+            <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
+              Current handicap <span className="tabular-nums text-[#E6EDF3]">{formatNumber(player?.current_cpi ?? null)}</span>
+            </p>
           </div>
           <button
             type="button"
@@ -270,7 +273,7 @@ function PlayerHistoryPopover({
             Close
           </button>
         </div>
-        <div className="max-h-[65vh] overflow-auto px-3 py-3">
+        <div className="max-h-[65vh] overflow-y-auto overflow-x-hidden px-3 py-3">
           {player && (
             <div className="mb-3">
               <PlayerAiOverview
@@ -286,46 +289,53 @@ function PlayerHistoryPopover({
           {stats.length === 0 ? (
             <p className="text-sm text-[#8B949E]">No historical rows for this player yet.</p>
           ) : (
-            <table className="min-w-full text-left text-xs">
-              <thead className="border-b border-[#27272A] tracking-[0.16em] text-[#8B949E]">
-                <tr>
-                  <th className="whitespace-nowrap px-2 py-2">Year</th>
-                  <th className="whitespace-nowrap px-2 py-2">Score raw</th>
-                  <th className="whitespace-nowrap px-2 py-2">Score legacy adj.</th>
-                  <th className="whitespace-nowrap px-2 py-2">Points raw</th>
-                  <th className="whitespace-nowrap px-2 py-2">Points legacy adj.</th>
-                  <th className="whitespace-nowrap px-2 py-2">Holes won</th>
-                  <th className="whitespace-nowrap px-2 py-2">Overall handicap</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#27272A]">
-                {stats.map((stat) => (
-                  <tr key={stat.id}>
-                    <td className="whitespace-nowrap px-2 py-2 font-bold tabular-nums text-[#FAFAFA]">
-                      {stat.completion_year}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {getPlayerArchiveScore(stat, 'raw')}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {getPlayerArchiveScore(stat, 'handicap')}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {getPlayerArchivePoints(stat, 'raw')}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {getPlayerArchivePoints(stat, 'handicap')}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {formatNumber(getPlayerArchiveHolesWonNumber(stat))}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
-                      {formatNumber(stat.cpi_after)}
-                    </td>
+            <div
+              role="region"
+              aria-label="Player history table"
+              tabIndex={0}
+              className="-mx-3 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950] [&::-webkit-scrollbar]:hidden"
+            >
+              <table className="min-w-[42rem] text-left text-xs">
+                <thead className="border-b border-[#27272A] tracking-[0.16em] text-[#8B949E]">
+                  <tr>
+                    <th className="whitespace-nowrap px-2 py-2">Year</th>
+                    <th className="whitespace-nowrap px-2 py-2">Score raw</th>
+                    <th className="whitespace-nowrap px-2 py-2">Score legacy adj.</th>
+                    <th className="whitespace-nowrap px-2 py-2">Points raw</th>
+                    <th className="whitespace-nowrap px-2 py-2">Points legacy adj.</th>
+                    <th className="whitespace-nowrap px-2 py-2">Holes won</th>
+                    <th className="whitespace-nowrap px-2 py-2">Overall handicap</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#27272A]">
+                  {stats.map((stat) => (
+                    <tr key={stat.id}>
+                      <td className="whitespace-nowrap px-2 py-2 font-bold tabular-nums text-[#FAFAFA]">
+                        {stat.completion_year}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {getPlayerArchiveScore(stat, 'raw')}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {getPlayerArchiveScore(stat, 'handicap')}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {getPlayerArchivePoints(stat, 'raw')}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {getPlayerArchivePoints(stat, 'handicap')}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {formatNumber(getPlayerArchiveHolesWonNumber(stat))}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+                        {formatNumber(stat.cpi_after)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

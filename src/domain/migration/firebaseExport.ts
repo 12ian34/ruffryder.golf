@@ -1,3 +1,4 @@
+import { DEFAULT_COURSE_PAR } from '../2026/course';
 import type { Database, Json } from '../../types/supabase';
 
 type PlayerInsert = Database['public']['Tables']['players']['Insert'];
@@ -248,22 +249,23 @@ export function mapFirebaseCourseHoles(
   const configById = new Map(configDocs.map((doc) => [doc.id, doc.data]));
   const distances = normalizeNumericArray(configById.get('holeDistances')?.indices);
   const strokeIndices = normalizeNumericArray(configById.get('strokeIndices')?.indices);
-  const parScores = extractParScores(gamesByTournamentId);
   const holes: CourseHoleInsert[] = [];
+
+  void gamesByTournamentId;
 
   for (let index = 0; index < 18; index += 1) {
     const holeNumber = index + 1;
     const strokeIndex = strokeIndices[index];
     const yardage = distances[index];
 
-    if (!strokeIndex && !yardage && !parScores[index]) {
+    if (!strokeIndex && !yardage) {
       continue;
     }
 
     holes.push({
       hole_number: holeNumber,
       stroke_index: strokeIndex ?? DEFAULT_STROKE_INDICES[index],
-      par: parScores[index] ?? null,
+      par: DEFAULT_COURSE_PAR,
       yardage: yardage ?? null,
     });
   }
@@ -303,40 +305,6 @@ function normalizeNumericArray(value: unknown[] | undefined): Array<number | nul
   }
 
   return value.map((item) => (typeof item === 'number' && Number.isFinite(item) ? item : null));
-}
-
-function extractParScores(
-  gamesByTournamentId: Record<string, FirebaseDocument<LegacyGame>[]>
-): Array<number | null> {
-  const parScores: Array<number | null> = Array(18).fill(null);
-
-  for (const games of Object.values(gamesByTournamentId)) {
-    for (const game of games) {
-      for (const hole of game.data.holes ?? []) {
-        if (!isLegacyHoleWithPar(hole)) {
-          continue;
-        }
-
-        const holeIndex = hole.holeNumber - 1;
-
-        if (holeIndex >= 0 && holeIndex < 18) {
-          parScores[holeIndex] = hole.parScore;
-        }
-      }
-    }
-  }
-
-  return parScores;
-}
-
-function isLegacyHoleWithPar(value: unknown): value is { holeNumber: number; parScore: number } {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const hole = value as { holeNumber?: unknown; parScore?: unknown };
-
-  return typeof hole.holeNumber === 'number' && typeof hole.parScore === 'number';
 }
 
 function toIsoString(value: unknown): string | null {

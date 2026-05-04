@@ -219,4 +219,180 @@ describe('2026 fixture setup builder', () => {
       })
     ).toThrow('Player usa-2 is not assigned to this fixture');
   });
+
+  it('rejects duplicate fixture players and duplicate team slots', () => {
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'usa-1', team: 'USA', slot: 2 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'singles',
+            sortOrder: 1,
+            holeStart: 10,
+            holeEnd: 18,
+            usaPlayerId: 'usa-1',
+            europePlayerId: 'europe-1',
+          },
+        ],
+      })
+    ).toThrow('Duplicate fixture player: usa-1');
+
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'usa-2', team: 'USA', slot: 1 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'singles',
+            sortOrder: 1,
+            holeStart: 10,
+            holeEnd: 18,
+            usaPlayerId: 'usa-1',
+            europePlayerId: 'europe-1',
+          },
+        ],
+      })
+    ).toThrow('Duplicate fixture team slot: USA:1');
+  });
+
+  it('rejects invalid fixture sizes and segment hole ranges', () => {
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [{ playerId: 'usa-1', team: 'USA', slot: 1 }],
+        segments: [],
+      })
+    ).toThrow('A fixture must have between 2 and 6 players');
+
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'singles',
+            sortOrder: 1,
+            holeStart: 18,
+            holeEnd: 10,
+            usaPlayerId: 'usa-1',
+            europePlayerId: 'europe-1',
+          },
+        ],
+      })
+    ).toThrow('Invalid hole range for singles segment: 18-10');
+  });
+
+  it('rejects duplicate segment sort orders and invalid segment player lists', () => {
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+          { playerId: 'europe-2', team: 'EUROPE', slot: 2 },
+        ],
+        segments: [
+          {
+            kind: 'singles',
+            sortOrder: 1,
+            holeStart: 10,
+            holeEnd: 18,
+            usaPlayerId: 'usa-1',
+            europePlayerId: 'europe-1',
+          },
+          {
+            kind: 'singles',
+            sortOrder: 1,
+            holeStart: 10,
+            holeEnd: 18,
+            usaPlayerId: 'usa-1',
+            europePlayerId: 'europe-2',
+          },
+        ],
+      })
+    ).toThrow('Duplicate segment sort order: 1');
+
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'usa-2', team: 'USA', slot: 2 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'foursomes',
+            sortOrder: 1,
+            holeStart: 1,
+            holeEnd: 9,
+            participants: [
+              { playerId: 'usa-1', team: 'USA' },
+              { playerId: 'usa-2', team: 'USA' },
+            ],
+          },
+        ],
+      })
+    ).toThrow('foursomes segment must include at least one USA player and one EUROPE player');
+  });
+
+  it('rejects segment participants with duplicate slots or mismatched teams', () => {
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'usa-2', team: 'USA', slot: 2 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'foursomes',
+            sortOrder: 1,
+            holeStart: 1,
+            holeEnd: 9,
+            participants: [
+              { playerId: 'usa-1', team: 'USA', slot: 1 },
+              { playerId: 'usa-2', team: 'USA', slot: 1 },
+              { playerId: 'europe-1', team: 'EUROPE' },
+            ],
+          },
+        ],
+      })
+    ).toThrow('Duplicate segment team slot: USA:1');
+
+    expect(() =>
+      buildFixtureSetupPayload({
+        tournamentId: 'tournament-1',
+        participants: [
+          { playerId: 'usa-1', team: 'USA', slot: 1 },
+          { playerId: 'europe-1', team: 'EUROPE', slot: 1 },
+        ],
+        segments: [
+          {
+            kind: 'foursomes',
+            sortOrder: 1,
+            holeStart: 1,
+            holeEnd: 9,
+            participants: [
+              { playerId: 'usa-1', team: 'EUROPE' },
+              { playerId: 'europe-1', team: 'USA' },
+            ],
+          },
+        ],
+      })
+    ).toThrow('Player usa-1 is not on team EUROPE');
+  });
 });

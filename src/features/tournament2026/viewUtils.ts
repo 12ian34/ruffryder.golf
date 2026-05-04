@@ -42,10 +42,6 @@ export function filterFixturesForScoreEntry(
   fixtures: FixtureView[],
   profile: ProfileRow
 ): FixtureView[] {
-  if (profile.is_admin) {
-    return fixtures;
-  }
-
   if (!profile.linked_player_id) {
     return [];
   }

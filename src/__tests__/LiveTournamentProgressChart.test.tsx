@@ -127,6 +127,8 @@ function createPoint(
   return {
     id,
     label: `Fixture H${id.replace('score-', '')}`,
+    holeNumber: Number(id.replace('score-', '')),
+    sides: [],
     usa,
     europe,
     halved,

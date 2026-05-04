@@ -196,8 +196,8 @@ describe('Firebase export migration mapping', () => {
               usaPlayerName: 'Ian',
               europePlayerName: 'Tom',
               holes: [
-                { holeNumber: 1, parScore: 4 },
-                { holeNumber: 2, parScore: 3 },
+                { holeNumber: 1, parScore: 6 },
+                { holeNumber: 2, parScore: 5 },
               ],
             },
           },
@@ -206,7 +206,7 @@ describe('Firebase export migration mapping', () => {
     );
 
     expect(courseHoles.slice(0, 2)).toEqual([
-      { hole_number: 1, stroke_index: 3, par: 4, yardage: 157 },
+      { hole_number: 1, stroke_index: 3, par: 3, yardage: 157 },
       { hole_number: 2, stroke_index: 7, par: 3, yardage: 124 },
     ]);
   });

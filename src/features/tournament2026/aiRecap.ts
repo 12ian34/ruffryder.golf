@@ -85,7 +85,7 @@ export function buildAiRecapSnapshot({
   const generatedHighlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles })
     .slice(0, MAX_HIGHLIGHTS);
   const highlights = generatedHighlights.length > 0 ? generatedHighlights : [EMPTY_HIGHLIGHTS_FALLBACK];
-  const recentMovement = buildProgressTimeline(fixtures)
+  const recentMovement = buildProgressTimeline(fixtures, players)
     .slice(-MAX_MOVEMENT_POINTS)
     .map((point) => ({
       label: point.label,

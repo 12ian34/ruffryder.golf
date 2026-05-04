@@ -7,7 +7,11 @@ import {
   scoreSinglesHole,
   summarizeFixtureHoles,
 } from '../domain/2026/scoring';
-import { getCourseStrokeIndex } from '../domain/2026/course';
+import {
+  DEFAULT_COURSE_HOLES,
+  getCourseStrokeIndex,
+  getDefaultCourseHole,
+} from '../domain/2026/course';
 
 describe('2026 tournament scoring', () => {
   describe('CPI threshold', () => {
@@ -15,6 +19,29 @@ describe('2026 tournament scoring', () => {
       expect(getCourseStrokeIndex(10)).toBe(6);
       expect(getCourseStrokeIndex(11)).toBe(2);
       expect(getCourseStrokeIndex(18)).toBe(12);
+    });
+
+    it('keeps default course metadata aligned with the 18 configured stroke indices', () => {
+      expect(DEFAULT_COURSE_HOLES).toHaveLength(18);
+      expect(getDefaultCourseHole(1)).toEqual({
+        holeNumber: 1,
+        strokeIndex: 3,
+        par: 3,
+        yardage: null,
+      });
+      expect(getDefaultCourseHole(18)).toEqual({
+        holeNumber: 18,
+        strokeIndex: 12,
+        par: 3,
+        yardage: null,
+      });
+    });
+
+    it('rejects hole numbers outside the course metadata range', () => {
+      for (const holeNumber of [0, 19]) {
+        expect(() => getCourseStrokeIndex(holeNumber)).toThrow(`Invalid hole number: ${holeNumber}`);
+        expect(() => getDefaultCourseHole(holeNumber)).toThrow(`Invalid hole number: ${holeNumber}`);
+      }
     });
 
     it('does not apply CPI below the default 7-stroke threshold', () => {

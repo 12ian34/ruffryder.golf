@@ -67,7 +67,7 @@ describe('ScoreEntrySection', () => {
     expect(onViewProfile).toHaveBeenCalledTimes(1);
   });
 
-  it('only shows row save actions for changed rows and can save all dirty rows', async () => {
+  it('only shows the current unplayed hole for score entry', async () => {
     const { container } = render(
       <ScoreEntrySection
         tournament={tournament}
@@ -82,14 +82,17 @@ describe('ScoreEntrySection', () => {
 
     expect(view.getByText('Length 355 m')).toBeInTheDocument();
     expect(view.getByText('SI 7')).toBeInTheDocument();
-    expect(view.getAllByText('Par 4')).toHaveLength(1);
+    expect(view.getAllByText('Par 3')).toHaveLength(1);
+    expect(view.getByText('Now H2')).toBeInTheDocument();
+    expect(view.getByText('H2')).toBeInTheDocument();
+    expect(view.queryByText('H1')).not.toBeInTheDocument();
     expect(view.getByText('1/2')).toBeInTheDocument();
     expect(view.getByText('USA dormie 1')).toBeInTheDocument();
     expect(view.getByText('1/2 played')).toBeInTheDocument();
-    expect(view.getByText(/USA 4 - Europe 5/)).toBeInTheDocument();
-    expect(view.getByText(/Saved \d/)).toBeInTheDocument();
-    expect(view.getByText('By Ian')).toBeInTheDocument();
-    expect(view.getByText('Edit')).toBeInTheDocument();
+    expect(view.queryByText(/USA 4 - Europe 5/)).not.toBeInTheDocument();
+    expect(view.queryByText(/Saved \d/)).not.toBeInTheDocument();
+    expect(view.queryByText('By Ian')).not.toBeInTheDocument();
+    expect(view.queryByText('Edit')).not.toBeInTheDocument();
     expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
@@ -97,21 +100,49 @@ describe('ScoreEntrySection', () => {
 
     expect(view.getByText('Length 388 yds')).toBeInTheDocument();
 
-    fireEvent.click(view.getByText('Edit'));
     fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
 
-    expect(view.getByText('Save now')).toBeInTheDocument();
+    expect(view.getByText('Add both')).toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
-    fireEvent.change(view.getAllByLabelText('USA score')[1], { target: { value: '5' } });
-    fireEvent.change(view.getAllByLabelText('Europe score')[1], { target: { value: '4' } });
-
-    fireEvent.click(view.getByText('Save all (2)'));
+    fireEvent.change(view.getAllByLabelText('Europe score')[0], { target: { value: '4' } });
+    expect(view.getByText('Save now')).toBeInTheDocument();
+    fireEvent.click(view.getByText('Save now'));
 
     await waitFor(() => {
-      expect(saveHoleScore2026).toHaveBeenCalledTimes(2);
+      expect(saveHoleScore2026).toHaveBeenCalledTimes(1);
     });
+    expect(saveHoleScore2026).toHaveBeenCalledWith(
+      expect.objectContaining({
+        holeNumber: 2,
+        usaScore: 6,
+        europeScore: 4,
+      })
+    );
     expect(onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens fixture result details from the score-entry title', () => {
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[fixture]}
+        players={players}
+        courseHoles={courseHoles}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Alpha'));
+
+    const dialog = document.body.querySelector('[role="dialog"][aria-label="Alpha fixture details"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const dialogView = within(dialog);
+    expect(dialogView.getByText('Front nine')).toBeInTheDocument();
+    expect(dialogView.getByText('H2')).toBeInTheDocument();
+    expect(dialogView.getByText('Unplayed')).toBeInTheDocument();
   });
 
   it('autosaves a complete dirty row after a short debounce', async () => {
@@ -183,12 +214,11 @@ describe('ScoreEntrySection', () => {
     expect(window.localStorage.getItem('rrc:2026:score-draft:tournament-1:segment-1:2')).toBeNull();
   });
 
-  it('lets admins clear one saved hole score', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+  it('does not show admin correction controls in My Game', () => {
     const { container } = render(
       <ScoreEntrySection
         tournament={tournament}
-        fixtures={[fixture]}
+        fixtures={[completedFixture]}
         players={players}
         courseHoles={courseHoles}
         profile={profile}
@@ -197,15 +227,10 @@ describe('ScoreEntrySection', () => {
     );
     const view = within(container);
 
-    fireEvent.click(view.getByText('Clear'));
-
-    await waitFor(() => {
-      expect(clearHoleScore2026).toHaveBeenCalledWith({
-        tournament,
-        scoreId: 'score-1',
-      });
-    });
-    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(view.getByText('Edit')).toBeInTheDocument();
+    expect(view.queryByText('Clear')).not.toBeInTheDocument();
+    expect(view.queryByText('Disable CPI')).not.toBeInTheDocument();
+    expect(clearHoleScore2026).not.toHaveBeenCalled();
   });
 
   it('groups concurrent back-nine singles by hole', () => {
@@ -214,7 +239,11 @@ describe('ScoreEntrySection', () => {
         tournament={tournament}
         fixtures={[groupedFixture]}
         players={groupedPlayers}
-        courseHoles={[...courseHoles, { holeNumber: 10, yardage: 150, par: 3, strokeIndex: 12 }]}
+        courseHoles={[
+          ...courseHoles,
+          { holeNumber: 10, yardage: 150, par: 3, strokeIndex: 12 },
+          { holeNumber: 11, yardage: 410, par: 3, strokeIndex: 4 },
+        ]}
         profile={profile}
         onSaved={onSaved}
       />
@@ -224,7 +253,9 @@ describe('ScoreEntrySection', () => {
     fireEvent.click(view.getByText('Back 9'));
 
     expect(view.getByText('Back 9 Singles')).toBeInTheDocument();
+    expect(view.getByText('Now H10')).toBeInTheDocument();
     expect(view.getAllByText('H10')).toHaveLength(1);
+    expect(view.queryByText('H11')).not.toBeInTheDocument();
     expect(view.getByLabelText('Ian score')).toBeInTheDocument();
     expect(view.getByLabelText('Tommy score')).toBeInTheDocument();
     expect(view.getByLabelText('Sam score')).toBeInTheDocument();
@@ -245,8 +276,8 @@ const profile = {
 const players = [] as PlayerRow[];
 
 const courseHoles: CourseHoleMetadata[] = [
-  { holeNumber: 1, yardage: 401, par: 4, strokeIndex: 3 },
-  { holeNumber: 2, yardage: 388, par: 4, strokeIndex: 7 },
+  { holeNumber: 1, yardage: 401, par: 3, strokeIndex: 3 },
+  { holeNumber: 2, yardage: 388, par: 3, strokeIndex: 7 },
 ];
 
 const fixture = {
@@ -290,6 +321,35 @@ const fixture = {
   ],
 } as unknown as FixtureView;
 
+const completedFixture = {
+  ...fixture,
+  segments: [
+    {
+      ...fixture.segments[0],
+      holeScores: [
+        ...fixture.segments[0].holeScores,
+        {
+          id: 'score-2',
+          segment_id: 'segment-1',
+          hole_number: 2,
+          usa_score: 4,
+          europe_score: 4,
+          usa_net_score: 4,
+          europe_net_score: 4,
+          outcome: 'halved',
+          cpi_applied: false,
+          cpi_difference: 0,
+          cpi_strokes_usa: 0,
+          cpi_strokes_europe: 0,
+          updated_by: 'profile-1',
+          updatedByProfile: { id: 'profile-1', display_name: 'Ian' },
+          updated_at: '2026-05-02T20:05:00.000Z',
+        },
+      ],
+    },
+  ],
+} as unknown as FixtureView;
+
 const groupedPlayers = [
   { id: 'player-1', name: 'Ian', team: 'USA', current_cpi: 82 },
   { id: 'player-2', name: 'Tommy', team: 'EUROPE', current_cpi: 78 },
@@ -323,7 +383,7 @@ const groupedFixture = {
       name: 'Singles A',
       kind: 'singles',
       hole_start: 10,
-      hole_end: 10,
+      hole_end: 11,
       sort_order: 1,
       cpi_enabled: true,
       usa_player_id: 'player-1',
@@ -337,7 +397,7 @@ const groupedFixture = {
       name: 'Singles B',
       kind: 'singles',
       hole_start: 10,
-      hole_end: 10,
+      hole_end: 11,
       sort_order: 2,
       cpi_enabled: true,
       usa_player_id: 'player-3',

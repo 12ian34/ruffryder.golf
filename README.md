@@ -20,9 +20,11 @@ The app is built for phones. The bottom navigation is the main way around:
 - `Profile`: your account, display details, and sign out.
 - `Admin`: setup and corrections, shown only to admins.
 
+Use the sun/moon button to switch between light and dark mode. The app remembers your choice.
+
 ## Entering Scores
 
-Any player in a fixture can enter scores for that fixture. Admins can manage scores for every fixture.
+Any player in a fixture can enter scores for that fixture. `My Game` is tied to your linked player profile, even for admins. Admin-wide score corrections, fixture edits, and score clears live in `Admin` > `Fixtures`.
 
 On `My Game`, open the relevant fixture card, choose the front or back nine, then tap in the score for each hole. Scores autosave after the server confirms them. Watch the saved or retry status if your signal is patchy.
 
@@ -31,6 +33,8 @@ If a score looks wrong, fix it as soon as possible. If the tournament has been f
 ## 2026 Scoring
 
 The tournament is USA vs Europe.
+
+Fixtures can be 2-player full-18 singles, standard 4-player matches, or flexible 6-player matches depending on captain setup.
 
 Holes 1-9 are foursomes, also known as alternate shot. Each side enters one team score per hole, and the lower score wins the hole.
 

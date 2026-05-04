@@ -14,12 +14,22 @@ const players = [
 
 describe('2026 tournament insights', () => {
   it('builds score movement from saved hole updates', () => {
-    const timeline = buildProgressTimeline([createFixture()]);
+    const timeline = buildProgressTimeline([createFixture()], players);
 
     expect(timeline).toEqual([
-      expect.objectContaining({ label: 'Fixture 1 H1', usa: 1, europe: 0, halved: 0 }),
-      expect.objectContaining({ label: 'Fixture 1 H2', usa: 1, europe: 0, halved: 1 }),
-      expect.objectContaining({ label: 'Fixture 1 H3', usa: 1, europe: 1, halved: 1 }),
+      expect.objectContaining({ label: 'Fixture 1 H1', holeNumber: 1, usa: 1, europe: 0, halved: 0 }),
+      expect.objectContaining({ label: 'Fixture 1 H2', holeNumber: 2, usa: 1, europe: 0, halved: 1 }),
+      expect.objectContaining({ label: 'Fixture 1 H3', holeNumber: 3, usa: 1, europe: 1, halved: 1 }),
+    ]);
+    expect(timeline[0]?.sides).toEqual([
+      {
+        team: 'USA',
+        players: [expect.objectContaining({ name: 'Ian', currentCpi: 20 })],
+      },
+      {
+        team: 'EUROPE',
+        players: [expect.objectContaining({ name: 'Tommy', currentCpi: 10 })],
+      },
     ]);
   });
 
@@ -29,9 +39,9 @@ describe('2026 tournament insights', () => {
       fixtures: [createFixture()],
       players,
       courseHoles: [
-        { holeNumber: 1, strokeIndex: 1, par: 4, yardage: 400 },
+        { holeNumber: 1, strokeIndex: 1, par: 3, yardage: 400 },
         { holeNumber: 2, strokeIndex: 2, par: 3, yardage: 150 },
-        { holeNumber: 3, strokeIndex: 3, par: 5, yardage: 500 },
+        { holeNumber: 3, strokeIndex: 3, par: 3, yardage: 500 },
       ],
     });
 
@@ -104,7 +114,7 @@ function createFixture(): FixtureView {
         updated_at: '2026-05-03T07:00:00.000Z',
         players: [],
         holeScores: [
-          createScore('score-1', 1, 4, 3, 'USA', '2026-05-03T07:01:00.000Z'),
+          createScore('score-1', 1, 1, 2, 'USA', '2026-05-03T07:01:00.000Z'),
           createScore('score-2', 2, 3, 3, 'halved', '2026-05-03T07:02:00.000Z'),
           createScore('score-3', 3, 7, 5, 'EUROPE', '2026-05-03T07:03:00.000Z'),
         ],

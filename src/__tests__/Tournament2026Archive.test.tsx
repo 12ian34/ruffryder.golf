@@ -77,8 +77,13 @@ describe('ArchiveSection', () => {
       throw new Error('Missing Tom history dialog');
     }
     const dialogView = within(dialog as HTMLElement);
+    const tableScroller = dialog.querySelector('[aria-label="Player history table"]');
 
     expect(dialogView.getByText('Player history')).toBeInTheDocument();
+    expect(dialogView.getByText('Current handicap')).toBeInTheDocument();
+    expect(tableScroller).not.toBeNull();
+    expect(tableScroller).toHaveClass('overflow-x-auto');
+    expect(tableScroller).toHaveClass('[scrollbar-width:none]');
     expect(dialogView.getByText('2025')).toBeInTheDocument();
     expect(dialogView.getByText('2024')).toBeInTheDocument();
     expect(dialogView.getAllByText('84')).not.toHaveLength(0);

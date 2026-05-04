@@ -26,8 +26,14 @@ import type { Database } from '../types/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('2026 score permissions', () => {
-  it('shows all score fixtures to admins', () => {
-    expect(filterFixturesForScoreEntry(fixtures, adminProfile)).toHaveLength(2);
+  it('hides score fixtures from admins when their profile is not linked to a player', () => {
+    expect(filterFixturesForScoreEntry(fixtures, adminProfile)).toEqual([]);
+  });
+
+  it('shows only linked-player fixtures to admins in My Game', () => {
+    expect(filterFixturesForScoreEntry(fixtures, linkedAdminProfile).map((fixture) => fixture.id)).toEqual([
+      'fixture-1',
+    ]);
   });
 
   it('shows only linked-player fixtures to non-admins', () => {
@@ -315,7 +321,7 @@ describe('2026 score permissions', () => {
       {
         holeNumber: 1,
         strokeIndex: 3,
-        par: 4,
+        par: 3,
         yardage: 401,
       },
       { from } as unknown as SupabaseClient<Database>
@@ -326,7 +332,7 @@ describe('2026 score permissions', () => {
       {
         hole_number: 1,
         stroke_index: 3,
-        par: 4,
+        par: 3,
         yardage: 401,
       },
       { onConflict: 'hole_number' }
@@ -881,6 +887,12 @@ const adminProfile = {
   id: 'admin-1',
   is_admin: true,
   linked_player_id: null,
+} as ProfileRow;
+
+const linkedAdminProfile = {
+  id: 'admin-2',
+  is_admin: true,
+  linked_player_id: 'usa-1',
 } as ProfileRow;
 
 const linkedPlayerProfile = {

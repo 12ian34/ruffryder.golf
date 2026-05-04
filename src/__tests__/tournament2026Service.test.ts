@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { describe, expect, it, vi } from 'vitest';
 import type { FixtureSetupInput } from '../domain/2026/fixtures';
 import type { FixtureSetupRepository } from '../services/tournament2026Service';
-import { createFixtureSetup } from '../services/tournament2026Service';
+import {
+  createFixtureSetup,
+  createSupabaseFixtureSetupRepository,
+} from '../services/tournament2026Service';
+import type { Database } from '../types/supabase';
 
 function createIdFactory(ids: string[]): () => string {
   let index = 0;
@@ -125,5 +130,66 @@ describe('2026 tournament service', () => {
       'segments:2',
       'rollback:fixture-1',
     ]);
+  });
+
+  it('adapts Supabase table writes into the fixture setup repository contract', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const deleteRows = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ insert, delete: deleteRows }));
+    const repository = createSupabaseFixtureSetupRepository({
+      from,
+    } as unknown as SupabaseClient<Database>);
+
+    await repository.insertFixture({ id: 'fixture-1' } as Database['public']['Tables']['fixtures']['Insert']);
+    await repository.insertFixturePlayers([
+      { fixture_id: 'fixture-1', player_id: 'player-1', team: 'USA', slot: 1 },
+    ]);
+    await repository.insertSegments([
+      {
+        id: 'segment-1',
+        fixture_id: 'fixture-1',
+        kind: 'singles',
+        hole_start: 1,
+        hole_end: 18,
+        sort_order: 1,
+      },
+    ] as Database['public']['Tables']['segments']['Insert'][]);
+    await repository.insertSegmentPlayers([
+      { segment_id: 'segment-1', player_id: 'player-1', team: 'USA', slot: 1 },
+    ]);
+    await repository.rollbackFixture('fixture-1');
+
+    expect(from).toHaveBeenCalledWith('fixtures');
+    expect(from).toHaveBeenCalledWith('fixture_players');
+    expect(from).toHaveBeenCalledWith('segments');
+    expect(from).toHaveBeenCalledWith('segment_players');
+    expect(deleteRows).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith('id', 'fixture-1');
+  });
+
+  it('skips empty dependent Supabase inserts', async () => {
+    const from = vi.fn();
+    const repository = createSupabaseFixtureSetupRepository({
+      from,
+    } as unknown as SupabaseClient<Database>);
+
+    await repository.insertFixturePlayers([]);
+    await repository.insertSegments([]);
+    await repository.insertSegmentPlayers([]);
+
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('wraps Supabase repository errors with setup-specific context', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: { message: 'permission denied' } });
+    const from = vi.fn(() => ({ insert }));
+    const repository = createSupabaseFixtureSetupRepository({
+      from,
+    } as unknown as SupabaseClient<Database>);
+
+    await expect(
+      repository.insertFixture({ id: 'fixture-1' } as Database['public']['Tables']['fixtures']['Insert'])
+    ).rejects.toThrow('Failed to create fixture: permission denied');
   });
 });
