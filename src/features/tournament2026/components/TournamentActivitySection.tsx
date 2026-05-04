@@ -6,7 +6,7 @@ import type {
   TournamentActivityRow,
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
-import { Panel, StatusCard } from './Layout';
+import { CollapsibleSection, StatusCard } from './Layout';
 
 const DEFAULT_VISIBLE_EVENT_COUNT = 20;
 
@@ -38,26 +38,25 @@ export function TournamentActivitySection({
   };
 
   return (
-    <Panel title="Tournament Activity" eyebrow="Full event feed">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm leading-6 text-[#A1A1AA]">
-          A timestamped feed for score saves, corrections, clears, setup changes, finalization, and inferred match starts or finishes.
-        </p>
-        <span className="shrink-0 rounded border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.14em] text-[#8B949E]">
-          {events.length} events
-        </span>
-      </div>
-
+    <CollapsibleSection
+      title="Tournament Activity"
+      eyebrow="Full event feed"
+      description="Score saves, corrections, clears, setup changes, finalization, and inferred match starts or finishes."
+      meta={`${events.length} events`}
+      className="border-y sm:-mx-4"
+    >
       {events.length === 0 ? (
-        <StatusCard>No tournament activity yet. Saved scores and setup changes will appear here.</StatusCard>
+        <div className="px-3 pb-3 sm:px-4">
+          <StatusCard>No tournament activity yet. Saved scores and setup changes will appear here.</StatusCard>
+        </div>
       ) : (
-        <div className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
+        <div>
           <div>
             {visibleEvents.map((event) => {
               const categoryClassName = getCategoryClassName(event.category);
 
               return (
-                <article key={event.id} className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
+                <article key={event.id} className="border-t border-[#27272A] px-3 py-3 first:border-t-0 sm:px-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -98,7 +97,7 @@ export function TournamentActivitySection({
           ) : null}
         </div>
       )}
-    </Panel>
+    </CollapsibleSection>
   );
 }
 

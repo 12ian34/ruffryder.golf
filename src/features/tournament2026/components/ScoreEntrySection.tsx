@@ -39,7 +39,7 @@ import {
   parseOptionalPositiveInteger,
 } from '../viewUtils';
 import { ScorePicker } from './FormControls';
-import { Panel, StatusCard } from './Layout';
+import { StatusCard, TerminalPageSection } from './Layout';
 import { PlayerHistoryTrigger } from './PlayerHistory';
 
 interface HoleDraft {
@@ -151,33 +151,60 @@ export function ScoreEntrySection({
 
   if (!tournament) {
     return (
-      <Panel title="Score Entry" eyebrow="Fixture scores">
-        <StatusCard tone="warning">Create an active tournament before entering scores.</StatusCard>
-      </Panel>
+      <TerminalPageSection
+        title="My Game"
+        eyebrow="Fixture scores"
+        description="Score entry wakes up once an active tournament exists."
+        actions={<ScoreEntryStatusPill tone="warning">Setup needed</ScoreEntryStatusPill>}
+      >
+        <div className="px-3 pb-3 sm:px-4">
+          <StatusCard tone="warning">Create an active tournament before entering scores.</StatusCard>
+        </div>
+      </TerminalPageSection>
     );
   }
 
   if (tournament.is_complete) {
     return (
-      <Panel title="Score Entry" eyebrow="Fixture scores">
-        <StatusCard tone="warning">
-          This tournament is complete. Score entry and CPI settings are locked.
-        </StatusCard>
-      </Panel>
+      <TerminalPageSection
+        title="My Game"
+        eyebrow="Fixture scores"
+        description={`${tournament.name ?? 'Tournament'} is locked after finalization.`}
+        actions={<ScoreEntryStatusPill tone="warning">Locked</ScoreEntryStatusPill>}
+      >
+        <div className="px-3 pb-3 sm:px-4">
+          <StatusCard tone="warning">
+            This tournament is complete. Score entry and CPI settings are locked.
+          </StatusCard>
+        </div>
+      </TerminalPageSection>
     );
   }
 
   return (
     <ScoreSyncContext.Provider value={syncContextValue}>
-      <Panel title="Score Entry" eyebrow="Fixture scores">
+      <TerminalPageSection
+        title="My Game"
+        eyebrow="Fixture scores"
+        description={`${tournament.name ?? 'Tournament'} · ${fixtures.length} ${
+          fixtures.length === 1 ? 'fixture' : 'fixtures'
+        } available`}
+        actions={
+          <ScoreEntryStatusPill tone={isOnline ? 'success' : 'warning'}>
+            {isOnline ? 'Live' : 'Offline'}
+          </ScoreEntryStatusPill>
+        }
+      >
         <ScoreSyncBanner rows={syncRows} isOnline={isOnline} />
-        <div className="-mx-3 sm:mx-0">
+        <div>
           {fixtures.length === 0 && (
-            <StatusCard tone="warning">
-              {profile.is_admin || profile.linked_player_id
-                ? 'No fixtures are available for score entry yet.'
-                : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
-            </StatusCard>
+            <div className="px-3 pb-3 sm:px-4">
+              <StatusCard tone="warning">
+                {profile.is_admin || profile.linked_player_id
+                  ? 'No fixtures are available for score entry yet.'
+                  : 'Your profile is not linked to a player yet. Ask an admin to link you before score entry.'}
+              </StatusCard>
+            </div>
           )}
           {fixtures.map((fixture, index) => (
             <FixtureScoreCard
@@ -194,8 +221,26 @@ export function ScoreEntrySection({
             />
           ))}
         </div>
-      </Panel>
+      </TerminalPageSection>
     </ScoreSyncContext.Provider>
+  );
+}
+
+function ScoreEntryStatusPill({
+  tone,
+  children,
+}: {
+  tone: 'success' | 'warning';
+  children: string;
+}) {
+  const className = tone === 'success'
+    ? 'border-[#3FB950]/60 bg-[#06170B] text-[#3FB950]'
+    : 'border-[#F59E0B]/60 bg-[#1C1406] text-[#F59E0B]';
+
+  return (
+    <span className={`border px-2 py-1 text-[10px] tracking-[0.14em] ${className}`}>
+      {children}
+    </span>
   );
 }
 
@@ -371,7 +416,7 @@ function ScoreSyncBanner({ rows, isOnline }: { rows: ScoreSyncRows; isOnline: bo
 
   if (rowList.length === 0 || (unsavedCount === 0 && savingCount === 0 && isOnline)) {
     return (
-      <div className="-mx-3 border-t border-[#27272A] px-3 py-2 font-data text-[10px] tracking-[0.16em] text-[#3FB950] sm:mx-0">
+      <div className="border-b border-[#27272A] px-3 py-2 font-data text-[10px] tracking-[0.16em] text-[#3FB950] sm:px-4">
         All saved
       </div>
     );
@@ -396,7 +441,7 @@ function ScoreSyncBanner({ rows, isOnline }: { rows: ScoreSyncRows; isOnline: bo
   });
 
   return (
-    <div className={`-mx-3 border-t px-3 py-3 sm:mx-0 ${toneClass}`} role="status" aria-live="polite">
+    <div className={`border-b px-3 py-3 sm:px-4 ${toneClass}`} role="status" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-data text-xs font-bold tracking-[0.14em]">{message}</p>
         {errorRows.length > 0 && (

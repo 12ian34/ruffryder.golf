@@ -28,14 +28,8 @@ export function LiveTournamentProgressChart({
 }: LiveTournamentProgressChartProps) {
   if (points.length === 0) {
     return (
-      <div className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] p-3 sm:mx-0 sm:border sm:p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs tracking-[0.2em] text-[#8B949E]">Live Score Curve</p>
-            <p className="mt-1 text-xs text-[#8B949E]">
-              Team progress across saved tournament holes.
-            </p>
-          </div>
+      <div className="bg-[#050506] p-3 sm:p-4">
+        <div className="flex justify-end">
           <span className="rounded border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
             0/{totalHoles} holes
           </span>
@@ -212,15 +206,8 @@ export function LiveTournamentProgressChart({
   };
 
   return (
-    <div className="relative -mx-3 mt-4 overflow-hidden border-y border-[#27272A] bg-[#050506] p-3 sm:mx-0 sm:border sm:p-4">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/60 via-[#3FB950]/50 to-[#58A6FF]/60" />
-      <div className="relative flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs tracking-[0.2em] text-[#8B949E]">Live Score Curve</p>
-          <p className="mt-1 text-xs text-[#8B949E]">
-            Same tournament timeline, rebuilt for the 2026 hole-by-hole format.
-          </p>
-        </div>
+    <div className="relative overflow-hidden bg-[#050506] p-3 sm:p-4">
+      <div className="relative flex justify-end">
         <div className="grid grid-cols-3 gap-2 text-right tabular-nums">
           <ScoreStat label="USA" value={latestPoint.usa} className="text-[#F2B84B]" />
           <ScoreStat label="Europe" value={latestPoint.europe} className="text-[#58A6FF]" />

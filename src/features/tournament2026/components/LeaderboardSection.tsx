@@ -27,7 +27,7 @@ import { buildAiRecapSnapshot } from '../aiRecap';
 import { buildProgressTimeline, generateTournamentHighlights } from '../insights';
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
-import { Panel, StatusCard } from './Layout';
+import { CollapsibleSection, StatusCard } from './Layout';
 import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
 import { MarkdownContent } from './MarkdownContent';
 
@@ -57,6 +57,7 @@ export function LeaderboardSection({
     0
   );
   const scoredHoleCount = countScoredTournamentHoles(fixtures);
+  const scoreSummary = getScoreSummary(totals.overall);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [isGeneratingOverview, setIsGeneratingOverview] = useState(false);
   const [newsroomError, setNewsroomError] = useState<string | null>(null);
@@ -174,32 +175,77 @@ export function LeaderboardSection({
   ]);
 
   return (
-    <Panel title="Live Leaderboard" eyebrow="Live scoring">
-      <ScoreLedger totals={totals} />
-      <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
-      <div className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border lg:grid lg:grid-cols-3">
-        <InsightCard title="Highlights Reel" items={highlights} />
-        <AiTournamentOverviewCard
-          overview={aiTournamentOverview}
-          error={overviewError}
-          isGenerating={isGeneratingOverview}
-          scoredHoleCount={scoredHoleCount}
-        />
-        <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
-      </div>
+    <section className="relative overflow-hidden border-y border-[#27272A] bg-[#050506] sm:-mx-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
+      <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.24em] text-[#3FB950]">Live scoring</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl">
+            Live Leaderboard
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A1A1AA]">
+            {tournament?.name ?? 'Tournament board'} · {scoredHoleCount}/{totalChartHoles} saved holes
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3 lg:justify-end">
+          <div className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-right">
+            <p className="text-[10px] tracking-[0.18em] text-[#8B949E]">Match state</p>
+            <p className={`mt-1 text-lg font-bold tracking-[-0.04em] ${scoreSummary.className}`}>
+              {scoreSummary.label}
+            </p>
+          </div>
+          <span className="border border-[#3FB950]/60 bg-[#06170B] px-2 py-1 text-[10px] tracking-[0.14em] text-[#3FB950]">
+            Live
+          </span>
+        </div>
+      </header>
+      <CollapsibleSection
+        title="Score Ledger"
+        description="Overall score first, then how it splits between foursomes and singles."
+        meta={scoreSummary.label}
+      >
+        <ScoreLedger totals={totals} />
+      </CollapsibleSection>
+      <CollapsibleSection
+        title="Live Score Curve"
+        description="Tournament movement across saved holes."
+        meta={`${timeline.length} moves`}
+      >
+        <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
+      </CollapsibleSection>
+      <CollapsibleSection
+        title="Score Story"
+        description="Highlights, booth overview, and the latest movement."
+        meta={`${highlights.length} highlights`}
+      >
+        <div className="bg-[#050506] lg:grid lg:grid-cols-3">
+          <InsightCard title="Highlights Reel" items={highlights} />
+          <AiTournamentOverviewCard
+            overview={aiTournamentOverview}
+            error={overviewError}
+            isGenerating={isGeneratingOverview}
+            scoredHoleCount={scoredHoleCount}
+          />
+          <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
+        </div>
+      </CollapsibleSection>
       <AiNewsroomGrid
         artifacts={tournament ? aiNewsroomArtifacts.filter((artifact) => artifact.tournament_id === tournament.id) : []}
         error={newsroomError}
         isGenerating={isGeneratingNewsroom}
       />
-      <div className="-mx-3 mt-4 border-t border-[#27272A] sm:mx-0">
+      <CollapsibleSection
+        title="Fixture Progress"
+        description="Match status by group and segment."
+        meta={`${fixtures.length} fixtures`}
+      >
         {fixtures.length === 0 ? (
-          <p className="px-3 py-3 text-sm text-[#8B949E]">No fixtures yet.</p>
+          <p className="px-3 py-3 text-sm text-[#8B949E] sm:px-4">No fixtures yet.</p>
         ) : (
           fixtures.map((fixture) => <FixtureProgressRow key={fixture.id} fixture={fixture} />)
         )}
-      </div>
-    </Panel>
+      </CollapsibleSection>
+    </section>
   );
 }
 
@@ -274,29 +320,29 @@ function AiNewsroomGrid({
   );
 
   return (
-    <section className="-mx-3 mt-4 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="px-3 pt-3">
-          <p className="text-xs tracking-[0.2em] text-[#8B949E]">AI Newsroom</p>
-          <p className="mt-1 text-xs text-[#8B949E]">
-            Live copy from the scoreboard once the round has enough signal.
-          </p>
+    <CollapsibleSection
+      title="AI Newsroom"
+      description="Live copy from the scoreboard once the round has enough signal."
+      meta={isGenerating ? 'Filing copy' : `${artifacts.length}/${AI_NEWSROOM_ARTIFACT_KINDS.length} cards`}
+      defaultOpen={orderedArtifacts.length > 0 || isGenerating || Boolean(error)}
+    >
+      {error && (
+        <div className="px-3 sm:px-4">
+          <StatusCard tone="error">{error}</StatusCard>
         </div>
-        <span className="mr-3 mt-3 border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
-          {isGenerating ? 'Filing copy' : `${artifacts.length}/${AI_NEWSROOM_ARTIFACT_KINDS.length} cards`}
-        </span>
-      </div>
-      {error && <StatusCard tone="error">{error}</StatusCard>}
+      )}
       {orderedArtifacts.length === 0 ? (
-        <StatusCard>
-          {isGenerating
-            ? 'Filing the first newsroom cards…'
-            : 'No newsroom cards yet. Save more holes and the booth will wake up.'}
-        </StatusCard>
+        <div className="px-3 pb-3 sm:px-4">
+          <StatusCard>
+            {isGenerating
+              ? 'Filing the first newsroom cards…'
+              : 'No newsroom cards yet. Save more holes and the booth will wake up.'}
+          </StatusCard>
+        </div>
       ) : (
-        <div className="mt-3 border-t border-[#27272A]">
+        <div className="border-t border-[#27272A]">
           {orderedArtifacts.map((artifact) => (
-            <article key={artifact.kind} className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
+            <article key={artifact.kind} className="border-t border-[#27272A] px-3 py-3 first:border-t-0 sm:px-4">
               <p className="text-[10px] tracking-[0.16em] text-[#8B949E]">{artifact.title}</p>
               <div className="mt-2">
                 <MarkdownContent>{artifact.body_markdown}</MarkdownContent>
@@ -308,7 +354,7 @@ function AiNewsroomGrid({
           ))}
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 
@@ -356,7 +402,7 @@ function ProgressTimeline({
 
 function ScoreLedger({ totals }: { totals: { overall: TeamScore; foursomes: TeamScore; singles: TeamScore } }) {
   return (
-    <div className="-mx-3 border-y border-[#27272A] bg-[#050506] sm:mx-0 sm:border">
+    <div className="bg-[#050506]">
       <ScoreLedgerRow label="Overall" score={totals.overall} isPrimary />
       <ScoreLedgerRow label="Foursomes" score={totals.foursomes} />
       <ScoreLedgerRow label="Singles" score={totals.singles} />
@@ -374,17 +420,28 @@ function ScoreLedgerRow({
   isPrimary?: boolean;
 }) {
   return (
-    <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+    <div
+      className={`border-t border-[#27272A] px-3 py-3 first:border-t-0 sm:px-4 ${
+        isPrimary ? 'bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.12),transparent_34%)] py-4' : ''
+      }`}
+    >
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <div className="min-w-0">
           <p className="text-[10px] tracking-[0.2em] text-[#8B949E]">{label}</p>
           <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
             {score.halved} halved · {score.unplayed} unplayed
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-4 text-right tabular-nums sm:gap-8">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3 tabular-nums sm:min-w-[24rem] sm:gap-5">
           <TeamTotal label="USA" value={score.USA} className="text-[#F2B84B]" isPrimary={isPrimary} />
-          <TeamTotal label="Europe" value={score.EUROPE} className="text-[#58A6FF]" isPrimary={isPrimary} />
+          <span className="pb-1 text-center text-sm tracking-[0.18em] text-[#3F3F46] sm:pb-2">vs</span>
+          <TeamTotal
+            label="Europe"
+            value={score.EUROPE}
+            className="text-[#58A6FF]"
+            isPrimary={isPrimary}
+            align="right"
+          />
         </div>
       </div>
     </div>
@@ -396,19 +453,23 @@ function TeamTotal({
   value,
   className,
   isPrimary = false,
+  align = 'left',
 }: {
   label: string;
   value: number;
   className: string;
   isPrimary?: boolean;
+  align?: 'left' | 'right';
 }) {
   return (
     <div>
-      <p className="text-xs tracking-[0.18em] text-[#8B949E]">{label}</p>
+      <p className={`text-xs tracking-[0.18em] text-[#8B949E] ${align === 'right' ? 'text-right' : ''}`}>
+        {label}
+      </p>
       <p
         className={`font-bold tracking-[-0.07em] tabular-nums ${
           isPrimary ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
-        } ${className}`}
+        } ${align === 'right' ? 'text-right' : ''} ${className}`}
       >
         {value}
       </p>
@@ -420,7 +481,7 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
   const progress = calculateFixtureProgress(fixture.segments);
 
   return (
-    <div className="border-b border-[#27272A] px-3 py-3 last:border-b-0">
+    <div className="border-b border-[#27272A] px-3 py-3 last:border-b-0 sm:px-4">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_6rem] sm:items-start">
         <div className="min-w-0">
           <p className="text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
@@ -452,6 +513,20 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
       </div>
     </div>
   );
+}
+
+function getScoreSummary(score: TeamScore): { label: string; className: string } {
+  const lead = Math.abs(score.USA - score.EUROPE);
+
+  if (lead === 0) {
+    return { label: 'All square', className: 'text-[#FAFAFA]' };
+  }
+
+  if (score.USA > score.EUROPE) {
+    return { label: `USA +${lead}`, className: 'text-[#F2B84B]' };
+  }
+
+  return { label: `Europe +${lead}`, className: 'text-[#58A6FF]' };
 }
 
 function formatTime(value: string): string {

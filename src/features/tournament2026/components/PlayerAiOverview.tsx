@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { buildAiPlayerOverviewContext } from '../aiOverview';
 import { generatePlayerAiOverview } from '../../../services/aiOverviewService';
 import type {
@@ -26,9 +26,12 @@ export function PlayerAiOverview({
   source: 'profile' | 'history_popover';
   onSaved?: () => Promise<void>;
 }) {
+  const directionFieldId = useId();
+  const directionHelpId = `${directionFieldId}-help`;
   const [customPrompt, setCustomPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generateLabel = overview ? 'Regenerate' : 'Generate';
 
   const generate = async () => {
     setIsGenerating(true);
@@ -74,18 +77,6 @@ export function PlayerAiOverview({
             </p>
           )}
         </div>
-        {canRegenerate && (
-          <button
-            type="button"
-            onClick={() => {
-              void generate();
-            }}
-            disabled={isGenerating}
-            className="shrink-0 rounded-md border border-[#3FB950]/70 px-2.5 py-2 text-[10px] font-bold tracking-[0.12em] text-[#3FB950] disabled:cursor-not-allowed disabled:border-[#27272A] disabled:text-[#8B949E]"
-          >
-            {isGenerating ? 'Generating' : overview ? 'Regenerate' : 'Generate'}
-          </button>
-        )}
       </div>
       <div className="mt-3">
         {overview ? (
@@ -97,17 +88,41 @@ export function PlayerAiOverview({
         )}
       </div>
       {canRegenerate && (
-        <label className="mt-3 block font-data text-xs tracking-[0.14em] text-[#8B949E]">
-          Optional direction
-          <textarea
-            value={customPrompt}
-            onChange={(event) => setCustomPrompt(event.target.value)}
-            rows={3}
-            maxLength={600}
-            placeholder="Examples: lean into the McClaran shame lore; make it kinder; mention the corn if this was a cheesy win"
-            className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-          />
-        </label>
+        <form
+          className="mt-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void generate();
+          }}
+        >
+          <label
+            htmlFor={directionFieldId}
+            className="block font-data text-xs tracking-[0.14em] text-[#8B949E]"
+          >
+            Optional direction
+          </label>
+          <p id={directionHelpId} className="mt-1 text-[11px] leading-5 tracking-normal text-[#A1A1AA]">
+            Add a short note if you want the overview to focus on a specific tone or detail.
+          </p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              id={directionFieldId}
+              type="text"
+              value={customPrompt}
+              onChange={(event) => setCustomPrompt(event.target.value)}
+              maxLength={600}
+              aria-describedby={directionHelpId}
+              className="min-h-10 flex-1 rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+            />
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="min-h-10 shrink-0 rounded-md border border-[#3FB950]/70 px-3 py-2 text-[10px] font-bold tracking-[0.12em] text-[#3FB950] disabled:cursor-not-allowed disabled:border-[#27272A] disabled:text-[#8B949E]"
+            >
+              {isGenerating ? 'Generating' : generateLabel}
+            </button>
+          </div>
+        </form>
       )}
       {error && <StatusCard tone="error">{error}</StatusCard>}
     </div>

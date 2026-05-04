@@ -192,6 +192,7 @@ Admin is a phone-first operations console, not a desktop control room:
 
 - Organize admin work as collapsible task sections in this order: Tournament, Players, Fixtures, Course, Activity, Corrections.
 - Each section should explain the job in one sentence and hide details until needed.
+- The Admin route should be flat by default: one compact page header, then full-width divider rows. Do not wrap the whole admin console in the shared `Panel` shell or default-open task cards.
 - Keep the normal workflow top-to-bottom. Put dangerous repair work in `Corrections`, not beside everyday setup.
 - Course metadata, profile linking, access control, tournament activation, and player-history edits belong in `Admin`, not user `Profile`.
 - Admin `Activity` is an internal setup/audit trail. Keep it visually similar to the public activity feed, but label it as admin activity rather than exposing database or migration language.
@@ -260,6 +261,8 @@ Leaderboard surfaces should feel more like a live terminal readout than a card d
 - Minimal decoration.
 - Obvious live/update state.
 - The `Scores` tab should share the Archive view's flat row language: full-width ledgers, thin dividers, expandable rows where useful, and no tile/card dashboard treatment for score summaries or feeds.
+- The `Scores` tab should be composed as a full-bleed scoreboard surface inside the app shell, not as a rounded panel that contains more bordered panels. Use section headers, score ledgers, and horizontal rules to create hierarchy.
+- Use collapsible disclosure sections for secondary Scores surfaces so mobile users can keep the live board focused. Keep the top match state visible even when lower sections are collapsed.
 
 ### Live Score Charts
 
@@ -348,3 +351,6 @@ Respect reduced-motion preferences.
 | 2026-05-03 | Preserved legacy chart semantics in the 2026 live score curve | The old chart had useful x-axis/date behavior; the 2026 version keeps those rules while using the new scoreboard style. |
 | 2026-05-03 | Standardized compact empty states | Repeated placeholder grids create noise. Empty surfaces should be one concise status until real content exists. |
 | 2026-05-03 | Matched Scores to Archive row language | Live scoring should feel like a premium terminal ledger, not a grid of dashboard tiles. |
+| 2026-05-04 | Made Scores a full-bleed terminal board | The live leaderboard should not feel like a container nested inside another container; hierarchy comes from score scale, section rules, and ledgers. |
+| 2026-05-04 | Flattened Admin into divider-led operations rows | Admin setup should feel like a modern command surface, not a panel wrapped around nested panels. |
+| 2026-05-04 | Added collapsible Scores sections | Mobile users need to collapse chart, story, newsroom, fixture, and activity detail while keeping the live match state visible. |

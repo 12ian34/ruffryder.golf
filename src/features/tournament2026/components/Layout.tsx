@@ -125,6 +125,86 @@ export function Panel({
   );
 }
 
+export function TerminalPageSection({
+  title,
+  titleId,
+  eyebrow,
+  description,
+  actions,
+  children,
+}: {
+  title: string;
+  titleId?: string;
+  eyebrow: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby={titleId}
+      className="relative overflow-hidden border-y border-[#27272A] bg-[#050506] sm:-mx-4"
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
+      <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="min-w-0">
+          <p className="text-[10px] tracking-[0.24em] text-[#3FB950]">{eyebrow}</p>
+          <h2
+            id={titleId}
+            className="mt-1 text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl"
+          >
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A1A1AA]">{description}</p>
+          ) : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-end gap-3 lg:justify-end">{actions}</div> : null}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+export function CollapsibleSection({
+  title,
+  description,
+  eyebrow,
+  meta,
+  defaultOpen = true,
+  className = '',
+  children,
+}: {
+  title: string;
+  description?: string;
+  eyebrow?: string;
+  meta?: ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className={`group border-b border-[#27272A] bg-[#050506] ${className}`}>
+      <summary className="grid cursor-pointer list-none gap-3 px-3 py-3 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          {eyebrow ? <p className="text-[10px] tracking-[0.22em] text-[#3FB950]">{eyebrow}</p> : null}
+          <p className="text-sm font-bold tracking-[-0.02em] text-[#FAFAFA] sm:text-base">{title}</p>
+          {description ? <p className="mt-1 text-xs leading-5 text-[#8B949E]">{description}</p> : null}
+        </div>
+        <span className="flex items-center gap-3 text-[10px] tracking-[0.14em] text-[#8B949E] sm:justify-end">
+          {meta ? <span className="border border-[#27272A] px-2 py-1">{meta}</span> : null}
+          <span className="text-[#3FB950]">
+            <span className="group-open:hidden">Open</span>
+            <span className="hidden group-open:inline">Hide</span>
+            <span className="ml-1 inline-block transition group-open:rotate-90">&gt;</span>
+          </span>
+        </span>
+      </summary>
+      <div className="border-t border-[#27272A]">{children}</div>
+    </details>
+  );
+}
+
 export function SetupForm({
   title,
   children,

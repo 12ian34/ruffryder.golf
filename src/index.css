@@ -16,22 +16,24 @@
   --tw-prose-invert-quote-borders: theme('colors.gray.700');
 }
 
-/* Input styles */
-input {
-  @apply bg-white border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 rounded-md shadow-sm px-4 py-2;
-}
+@layer base {
+  /* Input styles */
+  input {
+    @apply bg-white border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 rounded-md shadow-sm px-4 py-2;
+  }
 
-/* Dark mode overrides */
-.dark {
-  @apply bg-gray-950;
-}
+  /* Dark mode overrides */
+  :where(.dark) {
+    @apply bg-gray-950;
+  }
 
-.dark body {
-  @apply text-gray-100;
-}
+  :where(.dark) body {
+    @apply text-gray-100;
+  }
 
-.dark input {
-  @apply bg-gray-900 border-gray-800 text-gray-100;
+  :where(.dark) input {
+    @apply bg-gray-900 border-gray-800 text-gray-100;
+  }
 }
 
 .dark .bg-white {

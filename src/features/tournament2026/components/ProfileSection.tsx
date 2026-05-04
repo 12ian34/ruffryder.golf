@@ -13,7 +13,7 @@ import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { AvatarEmojiPicker } from './AvatarEmojiPicker';
 import { PlayerSelect } from './FormControls';
-import { Panel, StatusCard } from './Layout';
+import { StatusCard, TerminalPageSection } from './Layout';
 import { PlayerAiOverview } from './PlayerAiOverview';
 import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
 
@@ -42,12 +42,20 @@ export function ProfileSection({
     : null;
 
   return (
-    <Panel title="Profile" eyebrow="Account">
-      <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+    <TerminalPageSection
+      title="Profile"
+      eyebrow="Account"
+      description={profile.email}
+      actions={
+        <span className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-[10px] tracking-[0.16em] text-[#3FB950]">
+          {profile.is_admin ? 'Admin access' : 'Player access'}
+        </span>
+      }
+    >
+      <div className="px-3 py-3 sm:px-4">
         <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">
           {profile.display_name}
         </h3>
-        <p className="mt-1 text-sm text-[#A1A1AA]">{profile.email}</p>
         <div className="mt-4 grid gap-2 text-sm text-[#E6EDF3]">
           <p>
             Access: <span className="text-[#3FB950]">{profile.is_admin ? 'Admin' : 'Player'}</span>
@@ -69,7 +77,7 @@ export function ProfileSection({
         </div>
       </div>
       {linkedPlayer && (
-        <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+        <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">
           <PlayerAiOverview
             player={linkedPlayer}
             playerStats={playerStats}
@@ -82,7 +90,7 @@ export function ProfileSection({
       )}
       <OwnProfileForm profile={profile} onSaved={onSaved} />
       <AccountActions onSignOut={onSignOut} />
-    </Panel>
+    </TerminalPageSection>
   );
 }
 
@@ -100,7 +108,7 @@ function AccountActions({ onSignOut }: { onSignOut: () => Promise<void> }) {
   };
 
   return (
-    <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+    <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">
       <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Account</p>
       <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
         Sign out of this device. You can return with a fresh email link.
@@ -223,7 +231,7 @@ function OwnProfileForm({
     avatarSaveState === 'saved' ? 'success' : avatarSaveState === 'error' ? 'error' : 'muted';
 
   return (
-    <div className="-mx-3 border-t border-[#27272A] px-3 py-3 sm:mx-0">
+    <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">
       <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Profile settings</p>
       <div className="mt-3 grid gap-3">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">

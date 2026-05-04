@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AI_NEWSROOM_ARTIFACT_KINDS } from '../features/tournament2026/aiOverview';
+import { AdminSetupSection } from '../features/tournament2026/components/AdminSetupSection';
 import { LeaderboardSection } from '../features/tournament2026/components/LeaderboardSection';
 import { PlayerAiOverview } from '../features/tournament2026/components/PlayerAiOverview';
 import { TournamentActivitySection } from '../features/tournament2026/components/TournamentActivitySection';
@@ -16,7 +17,9 @@ import type {
   FixtureView,
   PlayerRow,
   PlayerTournamentStatsRow,
+  ProfileRow,
   TournamentActivityRow,
+  Tournament2026Data,
   TournamentRow,
 } from '../services/tournament2026Queries';
 import { track2026 } from '../utils/analytics';
@@ -66,6 +69,34 @@ describe('2026 leaderboard panel', () => {
     expect(view.getByText('Highlights Commentary')).toBeInTheDocument();
     expect(generateTournamentAiOverview).not.toHaveBeenCalled();
     expect(generateAiNewsroomArtifacts).not.toHaveBeenCalled();
+  });
+
+  it('lets secondary leaderboard sections collapse and reopen', () => {
+    const { container } = render(
+      <LeaderboardSection
+        tournament={tournament}
+        fixtures={[fixture]}
+        players={players}
+        courseHoles={[]}
+        aiTournamentOverview={tournamentOverview}
+        aiNewsroomArtifacts={newsroomArtifacts}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    const scoreStorySummary = view.getByText('Score Story').closest('summary');
+    const scoreStoryDetails = scoreStorySummary?.closest('details');
+
+    expect(scoreStorySummary).not.toBeNull();
+    expect(scoreStoryDetails).toHaveAttribute('open');
+
+    fireEvent.click(scoreStorySummary!);
+
+    expect(scoreStoryDetails).not.toHaveAttribute('open');
+
+    fireEvent.click(scoreStorySummary!);
+
+    expect(scoreStoryDetails).toHaveAttribute('open');
   });
 
   it('generates missing AI leaderboard artifacts and refreshes data after service success', async () => {
@@ -251,6 +282,27 @@ describe('2026 player AI overview panel', () => {
   });
 });
 
+describe('2026 admin setup panel', () => {
+  it('renders a flat collapsed operations list by default', () => {
+    const { container } = render(<AdminSetupSection data={adminData} onSaved={vi.fn()} />);
+    const view = within(container);
+    const taskRows = Array.from(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details'));
+
+    expect(view.getByText('Admin')).toBeInTheDocument();
+    expect(view.getByText('Tournament operations')).toBeInTheDocument();
+    expect(taskRows).toHaveLength(6);
+    expect(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details[open]')).toHaveLength(0);
+    expect(taskRows.map((row) => row.querySelector('h3')?.textContent)).toEqual([
+      'Tournament',
+      'Players',
+      'Fixtures',
+      'Course',
+      'Activity',
+      'Corrections',
+    ]);
+  });
+});
+
 const tournament = {
   id: 'tournament-1',
   name: 'Ruff Ryders Cup 2026',
@@ -347,6 +399,41 @@ const playerOverview = {
   overview_markdown: 'Clinical singles menace.',
   generated_at: '2026-05-03T08:20:00.000Z',
 } as AiPlayerOverviewRow;
+
+const adminProfile = {
+  id: 'profile-admin',
+  user_id: 'user-admin',
+  email: 'admin@ruffryder.golf',
+  display_name: 'Admin',
+  custom_emoji: null,
+  is_admin: true,
+  linked_player_id: null,
+  team: null,
+  firebase_uid: null,
+  access_disabled_at: null,
+  access_disabled_by: null,
+  access_disabled_reason: null,
+  created_at: '2026-05-03T08:00:00.000Z',
+  updated_at: '2026-05-03T08:00:00.000Z',
+} as ProfileRow;
+
+const adminData = {
+  user: null,
+  profile: adminProfile,
+  profiles: [],
+  tournaments: [],
+  players: [],
+  playerStats: [],
+  aiPlayerOverviews: [],
+  aiTournamentOverview: null,
+  aiNewsroomArtifacts: [],
+  auditLogs: [],
+  activity: [],
+  courseHoles: [],
+  activeTournament: null,
+  fixtures: [],
+  history: [],
+} as Tournament2026Data;
 
 function createHoleScore(
   id: string,

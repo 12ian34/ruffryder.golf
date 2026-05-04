@@ -38,6 +38,7 @@
         "npm:react-chartjs-2@^5.2.0",
         "npm:react-dom@^18.2.0",
         "npm:react-hot-toast@^2.4.1",
+        "npm:react-markdown@^10.1.0",
         "npm:react-router-dom@^6.30.3",
         "npm:react@^18.2.0",
         "npm:stylelint-config-standard@37",

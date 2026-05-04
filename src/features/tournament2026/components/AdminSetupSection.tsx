@@ -28,7 +28,7 @@ import {
 import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
-import { Panel, SetupForm, StatusCard } from './Layout';
+import { SetupForm, StatusCard, TerminalPageSection } from './Layout';
 import { ProfileLinkingPanel } from './ProfileSection';
 
 export function AdminSetupSection({
@@ -43,15 +43,21 @@ export function AdminSetupSection({
   }
 
   return (
-    <Panel title="Admin" eyebrow="Tournament operations">
-      <p className="text-sm leading-6 text-[#A1A1AA]">
-        Work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing.
-      </p>
-      <div className="-mx-3 mt-3 sm:mx-0">
+    <TerminalPageSection
+      title="Admin"
+      titleId="admin-title"
+      eyebrow="Tournament operations"
+      description="Work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing."
+      actions={
+        <span className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-[10px] tracking-[0.16em] text-[#3FB950]">
+          Operations
+        </span>
+      }
+    >
+      <div>
         <AdminTaskSection
           title="Tournament"
           description="Create the active event, edit CPI settings, and finalize or reopen when scoring is done."
-          defaultOpen
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <TournamentForm onSaved={onSaved} />
@@ -94,14 +100,13 @@ export function AdminSetupSection({
         <AdminTaskSection
           title="Fixtures"
           description="Create the next scoring group. Choose 1v1 for a full-course singles match or team fixture for front-nine foursomes plus back-nine singles."
-          defaultOpen={Boolean(data.activeTournament) && data.fixtures.length === 0}
         >
-        <CustomFixtureForm
-          tournament={data.activeTournament}
-          players={data.players}
-          fixtureCount={data.fixtures.length}
-          onSaved={onSaved}
-        />
+          <CustomFixtureForm
+            tournament={data.activeTournament}
+            players={data.players}
+            fixtureCount={data.fixtures.length}
+            onSaved={onSaved}
+          />
         </AdminTaskSection>
         <AdminTaskSection
           title="Course"
@@ -127,7 +132,7 @@ export function AdminSetupSection({
           />
         </AdminTaskSection>
       </div>
-    </Panel>
+    </TerminalPageSection>
   );
 }
 
@@ -190,19 +195,17 @@ function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; playe
 function AdminTaskSection({
   title,
   description,
-  defaultOpen = false,
   children,
 }: {
   title: string;
   description: string;
-  defaultOpen?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="group border-t border-[#27272A] bg-[#050506] first:border-t-0">
-      <summary className="cursor-pointer list-none px-3 py-3">
+    <details className="group border-b border-[#27272A] bg-transparent">
+      <summary className="cursor-pointer list-none px-3 py-3 focus:outline-none focus-visible:bg-[#0C0C0E] sm:px-4">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">{title}</h3>
             <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
           </div>
@@ -212,7 +215,7 @@ function AdminTaskSection({
           </span>
         </div>
       </summary>
-      <div className="border-t border-[#27272A] px-3 py-3">{children}</div>
+      <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">{children}</div>
     </details>
   );
 }

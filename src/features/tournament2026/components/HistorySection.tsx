@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Tournament2026Data } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
-import { Panel, StatusCard } from './Layout';
+import { StatusCard, TerminalPageSection } from './Layout';
 import {
   PlayerHistoryTrigger,
   PlayerIdentity,
@@ -48,25 +48,31 @@ export function ArchiveSection({
   };
 
   return (
-    <Panel title="Archive" eyebrow="Tournaments and players">
-      <div className="flex gap-2">
-        <ArchiveViewButton
-          label="Tournaments"
-          isActive={activeView === 'tournaments'}
-          onClick={() => changeView('tournaments')}
-        />
-        <ArchiveViewButton
-          label="Players"
-          isActive={activeView === 'players'}
-          onClick={() => changeView('players')}
-        />
-      </div>
+    <TerminalPageSection
+      title="Archive"
+      eyebrow="Tournaments and players"
+      description="Historical tournament ledgers and player records."
+      actions={
+        <div className="flex gap-2">
+          <ArchiveViewButton
+            label="Tournaments"
+            isActive={activeView === 'tournaments'}
+            onClick={() => changeView('tournaments')}
+          />
+          <ArchiveViewButton
+            label="Players"
+            isActive={activeView === 'players'}
+            onClick={() => changeView('players')}
+          />
+        </div>
+      }
+    >
       {activeView === 'tournaments' ? (
         <TournamentArchive history={history} players={players} />
       ) : (
         <PlayerArchive players={players} playerStats={playerStats} />
       )}
-    </Panel>
+    </TerminalPageSection>
   );
 }
 
@@ -86,7 +92,7 @@ function ArchiveViewButton({
       className={`rounded-md border px-2.5 py-2 text-[11px] font-bold tracking-[0.14em] ${
         isActive
           ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
-          : 'border-[#27272A] text-[#8B949E]'
+          : 'border-[#27272A] bg-[#09090B] text-[#8B949E]'
       }`}
     >
       {label}
@@ -105,11 +111,15 @@ function TournamentArchive({
   const [openTournamentId, setOpenTournamentId] = useState<string | null>(null);
 
   if (history.length === 0) {
-    return <StatusCard>No historical tournaments have been imported yet.</StatusCard>;
+    return (
+      <div className="px-3 pb-3 sm:px-4">
+        <StatusCard>No historical tournaments have been imported yet.</StatusCard>
+      </div>
+    );
   }
 
   return (
-    <div className="-mx-3 mt-3 sm:mx-0">
+    <div>
       {history.map((tournament) => (
         <details
           key={tournament.id}
@@ -129,7 +139,7 @@ function TournamentArchive({
                 return next;
               });
             }}
-            className="cursor-pointer list-none px-3 py-3 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+            className="cursor-pointer list-none px-3 py-3 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950] sm:px-4"
           >
             <p className="text-[11px] tracking-[0.18em] text-[#8B949E]">{tournament.year}</p>
             <div className="mt-1 flex items-center justify-between gap-2">
@@ -154,7 +164,7 @@ function TournamentArchive({
           </summary>
           <div className="border-t border-[#27272A]">
             {tournament.games.length === 0 ? (
-              <p className="px-3 py-3 text-sm text-[#8B949E]">No legacy game rows imported for this tournament.</p>
+              <p className="px-3 py-3 text-sm text-[#8B949E] sm:px-4">No legacy game rows imported for this tournament.</p>
             ) : (
               tournament.games.map((game) => (
                 <LegacyGameRow key={game.id} game={game} playerLookup={playerLookup} />
@@ -204,8 +214,8 @@ function PlayerArchive({
   };
 
   return (
-    <div className="-mx-3 mt-3 border-t border-[#27272A] sm:mx-0">
-      <div className="px-3 py-3">
+    <div className="bg-[#050506]">
+      <div className="px-3 py-3 sm:px-4">
         <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Player archive</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Finalized 2026 app stats and migrated historical score rows. Historical annual scores are shown as scores, not as 2026 hole-count records.
