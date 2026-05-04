@@ -4,6 +4,7 @@ import type {
   TournamentRow,
 } from '../../services/tournament2026Queries';
 import type { CourseHoleMetadata } from '../../domain/2026/course';
+import { calculateSegmentMatchPlayStatus } from '../../domain/2026/matchPlayStatus';
 
 type Team = 'USA' | 'EUROPE';
 
@@ -185,6 +186,12 @@ export function generateTournamentHighlights({
         );
       }
 
+      const earlyWin = getEarlyWinHighlight(fixture, segment, players);
+
+      if (earlyWin) {
+        highlights.push(earlyWin);
+      }
+
       const upset = getUpsetHighlight(segment, players, tournament?.cpi_threshold ?? 7);
 
       if (upset) {
@@ -252,6 +259,36 @@ function getLongestHalvedRun(scores: FixtureView['segments'][number]['holeScores
   return longestRun;
 }
 
+function getEarlyWinHighlight(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number],
+  players: PlayerRow[]
+): string | null {
+  const progressiveScores: FixtureView['segments'][number]['holeScores'] = [];
+
+  for (const score of [...segment.holeScores].sort((a, b) => a.hole_number - b.hole_number)) {
+    if (score.outcome === 'unplayed') {
+      continue;
+    }
+
+    progressiveScores.push(score);
+
+    const status = calculateSegmentMatchPlayStatus({
+      ...segment,
+      holeScores: progressiveScores,
+    });
+
+    if (status.state === 'won' && status.holesRemaining > 0 && status.leader) {
+      const winnerLabel = getSegmentSideLabel(segment, status.leader, players);
+      const segmentLabel = segment.name ?? fixture.name ?? 'the match';
+
+      return `${winnerLabel} closed out ${segmentLabel} ${status.margin} & ${status.holesRemaining}.`;
+    }
+  }
+
+  return null;
+}
+
 function getUpsetHighlight(
   segment: FixtureView['segments'][number],
   players: PlayerRow[],
@@ -291,6 +328,21 @@ function getUpsetHighlight(
   const opponentName = higherCpiTeam === 'USA' ? europePlayer.name : usaPlayer.name;
 
   return `${winnerName} beat the CPI odds against ${opponentName}.`;
+}
+
+function getSegmentSideLabel(
+  segment: FixtureView['segments'][number],
+  team: Team,
+  players: PlayerRow[]
+): string {
+  if (segment.kind !== 'singles') {
+    return team;
+  }
+
+  const playerId = team === 'USA' ? segment.usa_player_id : segment.europe_player_id;
+  const player = playerId ? players.find((candidate) => candidate.id === playerId) : null;
+
+  return player?.name ?? team;
 }
 
 function getSegmentWinner(scores: FixtureView['segments'][number]['holeScores']): Team | null {

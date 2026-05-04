@@ -49,6 +49,17 @@ describe('2026 tournament insights', () => {
     expect(highlights).toContain('Tommy birdied H1.');
   });
 
+  it('highlights matches closed out before the final hole', () => {
+    const highlights = generateTournamentHighlights({
+      tournament: null,
+      fixtures: [createEarlyWinFixture()],
+      players,
+      courseHoles: [],
+    });
+
+    expect(highlights).toContain('Ian closed out Singles A 2 & 1.');
+  });
+
   it('returns no highlights when the score data has no reel-worthy moments', () => {
     const highlights = generateTournamentHighlights({
       tournament: null,
@@ -117,6 +128,24 @@ function createFixture(): FixtureView {
           createScore('score-1', 1, 1, 2, 'USA', '2026-05-03T07:01:00.000Z'),
           createScore('score-2', 2, 3, 3, 'halved', '2026-05-03T07:02:00.000Z'),
           createScore('score-3', 3, 7, 5, 'EUROPE', '2026-05-03T07:03:00.000Z'),
+        ],
+      },
+    ],
+  };
+}
+
+function createEarlyWinFixture(): FixtureView {
+  const fixture = createFixture();
+  const [segment] = fixture.segments;
+
+  return {
+    ...fixture,
+    segments: [
+      {
+        ...segment,
+        holeScores: [
+          createScore('score-1', 1, 3, 4, 'USA', '2026-05-03T07:01:00.000Z'),
+          createScore('score-2', 2, 3, 4, 'USA', '2026-05-03T07:02:00.000Z'),
         ],
       },
     ],
