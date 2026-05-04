@@ -49,18 +49,18 @@ export function ArchiveSection({
 
   return (
     <TerminalPageSection
-      title="Archive"
-      eyebrow="Tournaments and players"
-      description="Historical tournament ledgers and player records."
+      title="archive"
+      eyebrow="tournaments and players"
+      description="historical tournament ledgers and player records."
       actions={
         <div className="flex gap-2">
           <ArchiveViewButton
-            label="Tournaments"
+            label="tournaments"
             isActive={activeView === 'tournaments'}
             onClick={() => changeView('tournaments')}
           />
           <ArchiveViewButton
-            label="Players"
+            label="players"
             isActive={activeView === 'players'}
             onClick={() => changeView('players')}
           />

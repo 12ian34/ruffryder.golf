@@ -36,6 +36,37 @@ describe('ScoreEntrySection', () => {
     vi.useRealTimers();
   });
 
+  it('explains the no-active-tournament state with player-facing next steps', () => {
+    const onViewArchive = vi.fn();
+    const onViewProfile = vi.fn();
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={null}
+        fixtures={[]}
+        players={[]}
+        courseHoles={[]}
+        profile={profile}
+        onViewArchive={onViewArchive}
+        onViewProfile={onViewProfile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    expect(view.getByText('setup needed')).toBeInTheDocument();
+    expect(view.getByText(/An admin needs to start the tournament/)).toBeInTheDocument();
+    expect(view.getByText(/put your player in a fixture or game/)).toBeInTheDocument();
+    expect(view.queryByText(/Create an active tournament/)).not.toBeInTheDocument();
+    expect(view.getByText(/browse past tournaments in the Archive/)).toBeInTheDocument();
+    expect(view.getByText(/generate your AI scouting dossier/)).toBeInTheDocument();
+
+    fireEvent.click(view.getByText('View Archive'));
+    fireEvent.click(view.getByText('Open Profile'));
+
+    expect(onViewArchive).toHaveBeenCalledTimes(1);
+    expect(onViewProfile).toHaveBeenCalledTimes(1);
+  });
+
   it('only shows row save actions for changed rows and can save all dirty rows', async () => {
     const { container } = render(
       <ScoreEntrySection

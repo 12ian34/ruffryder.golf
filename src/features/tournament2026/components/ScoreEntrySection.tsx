@@ -81,6 +81,8 @@ export function ScoreEntrySection({
   players,
   courseHoles,
   profile,
+  onViewArchive,
+  onViewProfile,
   onSaved,
 }: {
   tournament: TournamentRow | null;
@@ -88,6 +90,8 @@ export function ScoreEntrySection({
   players: PlayerRow[];
   courseHoles: CourseHoleMetadata[];
   profile: ProfileRow;
+  onViewArchive?: () => void;
+  onViewProfile?: () => void;
   onSaved: () => Promise<void>;
 }) {
   const [lengthUnit, setLengthUnit] = useState<LengthUnit>('metres');
@@ -152,13 +156,44 @@ export function ScoreEntrySection({
   if (!tournament) {
     return (
       <TerminalPageSection
-        title="My Game"
-        eyebrow="Fixture scores"
-        description="Score entry wakes up once an active tournament exists."
-        actions={<ScoreEntryStatusPill tone="warning">Setup needed</ScoreEntryStatusPill>}
+        title="my game"
+        eyebrow="fixture scores"
+        description="this tab wakes up when the tournament is live and your player is in a fixture."
+        actions={<ScoreEntryStatusPill tone="warning">setup needed</ScoreEntryStatusPill>}
       >
         <div className="px-3 pb-3 sm:px-4">
-          <StatusCard tone="warning">Create an active tournament before entering scores.</StatusCard>
+          <StatusCard tone="warning">
+            <div className="space-y-3">
+              <p>
+                Nothing to score yet. An admin needs to start the tournament and put your player in a
+                fixture or game before your scorecard appears here.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {onViewArchive ? (
+                  <button
+                    type="button"
+                    onClick={onViewArchive}
+                    className="min-h-11 rounded-md border border-[#F59E0B]/60 bg-[#050506] px-3 py-2 text-xs font-semibold text-[#FAFAFA] transition hover:border-[#FAFAFA] focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#FAFAFA]"
+                  >
+                    View Archive
+                  </button>
+                ) : null}
+                {onViewProfile ? (
+                  <button
+                    type="button"
+                    onClick={onViewProfile}
+                    className="min-h-11 rounded-md border border-[#F59E0B]/60 bg-[#050506] px-3 py-2 text-xs font-semibold text-[#FAFAFA] transition hover:border-[#FAFAFA] focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#FAFAFA]"
+                  >
+                    Open Profile
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-xs leading-5 text-[#E6EDF3]">
+                In the meantime, browse past tournaments in the Archive, tap player names to check
+                out profiles, or open Profile to generate your AI scouting dossier.
+              </p>
+            </div>
+          </StatusCard>
         </div>
       </TerminalPageSection>
     );
@@ -167,10 +202,10 @@ export function ScoreEntrySection({
   if (tournament.is_complete) {
     return (
       <TerminalPageSection
-        title="My Game"
-        eyebrow="Fixture scores"
-        description={`${tournament.name ?? 'Tournament'} is locked after finalization.`}
-        actions={<ScoreEntryStatusPill tone="warning">Locked</ScoreEntryStatusPill>}
+        title="my game"
+        eyebrow="fixture scores"
+        description={`${tournament.name ?? 'tournament'} is locked after finalization.`}
+        actions={<ScoreEntryStatusPill tone="warning">locked</ScoreEntryStatusPill>}
       >
         <div className="px-3 pb-3 sm:px-4">
           <StatusCard tone="warning">
@@ -184,14 +219,14 @@ export function ScoreEntrySection({
   return (
     <ScoreSyncContext.Provider value={syncContextValue}>
       <TerminalPageSection
-        title="My Game"
-        eyebrow="Fixture scores"
-        description={`${tournament.name ?? 'Tournament'} · ${fixtures.length} ${
+        title="my game"
+        eyebrow="fixture scores"
+        description={`${tournament.name ?? 'tournament'} · ${fixtures.length} ${
           fixtures.length === 1 ? 'fixture' : 'fixtures'
         } available`}
         actions={
           <ScoreEntryStatusPill tone={isOnline ? 'success' : 'warning'}>
-            {isOnline ? 'Live' : 'Offline'}
+            {isOnline ? 'live' : 'offline'}
           </ScoreEntryStatusPill>
         }
       >
@@ -238,7 +273,7 @@ function ScoreEntryStatusPill({
     : 'border-[#F59E0B]/60 bg-[#1C1406] text-[#F59E0B]';
 
   return (
-    <span className={`border px-2 py-1 text-[10px] tracking-[0.14em] ${className}`}>
+    <span className={`border px-2 py-1 text-[10px] lowercase tracking-[0.14em] ${className}`}>
       {children}
     </span>
   );

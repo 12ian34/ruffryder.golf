@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import { ThemeToggle } from './ThemeToggle';
 
 export interface AppNavItem<T extends string> {
   id: T;
@@ -26,6 +28,34 @@ export function PageShell<T extends string>({
   const hasAppNav = navItems.length > 0 && Boolean(activeTab) && Boolean(onTabChange);
   const shouldShowBrandHeader = !hasAppNav && !userEmail;
   const shouldShowAccountStrip = !hasAppNav && Boolean(userEmail);
+  const navScrollerRef = useRef<HTMLDivElement | null>(null);
+  const activeNavItemRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!hasAppNav) return;
+
+    const scroller = navScrollerRef.current;
+    const activeItem = activeNavItemRef.current;
+
+    if (!scroller || !activeItem) return;
+
+    const maxScrollLeft = Math.max(scroller.scrollWidth - scroller.clientWidth, 0);
+    const centeredScrollLeft = activeItem.offsetLeft + activeItem.offsetWidth / 2 - scroller.clientWidth / 2;
+    const nextScrollLeft = Math.min(Math.max(centeredScrollLeft, 0), maxScrollLeft);
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+    if (typeof scroller.scrollTo === 'function') {
+      scroller.scrollTo({
+        left: nextScrollLeft,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
+      return;
+    }
+
+    scroller.scrollLeft = nextScrollLeft;
+  }, [activeTab, hasAppNav, navItems.length]);
 
   return (
     <div className="min-h-screen bg-[#050506] font-data text-[#E6EDF3]">
@@ -72,8 +102,14 @@ export function PageShell<T extends string>({
         {children}
       </main>
       {navItems.length > 0 && activeTab && onTabChange && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/25 bg-[#09090B]/25 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 shadow-[0_-18px_54px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.26),inset_0_-1px_0_rgba(255,255,255,0.08)] backdrop-blur-3xl backdrop-saturate-200">
-          <div className="relative z-20 mx-auto flex max-w-screen-2xl items-end gap-6 overflow-x-auto px-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center sm:gap-8 [&::-webkit-scrollbar]:hidden">
+        <nav
+          aria-label="Primary app navigation"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-white/25 bg-[#09090B]/25 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-1 shadow-[0_-18px_54px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.26),inset_0_-1px_0_rgba(255,255,255,0.08)] backdrop-blur-3xl backdrop-saturate-200"
+        >
+          <div
+            ref={navScrollerRef}
+            className="relative z-20 mx-auto flex max-w-screen-2xl items-end gap-6 overflow-x-auto px-5 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center sm:gap-8 [&::-webkit-scrollbar]:hidden"
+          >
             {navItems.map((item) => {
               const isActive = item.id === activeTab;
               const label = (item.shortLabel ?? item.label).toLowerCase();
@@ -81,6 +117,7 @@ export function PageShell<T extends string>({
               return (
                 <button
                   key={item.id}
+                  ref={isActive ? activeNavItemRef : undefined}
                   type="button"
                   onClick={() => onTabChange(item.id)}
                   className={`relative flex min-h-11 shrink-0 items-center justify-center px-1 text-xs font-semibold lowercase tracking-[0.12em] transition-colors focus:outline-none focus-visible:text-[#FAFAFA] sm:text-[13px] ${
@@ -92,7 +129,7 @@ export function PageShell<T extends string>({
                   <span
                     className={`absolute bottom-0 left-1/2 h-px -translate-x-1/2 transition-[width,background-color,box-shadow] ${
                       isActive
-                        ? 'w-full bg-[#3FB950] shadow-[0_0_14px_rgba(63,185,80,0.95)]'
+                        ? 'rr-nav-active-underline w-full bg-[#3FB950] shadow-[0_0_14px_rgba(63,185,80,0.95)]'
                         : 'w-0 bg-transparent'
                     }`}
                   />
@@ -100,6 +137,7 @@ export function PageShell<T extends string>({
                 </button>
               );
             })}
+            <ThemeToggle source="nav" className="self-center" />
           </div>
         </nav>
       )}
@@ -148,18 +186,18 @@ export function TerminalPageSection({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
       <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.24em] text-[#3FB950]">{eyebrow}</p>
+          <p className="text-[10px] lowercase tracking-[0.24em] text-[#3FB950]">{eyebrow}</p>
           <h2
             id={titleId}
-            className="mt-1 text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl"
+            className="mt-1 text-2xl font-bold lowercase tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl"
           >
             {title}
           </h2>
           {description ? (
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A1A1AA]">{description}</p>
+            <p className="mt-2 max-w-2xl text-sm lowercase leading-6 text-[#A1A1AA]">{description}</p>
           ) : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-end gap-3 lg:justify-end">{actions}</div> : null}
+        {actions ? <div className="flex flex-wrap items-end gap-3 lowercase lg:justify-end">{actions}</div> : null}
       </header>
       {children}
     </section>

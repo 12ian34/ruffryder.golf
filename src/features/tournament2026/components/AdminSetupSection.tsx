@@ -44,13 +44,13 @@ export function AdminSetupSection({
 
   return (
     <TerminalPageSection
-      title="Admin"
+      title="admin"
       titleId="admin-title"
-      eyebrow="Tournament operations"
-      description="Work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing."
+      eyebrow="tournament operations"
+      description="work top-to-bottom: create or edit the tournament, keep players tidy, build fixtures, then use corrections only when setup mistakes need fixing."
       actions={
         <span className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-[10px] tracking-[0.16em] text-[#3FB950]">
-          Operations
+          operations
         </span>
       }
     >

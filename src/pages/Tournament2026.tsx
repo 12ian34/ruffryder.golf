@@ -239,6 +239,8 @@ export default function Tournament2026() {
             players={data.players}
             courseHoles={data.courseHoles}
             profile={data.profile}
+            onViewArchive={() => handleTabChange('archive')}
+            onViewProfile={() => handleTabChange('profile')}
             onSaved={refreshData}
           />
         )}

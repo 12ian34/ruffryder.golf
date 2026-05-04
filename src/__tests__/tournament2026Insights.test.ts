@@ -39,6 +39,17 @@ describe('2026 tournament insights', () => {
     expect(highlights).toContain('Tommy birdied H1.');
   });
 
+  it('returns no highlights when the score data has no reel-worthy moments', () => {
+    const highlights = generateTournamentHighlights({
+      tournament: null,
+      fixtures: [],
+      players,
+      courseHoles: [],
+    });
+
+    expect(highlights).toEqual([]);
+  });
+
   it('builds a full activity timeline with score and match milestone events', () => {
     const timeline = buildTournamentActivityTimeline({
       activity: [createActivityRow()],

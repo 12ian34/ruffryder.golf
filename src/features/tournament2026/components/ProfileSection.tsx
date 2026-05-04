@@ -43,12 +43,12 @@ export function ProfileSection({
 
   return (
     <TerminalPageSection
-      title="Profile"
-      eyebrow="Account"
+      title="profile"
+      eyebrow="account"
       description={profile.email}
       actions={
         <span className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-[10px] tracking-[0.16em] text-[#3FB950]">
-          {profile.is_admin ? 'Admin access' : 'Player access'}
+          {profile.is_admin ? 'admin access' : 'player access'}
         </span>
       }
     >

@@ -4,6 +4,7 @@ import { getErrorMessage } from '../viewUtils';
 import { AvatarEmojiPicker } from './AvatarEmojiPicker';
 import { SubmitButton, TextField } from './FormControls';
 import { Panel, SetupForm, StatusCard } from './Layout';
+import { ThemeToggle } from './ThemeToggle';
 
 export function SignInPanel({
   email,
@@ -40,6 +41,9 @@ export function SignInPanel({
 
   return (
     <section className="flex min-h-[calc(100vh-1px)] flex-col bg-[#050506] px-4 py-10 font-data text-[#E6EDF3] sm:px-6">
+      <div className="mx-auto flex w-full max-w-xl justify-end">
+        <ThemeToggle source="login" />
+      </div>
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center">
         <p className="text-[10px] font-bold tracking-[0.24em] text-[#3FB950]">
           the al reynolds
@@ -158,12 +162,17 @@ export function CreateProfilePanel({ onSaved }: { onSaved: () => Promise<void> }
   };
 
   return (
-    <Panel title="Create Profile" eyebrow="First-time access">
-      <SetupForm title="Profile" onSubmit={handleSubmit} error={error}>
-        <TextField label="Display name" value={displayName} onChange={setDisplayName} />
-        <AvatarEmojiPicker value={customEmoji} onChange={setCustomEmoji} disabled={isSaving} />
-        <SubmitButton isSaving={isSaving}>Create profile</SubmitButton>
-      </SetupForm>
-    </Panel>
+    <div>
+      <div className="mx-3 mb-3 flex justify-end sm:mx-0">
+        <ThemeToggle source="signup" />
+      </div>
+      <Panel title="Create Profile" eyebrow="First-time access">
+        <SetupForm title="Profile" onSubmit={handleSubmit} error={error}>
+          <TextField label="Display name" value={displayName} onChange={setDisplayName} />
+          <AvatarEmojiPicker value={customEmoji} onChange={setCustomEmoji} disabled={isSaving} />
+          <SubmitButton isSaving={isSaving}>Create profile</SubmitButton>
+        </SetupForm>
+      </Panel>
+    </div>
   );
 }

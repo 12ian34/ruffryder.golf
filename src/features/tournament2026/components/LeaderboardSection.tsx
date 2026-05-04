@@ -57,7 +57,12 @@ export function LeaderboardSection({
     0
   );
   const scoredHoleCount = countScoredTournamentHoles(fixtures);
-  const scoreSummary = getScoreSummary(totals.overall);
+  const boardStatus = getBoardStatus({
+    score: totals.overall,
+    scoredHoleCount,
+    totalHoleCount: totalChartHoles,
+    tournament,
+  });
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [isGeneratingOverview, setIsGeneratingOverview] = useState(false);
   const [newsroomError, setNewsroomError] = useState<string | null>(null);
@@ -179,30 +184,33 @@ export function LeaderboardSection({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
       <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.24em] text-[#3FB950]">Live scoring</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl">
-            Live Leaderboard
+          <p className={`text-[10px] lowercase tracking-[0.24em] ${boardStatus.kickerClassName}`}>
+            {boardStatus.kicker}
+          </p>
+          <h2 className="mt-1 text-2xl font-bold lowercase tracking-[-0.06em] text-[#FAFAFA] sm:text-3xl">
+            {boardStatus.title}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#A1A1AA]">
-            {tournament?.name ?? 'Tournament board'} · {scoredHoleCount}/{totalChartHoles} saved holes
+          <p className="mt-2 max-w-2xl text-sm lowercase leading-6 text-[#A1A1AA]">
+            {tournament?.name ?? 'tournament board'} · {boardStatus.progressLabel}
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3 lg:justify-end">
-          <div className="border border-[#27272A] bg-[#09090B] px-3 py-2 text-right">
-            <p className="text-[10px] tracking-[0.18em] text-[#8B949E]">Match state</p>
-            <p className={`mt-1 text-lg font-bold tracking-[-0.04em] ${scoreSummary.className}`}>
-              {scoreSummary.label}
-            </p>
-          </div>
-          <span className="border border-[#3FB950]/60 bg-[#06170B] px-2 py-1 text-[10px] tracking-[0.14em] text-[#3FB950]">
-            Live
-          </span>
+        <div className="min-w-0 border-t border-[#27272A] pt-3 lg:border-t-0 lg:pt-0">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tracking-[0.14em] text-[#8B949E] lg:justify-end">
+            <span className={`h-1.5 w-1.5 rounded-full ${boardStatus.dotClassName}`} aria-hidden="true" />
+            <span className={boardStatus.stateClassName}>{boardStatus.stateLabel}</span>
+            <span className="text-[#3F3F46]">/</span>
+            <span className={`font-bold tracking-[-0.03em] ${boardStatus.scoreClassName}`}>
+              {boardStatus.scoreLabel}
+            </span>
+            <span className="text-[#3F3F46]">/</span>
+            <span>{boardStatus.progressLabel}</span>
+          </p>
         </div>
       </header>
       <CollapsibleSection
         title="Score Ledger"
         description="Overall score first, then how it splits between foursomes and singles."
-        meta={scoreSummary.label}
+        meta={boardStatus.scoreLabel}
       >
         <ScoreLedger totals={totals} />
       </CollapsibleSection>
@@ -286,6 +294,14 @@ function AiTournamentOverviewSection({
 }
 
 function InsightList({ items }: { items: string[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="px-3 pb-3 sm:px-4">
+        <StatusCard>No wild highlights yet. Save more scores and this reel will fill in.</StatusCard>
+      </div>
+    );
+  }
+
   return (
     <div className="px-3 py-3 sm:px-4">
       <div className="space-y-2">
@@ -505,6 +521,103 @@ function FixtureProgressRow({ fixture }: { fixture: FixtureView }) {
       </div>
     </div>
   );
+}
+
+interface BoardStatusInput {
+  score: TeamScore;
+  scoredHoleCount: number;
+  totalHoleCount: number;
+  tournament: TournamentRow | null;
+}
+
+interface BoardStatusView {
+  kicker: string;
+  title: string;
+  stateLabel: string;
+  scoreLabel: string;
+  progressLabel: string;
+  kickerClassName: string;
+  stateClassName: string;
+  scoreClassName: string;
+  dotClassName: string;
+}
+
+function getBoardStatus({
+  score,
+  scoredHoleCount,
+  totalHoleCount,
+  tournament,
+}: BoardStatusInput): BoardStatusView {
+  const progressLabel = getProgressLabel(scoredHoleCount, totalHoleCount);
+
+  if (!tournament) {
+    return {
+      kicker: 'tournament board',
+      title: 'tournament leaderboard',
+      stateLabel: 'setup needed',
+      scoreLabel: 'no active tournament',
+      progressLabel,
+      kickerClassName: 'text-[#F59E0B]',
+      stateClassName: 'text-[#F59E0B]',
+      scoreClassName: 'text-[#E6EDF3]',
+      dotClassName: 'bg-[#F59E0B]',
+    };
+  }
+
+  if (tournament.is_complete) {
+    const scoreSummary =
+      scoredHoleCount > 0
+        ? getScoreSummary(score)
+        : { label: 'no saved scores', className: 'text-[#E6EDF3]' };
+
+    return {
+      kicker: 'final scoreboard',
+      title: 'final leaderboard',
+      stateLabel: 'final',
+      scoreLabel: scoreSummary.label,
+      progressLabel,
+      kickerClassName: 'text-[#3FB950]',
+      stateClassName: 'text-[#3FB950]',
+      scoreClassName: scoreSummary.className,
+      dotClassName: 'bg-[#3FB950]',
+    };
+  }
+
+  if (scoredHoleCount === 0) {
+    return {
+      kicker: 'scoreboard standby',
+      title: 'tournament leaderboard',
+      stateLabel: 'not started',
+      scoreLabel: 'awaiting first saved hole',
+      progressLabel,
+      kickerClassName: 'text-[#F59E0B]',
+      stateClassName: 'text-[#F59E0B]',
+      scoreClassName: 'text-[#E6EDF3]',
+      dotClassName: 'bg-[#F59E0B]',
+    };
+  }
+
+  const scoreSummary = getScoreSummary(score);
+
+  return {
+    kicker: 'live scoring',
+    title: 'live leaderboard',
+    stateLabel: 'live',
+    scoreLabel: scoreSummary.label,
+    progressLabel,
+    kickerClassName: 'text-[#3FB950]',
+    stateClassName: 'text-[#3FB950]',
+    scoreClassName: scoreSummary.className,
+    dotClassName: 'bg-[#3FB950]',
+  };
+}
+
+function getProgressLabel(scoredHoleCount: number, totalHoleCount: number): string {
+  if (totalHoleCount === 0) {
+    return `${scoredHoleCount} saved holes`;
+  }
+
+  return `${scoredHoleCount}/${totalHoleCount} saved holes`;
 }
 
 function getScoreSummary(score: TeamScore): { label: string; className: string } {

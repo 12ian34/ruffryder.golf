@@ -57,7 +57,7 @@ describe('2026 leaderboard panel', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('Live Leaderboard')).toBeInTheDocument();
+    expect(view.getByText('live leaderboard')).toBeInTheDocument();
     expect(view.getByText('Overall')).toBeInTheDocument();
     expect(view.getByText('Foursomes')).toBeInTheDocument();
     expect(view.getByText('Singles')).toBeInTheDocument();
@@ -71,6 +71,56 @@ describe('2026 leaderboard panel', () => {
     expect(view.getByText('Newsroom')).toBeInTheDocument();
     expect(view.queryByText('AI Tournament Overview')).not.toBeInTheDocument();
     expect(view.queryByText('AI Newsroom')).not.toBeInTheDocument();
+    expect(generateTournamentAiOverview).not.toHaveBeenCalled();
+    expect(generateAiNewsroomArtifacts).not.toHaveBeenCalled();
+  });
+
+  it('does not call an empty board live or all square when there is no active tournament', () => {
+    const { container } = render(
+      <LeaderboardSection
+        tournament={null}
+        fixtures={[]}
+        players={players}
+        courseHoles={[]}
+        aiTournamentOverview={null}
+        aiNewsroomArtifacts={[]}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    const header = container.querySelector('header') as HTMLElement;
+    const headerView = within(header);
+
+    expect(headerView.getByText('setup needed')).toBeInTheDocument();
+    expect(headerView.getByText('no active tournament')).toBeInTheDocument();
+    expect(headerView.queryByText('live')).not.toBeInTheDocument();
+    expect(headerView.queryByText('All square')).not.toBeInTheDocument();
+    expect(view.getByText('0 highlights')).toBeInTheDocument();
+    expect(view.getByText('No wild highlights yet. Save more scores and this reel will fill in.')).toBeInTheDocument();
+  });
+
+  it('shows a not-started status before the first saved score', () => {
+    const { container } = render(
+      <LeaderboardSection
+        tournament={tournament}
+        fixtures={[unscoredFixture]}
+        players={players}
+        courseHoles={[]}
+        aiTournamentOverview={tournamentOverview}
+        aiNewsroomArtifacts={newsroomArtifacts}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    const header = container.querySelector('header') as HTMLElement;
+    const headerView = within(header);
+
+    expect(headerView.getByText('not started')).toBeInTheDocument();
+    expect(headerView.getByText('awaiting first saved hole')).toBeInTheDocument();
+    expect(headerView.queryByText('live')).not.toBeInTheDocument();
+    expect(headerView.queryByText('All square')).not.toBeInTheDocument();
+    expect(view.getByText('0 highlights')).toBeInTheDocument();
+    expect(view.getByText('No wild highlights yet. Save more scores and this reel will fill in.')).toBeInTheDocument();
     expect(generateTournamentAiOverview).not.toHaveBeenCalled();
     expect(generateAiNewsroomArtifacts).not.toHaveBeenCalled();
   });
@@ -293,8 +343,8 @@ describe('2026 admin setup panel', () => {
     const view = within(container);
     const taskRows = Array.from(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details'));
 
-    expect(view.getByText('Admin')).toBeInTheDocument();
-    expect(view.getByText('Tournament operations')).toBeInTheDocument();
+    expect(view.getByText('admin')).toBeInTheDocument();
+    expect(view.getByText('tournament operations')).toBeInTheDocument();
     expect(taskRows).toHaveLength(6);
     expect(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details[open]')).toHaveLength(0);
     expect(taskRows.map((row) => row.querySelector('h3')?.textContent)).toEqual([
@@ -364,6 +414,11 @@ const fixture = {
       ],
     },
   ],
+} as unknown as FixtureView;
+
+const unscoredFixture = {
+  ...fixture,
+  segments: fixture.segments.map((segment) => ({ ...segment, holeScores: [] })),
 } as unknown as FixtureView;
 
 const tournamentOverview = {

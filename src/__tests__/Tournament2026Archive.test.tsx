@@ -13,7 +13,7 @@ describe('ArchiveSection', () => {
     const { container } = renderArchive({ history: [], players, playerStats });
     const view = within(container);
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
 
     expect(view.getAllByText('Score')).not.toHaveLength(0);
     expect(view.getAllByText('Raw')).not.toHaveLength(0);
@@ -31,7 +31,7 @@ describe('ArchiveSection', () => {
     expect(view.getByText('Ruff Ryder XII')).toBeInTheDocument();
     expect(view.getByText('15 games')).toBeInTheDocument();
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
 
     expect(view.queryByText('Ruff Ryder XII')).not.toBeInTheDocument();
     expect(view.getByText('No player stat rows have been saved yet.')).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe('ArchiveSection', () => {
     const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: sortPlayerStats });
     const view = within(container);
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
     fireEvent.click(view.getByText('2025'));
 
     expect(view.getByText('3 players')).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('ArchiveSection', () => {
     const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: fullHistoryPlayerStats });
     const view = within(container);
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
     fireEvent.click(view.getByText('2025'));
     clickPlayerHistoryButton(container, 'sort-player-1');
 
@@ -89,7 +89,7 @@ describe('ArchiveSection', () => {
     const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: fullHistoryPlayerStats });
     const view = within(container);
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
     fireEvent.click(view.getByText('2025'));
     clickPlayerHistoryButton(container, 'sort-player-1');
 
@@ -104,7 +104,7 @@ describe('ArchiveSection', () => {
     const { container } = renderArchive({ history: [], players: sortPlayers, playerStats: fullHistoryPlayerStats });
     const view = within(container);
 
-    fireEvent.click(view.getByText('Players'));
+    fireEvent.click(view.getByText('players'));
     fireEvent.click(view.getByText('2025'));
     clickPlayerHistoryButton(container, 'sort-player-1');
 

@@ -111,9 +111,7 @@ export function generateTournamentHighlights({
     }
   }
 
-  return highlights.length > 0
-    ? dedupe(highlights).slice(0, 8)
-    : ['No wild highlights yet. Save more scores and this reel will fill in.'];
+  return dedupe(highlights).slice(0, 8);
 }
 
 function collectScoredSides(
