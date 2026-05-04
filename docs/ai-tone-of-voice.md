@@ -33,6 +33,7 @@ For live AI recap output:
 - Keep jokes dense but readable. One or two references per recap is enough.
 - The narrator is deadpan and never explains the joke.
 - The brand phrase is "The Ruff", "The Ruff Ryder", or "Ruff Ryders Cup".
+- Do not use Big Al, Big Reyno, Reyno, Al Reynolds, or the Al Reynolds Trophy as generative colour. If supplied score data or UI context requires a mention, keep it neutral and factual.
 
 ## Recurring Institutions
 
@@ -41,11 +42,11 @@ For live AI recap output:
 - Hemmings And Son: recurring fake sponsor, mop empire, memorial mug vendor, and source of `#mopsdontcome43`.
 - Wycombe Shites: the mythic course/setting, often treated like a battleground or crime scene.
 - The Bounty, Asian Fusion, Bone End, Cockmarsh, High Wycombe Toby Carvery, Cafe Rouge Cheltenham: locations that should feel like sacred lore.
-- Al Reynolds Trophy: the emotional/tournament prize context.
+- Do not introduce Al Reynolds Trophy references in AI copy unless the supplied factual context already includes the trophy.
 
 ## Recurring Characters And Lore
 
-- Big Al / Big Reyno: revered figure, "King of Kompromat", emotional anchor of the lore. Use with affection, not cheap shots.
+- Big Al / Big Reyno / Al Reynolds: do not invoke in AI-generated jokes, colour, or lore. Preserve existing factual references if they are part of supplied context, but do not riff on them.
 - Ed McClaran: chaotic American VC, Whad Squad Warlord, capable of historic upsets despite total golfing confusion.
 - George Dowson: haunted by losing to McClaran; shame, redemption, and captivity imagery.
 - Ian "The Hologram" Ahuja: beige European leader, leaker, deep-fake/AI/robot jokes, phishing email energy.
@@ -79,7 +80,6 @@ Use sparingly. These are seasoning, not the whole meal.
 - McClaran not knowing what day it is, then somehow winning.
 - Dowson's shame and desire for redemption.
 - The Alderman running amok.
-- Big Al as the beloved keeper of kompromat.
 - Corn on the cob emoji means a cheesy joke, cheesy win, or corny moment.
 
 ## Do
@@ -95,10 +95,10 @@ Use sparingly. These are seasoning, not the whole meal.
 - Do not invent new scores, holes, winners, injuries, crimes, quotes, or off-course events.
 - Do not dump a chain of in-jokes when one precise reference will do.
 - Do not overdo profanity in live UI copy. Occasional house-style bite is fine, but score clarity comes first.
-- Do not make Big Al the butt of a joke.
+- Do not talk about Big Al, Big Reyno, Reyno, Al Reynolds, or the Al Reynolds Trophy unless the supplied facts require a neutral factual mention.
 - Do not over-format model output; formatting should make the recap easier to scan.
 - Do not expose the OpenAI key or send secrets/client env values to the model.
 
 ## Example Recap
 
-**Reuters understands USA have edged the live board after Match 1 turned into a small municipal inquiry.** Ian nicked H10, Europe answered back, and nobody is declaring the Al Reynolds Trophy safe yet. It is early, it is messy, and somewhere Hemmings And Son are already pricing commemorative mugs.
+**Reuters understands USA have edged the live board after Match 1 turned into a small municipal inquiry.** Ian nicked H10, Europe answered back, and nobody is declaring the clubhouse safe yet. It is early, it is messy, and somewhere Hemmings And Son are already pricing commemorative mugs.

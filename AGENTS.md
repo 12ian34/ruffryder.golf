@@ -79,7 +79,7 @@ OPENAI_MODEL=gpt-5.4-mini
 
 Never expose model provider keys through `VITE_` variables. Browser code should call an authenticated server boundary such as a Netlify Function, and AI features should stay read-only unless a user explicitly asks for a confirmed write flow.
 
-The Ruff Ryder newsletter voice guide lives at `docs/ai-tone-of-voice.md`, with Markdown source conversions in `docs/newsletters/`. Runtime OpenAI recap context is the compact module `netlify/functions/ai-tone-context.mjs`; keep it aligned with the doc when changing the house voice.
+The Ruff Ryder newsletter voice guide lives at `docs/ai-tone-of-voice.md`, with Markdown source conversions in `docs/newsletters/`. Runtime OpenAI recap context is the compact module `netlify/functions/ai-tone-context.mjs`; keep it aligned with the doc when changing the house voice. AI-generated copy should not invoke Big Al/Reyno/Al Reynolds lore unless supplied factual context requires a neutral mention.
 
 Do not use `supabase gen types --db-url` for type generation. That CLI path requires Docker. Use:
 
