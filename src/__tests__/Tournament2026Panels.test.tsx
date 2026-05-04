@@ -356,6 +356,44 @@ describe('2026 admin setup panel', () => {
       'Corrections',
     ]);
   });
+
+  it('shows tournament details read-only until edit opens the popover form', () => {
+    const activeTournament = {
+      id: 'tournament-1',
+      name: 'Ruff Ryders Cup 2026',
+      year: 2026,
+      cpi_threshold: 7,
+      is_active: true,
+      is_complete: false,
+      completed_at: null,
+      created_at: '2026-05-03T08:00:00.000Z',
+      updated_at: '2026-05-03T08:00:00.000Z',
+    } as TournamentRow;
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament,
+          tournaments: [activeTournament],
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    const tournamentRow = container.querySelector('section[aria-labelledby="admin-title"] > div > details');
+
+    fireEvent.click(tournamentRow?.querySelector('summary') as HTMLElement);
+
+    expect(view.getAllByText('Ruff Ryders Cup 2026').length).toBeGreaterThan(0);
+    expect(view.getAllByText(/CPI threshold 7/).length).toBeGreaterThan(0);
+    expect(view.queryByLabelText('Name')).not.toBeInTheDocument();
+
+    fireEvent.click(view.getByText('Edit'));
+
+    expect(view.getByText('Edit Ruff Ryders Cup 2026')).toBeInTheDocument();
+    expect(view.getByLabelText('Name')).toHaveValue('Ruff Ryders Cup 2026');
+    expect(view.getByLabelText('CPI threshold')).toHaveValue(7);
+  });
 });
 
 const tournament = {

@@ -20,7 +20,7 @@ export function TextField({
         onChange={(event) => onChange(event.target.value)}
         type={type}
         required
-        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       />
     </label>
   );
@@ -59,7 +59,7 @@ export function ScorePicker({
             value={selectedValue}
             onChange={(event) => onChange(event.target.value)}
             aria-label={`${label} score`}
-            className="min-h-11 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#18181B] px-2 text-center text-lg font-bold tabular-nums text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+            className="min-h-11 min-w-0 w-full appearance-none rounded-md border border-[#3F3F46] bg-[#050506] px-2 text-center text-lg font-bold tabular-nums text-[#FAFAFA] outline-none focus:border-[#3FB950]"
           >
             <option value="">--</option>
             {Array.from({ length: 12 }, (_, index) => index + 1).map((score) => (
@@ -128,7 +128,7 @@ export function PlayerSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       >
         <option value="">Select player</option>
         {players.map((player) => (

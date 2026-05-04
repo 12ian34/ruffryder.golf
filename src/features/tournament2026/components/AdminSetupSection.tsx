@@ -223,11 +223,13 @@ function AdminActionPopover({
   buttonLabel,
   title,
   description,
+  disabled = false,
   children,
 }: {
   buttonLabel: string;
   title: string;
   description?: string;
+  disabled?: boolean;
   children: (close: () => void) => ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -258,7 +260,8 @@ function AdminActionPopover({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] hover:bg-[#06170B] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+        disabled={disabled}
+        className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] hover:bg-[#06170B] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58] disabled:hover:bg-transparent"
       >
         {buttonLabel}
       </button>
@@ -341,7 +344,7 @@ function AdminTextInput({
         onChange={(event) => onChange(event.target.value)}
         type={type}
         required={required}
-        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       />
     </label>
   );
@@ -364,7 +367,7 @@ function TournamentSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
       >
         <option value="">No linked tournament</option>
         {tournaments.map((tournament) => (
@@ -666,7 +669,7 @@ function PlayerForm({
         <select
           value={team}
           onChange={(event) => setTeam(event.target.value as Team)}
-          className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+          className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
         >
           <option value="USA">USA</option>
           <option value="EUROPE">Europe</option>
@@ -1231,6 +1234,75 @@ function TournamentCorrections({
   profileId: string;
   onSaved: () => Promise<void>;
 }) {
+  return (
+    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
+      <div className="px-3 py-3">
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament</p>
+      </div>
+      {!tournament ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
+          No active tournament yet.
+        </p>
+      ) : (
+        <div className="border-t border-[#27272A] px-3 py-3">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
+                  {tournament.name}
+                </p>
+                <StatusPill tone={tournament.is_active ? 'success' : 'muted'}>
+                  {tournament.is_active ? 'Active' : 'Inactive'}
+                </StatusPill>
+                {tournament.is_complete ? <StatusPill tone="warning">Complete</StatusPill> : null}
+              </div>
+              <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
+                {tournament.year} · CPI threshold {tournament.cpi_threshold} · Updated{' '}
+                {formatCompactDateTime(tournament.updated_at)}
+              </p>
+              {tournament.is_complete ? (
+                <p className="mt-2 text-xs text-[#F59E0B]">Tournament is complete, so details are locked.</p>
+              ) : null}
+            </div>
+            <AdminActionPopover
+              buttonLabel="Edit"
+              title={`Edit ${tournament.name}`}
+              description="Update event name, year, or CPI threshold. CPI changes recalculate saved score outcomes."
+              disabled={tournament.is_complete}
+            >
+              {(close) => (
+                <TournamentEditForm
+                  tournament={tournament}
+                  fixtures={fixtures}
+                  players={players}
+                  profileId={profileId}
+                  onSaved={onSaved}
+                  onComplete={close}
+                />
+              )}
+            </AdminActionPopover>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TournamentEditForm({
+  tournament,
+  fixtures,
+  players,
+  profileId,
+  onSaved,
+  onComplete,
+}: {
+  tournament: TournamentRow;
+  fixtures: FixtureView[];
+  players: PlayerRow[];
+  profileId: string;
+  onSaved: () => Promise<void>;
+  onComplete: () => void;
+}) {
   const [name, setName] = useState(tournament?.name ?? '');
   const [year, setYear] = useState(tournament?.year.toString() ?? '');
   const [threshold, setThreshold] = useState(tournament?.cpi_threshold.toString() ?? '');
@@ -1266,6 +1338,7 @@ function TournamentCorrections({
       });
       track2026('tournament_updated', { tournament_id: tournament.id });
       await onSaved();
+      onComplete();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -1274,37 +1347,21 @@ function TournamentCorrections({
   };
 
   return (
-    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
-      <div className="px-3 py-3">
-        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament</p>
+    <div className="grid gap-2">
+      <TextField label="Name" value={name} onChange={setName} />
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <TextField label="Year" value={year} onChange={setYear} type="number" />
+        <TextField label="CPI threshold" value={threshold} onChange={setThreshold} type="number" />
+        <button
+          type="button"
+          onClick={saveTournament}
+          disabled={!hasChanged || isSaving || tournament.is_complete}
+          className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {isSaving ? 'Saving' : 'Save'}
+        </button>
       </div>
-      {!tournament ? (
-        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
-          No active tournament yet.
-        </p>
-      ) : (
-        <div className="border-t border-[#27272A] px-3 py-3">
-          {tournament.is_complete && (
-            <p className="mb-3 text-xs text-[#F59E0B]">Tournament is complete, so details are locked.</p>
-          )}
-          <div className="grid gap-2">
-            <TextField label="Name" value={name} onChange={setName} />
-            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
-              <TextField label="Year" value={year} onChange={setYear} type="number" />
-              <TextField label="CPI threshold" value={threshold} onChange={setThreshold} type="number" />
-              <button
-                type="button"
-                onClick={saveTournament}
-                disabled={!hasChanged || isSaving || tournament.is_complete}
-                className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
-              >
-                {isSaving ? 'Saving' : 'Save'}
-              </button>
-            </div>
-          </div>
-          {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
-        </div>
-      )}
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
     </div>
   );
 }
@@ -1494,7 +1551,7 @@ function PlayerEditForm({
             <select
               value={team}
               onChange={(event) => setTeam(event.target.value as Team)}
-              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
             >
               <option value="USA">USA</option>
               <option value="EUROPE">Europe</option>

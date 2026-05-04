@@ -255,7 +255,7 @@ export function SetupForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-[#27272A] bg-[#18181B] p-3">
+    <form onSubmit={onSubmit} className="rounded-lg border border-[#27272A] bg-[#050506] p-3">
       <h3 className="font-bold text-[#FAFAFA]">{title}</h3>
       <div className="mt-3 space-y-3">{children}</div>
       {error && <p className="mt-3 text-sm text-[#F85149]">{error}</p>}
