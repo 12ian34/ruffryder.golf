@@ -110,7 +110,7 @@ Dark mode is the only 2026 app experience:
 
 ### Light Mode
 
-Do not build light mode for the 2026 app unless explicitly requested. The legacy Firebase UI can keep its existing light/dark behavior.
+Do not build light mode for the 2026 app unless explicitly requested.
 
 ## Spacing
 
@@ -336,7 +336,7 @@ Respect reduced-motion preferences.
 
 - Prefer Tailwind utility classes backed by this system.
 - Add semantic Tailwind tokens before repeating raw hex values across components.
-- The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI. New 2026 UI should prefer `team-usa` and `team-europe`.
+- New 2026 UI should prefer `team-usa` and `team-europe` for team identity.
 - Existing 2026 components currently use many literal hex utility classes. When touching a component, align obvious drift with the semantic palette, but do not create noisy churn solely to convert stable raw hex classes.
 - New 2026 UI should bias toward mono typography, dark terminal surfaces, tighter radius, visible borders, and natural casing.
 - Read this file before building new UI.

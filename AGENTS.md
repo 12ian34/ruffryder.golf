@@ -4,7 +4,7 @@
 
 This file is the canonical agent guide for work in this repo going forward.
 
-Legacy Firebase behavior and migration-source details live in `docs/legacy-firebase-reference.md`. Use that file only for `/legacy/*`, archive, or migration work. Prefer this file for current product rules, architecture direction, and implementation guidance.
+Legacy Firebase behavior and migration-source details live in `docs/legacy-firebase-reference.md`. Use that file only for archive or migration work. Prefer this file for current product rules, architecture direction, and implementation guidance.
 
 ## Documentation Ownership
 
@@ -23,13 +23,13 @@ Do not move contributor setup, stack inventories, or agent-only rebuild notes ba
 
 Ruff Ryders Cup is now led by the Supabase/Postgres-backed 2026 app.
 
-The current Firebase implementation should be used as a reference and legacy fallback, not extended as the long-term model. The old app assumes one USA player vs one Europe player over 18 holes with both stroke-play and match-play points. The 2026 format changes the match unit itself, so new work should use a clean domain model.
+The Firebase frontend has been retired. Treat old Firebase behavior as migration/archive reference only, not as a live fallback or long-term model. The old app assumed one USA player vs one Europe player over 18 holes with both stroke-play and match-play points. The 2026 format changes the match unit itself, so new work should use a clean domain model.
 
 ## Design System
 
 The design system source of truth lives in `DESIGN.md`. Read it before building or changing UI.
 
-New 2026 screens should use the dark terminal scoreboard direction, compact mono typography, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The 2026 console is phone-first, including admin/captain setup. Score entry should avoid keyboard-first numeric fields; prefer tap/scroll score pickers with autosave and visible sync state. The legacy `usa` and `europe` Tailwind palettes are kept stable for the old Firebase UI; new 2026 UI should prefer `team-usa` and `team-europe`.
+New 2026 screens should use the dark terminal scoreboard direction, compact mono typography, semantic Tailwind tokens, and mobile-first score-entry patterns documented there. The 2026 console is phone-first, including admin/captain setup. Score entry should avoid keyboard-first numeric fields; prefer tap/scroll score pickers with autosave and visible sync state. New UI should prefer `team-usa` and `team-europe` team tokens.
 
 ## 2026 Tournament Rules
 
@@ -48,7 +48,7 @@ Supabase is the target backend for the rebuild:
 - Historical Firebase data should be migrated into Supabase.
 - Historical results must preserve both raw/no-handicap output and the legacy adjusted/old-handicap-method output. Do not recalculate old tournaments using 2026 CPI rules.
 
-Keep the Firebase project/data untouched as a backup source during the rebuild. Do not build dual-write or gradual migration infrastructure unless explicitly requested.
+Keep the Firebase project/data untouched as a backup migration source. Do not build dual-write or gradual migration infrastructure unless explicitly requested.
 
 ## Environment Variables
 
@@ -131,16 +131,16 @@ Supabase Auth email template copy/design is documented in `docs/supabase-auth-em
 - Keep score derivation pure and well-tested.
 - Prefer deriving standings from hole scores through SQL views/RPC or pure functions before storing duplicate totals.
 - Store timeline snapshots only if needed for historical charts.
-- Treat `src/components/ScoreEntry.tsx` and `src/components/TournamentManagement.tsx` as legacy references, not files to keep expanding.
+- Do not recreate the retired Firebase frontend under `src/components/` or route new work through old `Game`/`Tournament` UI shapes.
 - Keep imports at the top of files. Use exhaustive switch handling for 2026 unions such as segment kind and hole outcome.
 
 ## 2026 Supabase UI
 
-The fresh Supabase-backed console is the main app at `/`. `/2026` remains a compatibility alias for existing bookmarks, and the old Firebase app is fallback-only under `/legacy/*`. The 2026 route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS; do not wrap it in the legacy Firebase `AuthProvider`.
+The fresh Supabase-backed console is the main app at `/`. `/2026` remains a compatibility alias for existing bookmarks, and retired legacy URLs redirect back to `/`. The 2026 route owns its own Supabase session flow because the 2026 schema uses Supabase Auth and RLS; do not reintroduce the legacy Firebase `AuthProvider`.
 
 Current 2026 UI/service layout:
 
-- `src/App.tsx` routes `/` and `/2026` to `src/pages/Tournament2026.tsx`. `src/pages/LegacyApp.tsx` is lazy-loaded under `/legacy/*` and is the only route boundary that should wrap Firebase `AuthProvider`.
+- `src/App.tsx` routes `/` and `/2026` to `src/pages/Tournament2026.tsx`. Retired legacy paths such as `/legacy/*`, `/login`, `/dashboard`, `/profile`, `/about`, `/password-reset-complete`, and old score-entry deep links redirect to `/`.
 - `src/lib/supabase.ts` lazily creates the browser Supabase client and surfaces a config warning when the main app is missing Supabase env vars.
 - `src/pages/Tournament2026.tsx` is the route-level orchestrator. It handles Supabase config checks, OTP sign-in, profile creation flow, auth state refresh, realtime subscription setup, and section composition.
 - The authenticated Supabase app nav is bottom-only and task-based: `My Game`, `Tournament`, `Archive`, `Profile`, plus admin-only `Admin`. Do not show admin setup to non-admins in nav, and keep sign-out in Profile with confirmation. When active tab changes, the bottom rail should scroll the selected item toward center while clamping to the rail's natural start/end bounds.
@@ -158,7 +158,7 @@ Current 2026 UI/service layout:
 - `src/features/tournament2026/components/AdminSetupSection.tsx` is admin-only and organized as collapsible task sections: Tournament, Players, Fixtures, Course, Activity, and Corrections. Tournament includes the all-tournaments activation list. Players includes profile linking/access admin and the manual `player_tournament_stats` history editor. Course shows current par/yardage and lets admins correct metadata. Activity reads recent DB-backed audit logs. Keep destructive correction flows collapsed and confirmation-gated. Admin profile linking/role/access edits belong in the Players section, not the user Profile page.
 - `src/features/tournament2026/components/ProfileSection.tsx` supports self-service profile display name/avatar through the `update_own_profile` RPC and account sign-out. Keep it scoped to the signed-in user's own account.
 - PostHog for the main Supabase app identifies Supabase users by email and registers profile/player super properties after profile load. Keep new AI, profile, archive, score-entry, and admin interactions tracked with `track2026()` using flat snake_case event properties.
-- `src/utils/analytics.ts` must stay Firebase-free so the main app can load without legacy Firebase config. Firebase-specific tracking belongs in `src/utils/legacyAnalytics.ts`.
+- `src/utils/analytics.ts` must stay Firebase-free so the main app can load without legacy Firebase config or client Firebase dependencies.
 - `src/features/tournament2026/components/HistorySection.tsx` exports the Archive view. It combines historical tournament drilldowns from `legacy_tournaments`/`legacy_games` with player history from `player_tournament_stats`. Migrated score-only rows should display as historical scores/CPI, not as `0/0` 2026 hole-count stats.
 - `src/features/tournament2026/components/FormControls.tsx` holds small shared form controls for the 2026 UI.
 - `src/features/tournament2026/insights.ts` derives 2026 highlights and score-movement timeline data from fixture segments and hole scores.
@@ -219,7 +219,11 @@ Current focused 2026 tests live in:
 - `src/__tests__/Tournament2026Layout.test.tsx`
 - `src/__tests__/Tournament2026Archive.test.tsx`
 - `src/__tests__/Tournament2026Panels.test.tsx`
+- `src/__tests__/Tournament2026ProfileSection.test.tsx`
+- `src/__tests__/Tournament2026Routing.test.ts`
 - `src/__tests__/ScoreEntrySection.test.tsx`
+- `src/__tests__/LiveTournamentProgressChart.test.tsx`
+- `src/__tests__/AppRouting.test.tsx`
 
 ## Supabase Permission Model
 

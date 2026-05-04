@@ -66,6 +66,7 @@ const MAX_MOVEMENT_POINTS = 8;
 const MAX_FIXTURES = 12;
 const MAX_SEGMENTS_PER_FIXTURE = 6;
 const MAX_RECENT_HOLES_PER_SEGMENT = 3;
+const EMPTY_HIGHLIGHTS_FALLBACK = 'No wild highlights yet. Save more scores and this reel will fill in.';
 
 export function buildAiRecapSnapshot({
   tournament,
@@ -81,8 +82,9 @@ export function buildAiRecapSnapshot({
   generatedAt?: string;
 }): AiRecapSnapshot {
   const totals = calculateTotals(fixtures);
-  const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles })
+  const generatedHighlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles })
     .slice(0, MAX_HIGHLIGHTS);
+  const highlights = generatedHighlights.length > 0 ? generatedHighlights : [EMPTY_HIGHLIGHTS_FALLBACK];
   const recentMovement = buildProgressTimeline(fixtures)
     .slice(-MAX_MOVEMENT_POINTS)
     .map((point) => ({

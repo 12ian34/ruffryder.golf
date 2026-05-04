@@ -1,6 +1,6 @@
 # Legacy Firebase Reference
 
-This document preserves the useful legacy Firebase context after the 2026 Supabase rebuild. It is reference-only for migration, archive display, and `/legacy/*` fallback work. Current product rules, architecture, and implementation guidance live in `AGENTS.md`, `DESIGN.md`, and `docs/2026-rules-spec.md`.
+This document preserves the useful legacy Firebase context after the 2026 Supabase rebuild. It is reference-only for migration and archive display work. Current product rules, architecture, and implementation guidance live in `AGENTS.md`, `DESIGN.md`, and `docs/2026-rules-spec.md`.
 
 Do not extend the Firebase model for new 2026 features. Keep historical results as originally scored, including raw/no-handicap output and legacy adjusted/old-handicap-method output.
 
@@ -10,13 +10,15 @@ The old app used Firebase Auth, Firestore, Firebase Storage, React, Vite, Tailwi
 
 The legacy scoring unit was a single 18-hole `Game` between one USA player and one Europe player. Each game tracked both stroke-play and match-play results. Two matchups could be paired into a fourball by sharing a `fourballId`, which allowed all four players to edit both games through `allowedEditors`.
 
-Key legacy directories:
+The legacy React frontend has been removed from current `src/` code. Use this document, historical git history, and Firebase exports when migration or archive work needs the old shapes.
+
+Retired legacy source areas:
 
 - `src/components/`: Firebase-era UI components.
 - `src/hooks/`: Firebase data hooks such as game, player, and hole metadata loading.
 - `src/services/matchupService.ts`: fourball pairing and permission syncing.
-- `src/types/`: legacy `Game`, `Player`, `Tournament`, and `User` shapes.
-- `src/utils/handicapScoring.ts`, `src/utils/gamePoints.ts`, `src/utils/tournamentScores.ts`: legacy scoring logic.
+- `src/types/game.ts`, `src/types/player.ts`, `src/types/tournament.ts`, and `src/types/user.ts`: legacy `Game`, `Player`, `Tournament`, and `User` shapes.
+- `src/utils/handicapScoring.ts`, `src/utils/gamePoints.ts`, and `src/utils/tournamentScores.ts`: legacy scoring logic.
 - `firestore.rules` and `firestore.indexes.json`: legacy Firestore access control and indexes.
 
 ## Legacy Firestore Collections
@@ -191,20 +193,12 @@ Useful helpers:
 
 ## Legacy Commands
 
-Use Firebase tools only for legacy fallback work or migration source checks.
+Use Firebase tools only for explicitly approved source-project maintenance. The live React frontend no longer uses Firebase client SDKs or emulators.
 
 ```bash
-npx firebase emulators:start
 npx firebase deploy --only firestore:rules
 npx firebase deploy --only firestore:indexes
 ```
-
-Configured emulator ports:
-
-- Auth: `localhost:9099`
-- Firestore: `localhost:8080`
-- Storage: `localhost:9199`
-- Emulator UI: `localhost:4000`
 
 ## Migration Notes
 

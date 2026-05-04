@@ -6,14 +6,14 @@ import { dirname, resolve } from 'node:path';
 const args = process.argv.slice(2);
 const outputPath = getArgValue('--out') ?? `firebase-export-${new Date().toISOString().slice(0, 10)}.json`;
 const env = readEnvFile('.env');
-const projectId = getArgValue('--project-id') ?? env.FIREBASE_PROJECT_ID ?? env.VITE_FIREBASE_PROJECT_ID;
+const projectId = getArgValue('--project-id') ?? env.FIREBASE_PROJECT_ID;
 const serviceAccountPath =
   getArgValue('--service-account') ??
   env.FIREBASE_SERVICE_ACCOUNT_PATH ??
   process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 if (!projectId) {
-  console.error('Missing Firebase project ID. Set FIREBASE_PROJECT_ID or VITE_FIREBASE_PROJECT_ID in .env.');
+  console.error('Missing Firebase project ID. Set FIREBASE_PROJECT_ID in .env.');
   process.exit(1);
 }
 

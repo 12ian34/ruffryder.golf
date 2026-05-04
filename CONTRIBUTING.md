@@ -6,8 +6,6 @@ This guide is for local development and project maintenance. The player-facing a
 
 - Node.js 22 or newer.
 - npm, included with Node.js.
-- Firebase CLI, optional for legacy Firebase emulator work.
-- Java 11 or newer, required only for Firebase emulators.
 - Supabase CLI access if you are generating Supabase types or applying migrations.
 
 ## Local Setup
@@ -41,18 +39,6 @@ This guide is for local development and project maintenance. The player-facing a
 
 ## Environment Variables
 
-Browser-safe Firebase values are still used by the legacy app:
-
-```bash
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_FIREBASE_MEASUREMENT_ID=
-```
-
 Browser-safe Supabase values are used by the 2026 console:
 
 ```bash
@@ -77,7 +63,6 @@ OPENAI_MODEL=gpt-5.4-mini
 Optional local development flags:
 
 ```bash
-VITE_USE_FIREBASE_EMULATOR=true
 VITE_POSTHOG_DEBUG=true
 ```
 
@@ -100,35 +85,27 @@ Never commit real secrets.
 | `npx vitest` | Run tests in watch mode. |
 | `npx vitest run --coverage` | Run tests with coverage. |
 
-## Firebase Emulators
+## Legacy Firebase Data Export
 
-Use Firebase emulators only when working on the legacy Firebase app or migration source data.
+The Firebase React frontend has been retired. Firebase remains a migration source for historical data exports only.
 
-1. Install and authenticate the Firebase CLI:
+Export scripts use `firebase-admin` and need one of:
 
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   ```
+- `FIREBASE_SERVICE_ACCOUNT_PATH` in `.env`
+- `GOOGLE_APPLICATION_CREDENTIALS`
+- Application default credentials
 
-2. Start the emulators:
+Create an export with:
 
-   ```bash
-   npx firebase emulators:start
-   ```
+```bash
+npm run export:firebase -- --out firebase-export.json
+```
 
-3. Enable emulator mode in `.env.local`:
+Dry-run the Supabase archive migration with:
 
-   ```bash
-   VITE_USE_FIREBASE_EMULATOR=true
-   ```
-
-Emulator ports are configured in `firebase.json`:
-
-- Firestore: `localhost:8080`
-- Auth: `localhost:9099`
-- Storage: `localhost:9199`
-- Emulator UI: `localhost:4000`
+```bash
+npm run migrate:firebase-export -- firebase-export.json
+```
 
 ## Supabase
 
@@ -174,7 +151,7 @@ npx vitest run src/__tests__/ScoreEntrySection.test.tsx
 - `AGENTS.md`: canonical agent context for architecture, product direction, conventions, and testing expectations.
 - `DESIGN.md`: UI design system source of truth.
 - `docs/2026-rules-spec.md`: canonical 2026 tournament rules.
-- `docs/legacy-firebase-reference.md`: compact legacy Firebase context for old behavior, archive display, and migration reference.
+- `docs/legacy-firebase-reference.md`: compact legacy Firebase context for old behavior, archive display, and migration reference. It does not describe a live frontend.
 
 ## Code Conventions
 
@@ -191,14 +168,4 @@ npx vitest run src/__tests__/ScoreEntrySection.test.tsx
 
 Netlify handles production deploys from the configured branch. Do not publish, deploy, or run production migrations without explicit approval.
 
-If you change `firestore.rules` for legacy Firebase, production rules must be deployed separately:
-
-```bash
-npx firebase deploy --only firestore:rules
-```
-
-If you change Firestore indexes:
-
-```bash
-npx firebase deploy --only firestore:indexes
-```
+`firestore.rules` and `firestore.indexes.json` are retained as historical source-project reference. Do not deploy Firebase rule or index changes without explicit approval.
