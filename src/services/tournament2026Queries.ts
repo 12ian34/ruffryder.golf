@@ -1464,6 +1464,34 @@ async function fetchAuditLogs(client: SupabaseClient<Database>): Promise<AuditLo
   return data ?? [];
 }
 
+export async function fetchAuditLogExport2026(
+  client: SupabaseClient<Database> = getSupabaseClient()
+): Promise<AuditLogRow[]> {
+  const pageSize = 1000;
+  const rows: AuditLogRow[] = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    if (isMissingTableError(error, 'audit_logs')) {
+      return [];
+    }
+
+    throwIfSupabaseError(error, 'Failed to export audit logs');
+
+    const page = data ?? [];
+    rows.push(...page);
+
+    if (page.length < pageSize) {
+      return rows;
+    }
+  }
+}
+
 async function fetchTournamentActivity(
   client: SupabaseClient<Database>,
   tournamentId: string

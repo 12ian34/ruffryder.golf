@@ -15,6 +15,7 @@ import {
   clearFixtureScores2026,
   clearHoleScore2026,
   deleteFixture2026,
+  fetchAuditLogExport2026,
   saveHoleScore2026,
   updateSegmentCpiEnabled,
 } from '../services/tournament2026Queries';
@@ -22,6 +23,7 @@ import type {
   AiNewsroomArtifactRow,
   AiPlayerOverviewRow,
   AiTournamentOverviewRow,
+  AuditLogRow,
   FixtureView,
   PlayerRow,
   PlayerTournamentStatsRow,
@@ -48,6 +50,7 @@ vi.mock('../services/tournament2026Queries', async () => {
     clearFixtureScores2026: vi.fn().mockResolvedValue(undefined),
     clearHoleScore2026: vi.fn().mockResolvedValue(undefined),
     deleteFixture2026: vi.fn().mockResolvedValue(undefined),
+    fetchAuditLogExport2026: vi.fn().mockResolvedValue([]),
     saveHoleScore2026: vi.fn().mockResolvedValue(undefined),
     updateFixture2026: vi.fn().mockResolvedValue(undefined),
     updateSegmentCpiEnabled: vi.fn().mockResolvedValue(undefined),
@@ -526,6 +529,55 @@ describe('2026 admin setup panel', () => {
     expect(view.queryByText('Corrections')).not.toBeInTheDocument();
   });
 
+  it('exports the full audit log from the admin Activity task', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:audit-log'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    const originalCreateElement = document.createElement.bind(document);
+    const linkClick = vi.fn();
+    vi.spyOn(document, 'createElement').mockImplementation(((tagName: string, options?: ElementCreationOptions) => {
+      const element = originalCreateElement(tagName, options);
+
+      if (tagName.toLowerCase() === 'a') {
+        Object.defineProperty(element, 'click', {
+          configurable: true,
+          value: linkClick,
+        });
+      }
+
+      return element;
+    }) as typeof document.createElement);
+    vi.mocked(fetchAuditLogExport2026).mockResolvedValueOnce([auditLogRow]);
+
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          auditLogs: [auditLogRow],
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Activity');
+
+    fireEvent.click(view.getByRole('button', { name: 'Export CSV', hidden: true }));
+
+    await waitFor(() => expect(fetchAuditLogExport2026).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(view.getByText('Exported 1 audit rows as CSV.')).toBeInTheDocument());
+    expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(linkClick).toHaveBeenCalledTimes(1);
+    expect(track2026).toHaveBeenCalledWith('audit_log_export_completed', {
+      source: 'admin_activity',
+      row_count: 1,
+    });
+  });
+
   it('requires confirmation before clearing fixture scores or deleting a fixture', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const { container } = render(
@@ -818,6 +870,26 @@ const adminData = {
   fixtures: [],
   history: [],
 } as Tournament2026Data;
+
+const auditLogRow = {
+  id: 'audit-1',
+  action: 'update',
+  table_name: 'hole_scores',
+  record_id: 'score-1',
+  tournament_id: 'tournament-1',
+  fixture_id: 'fixture-1',
+  segment_id: 'segment-1',
+  hole_score_id: 'score-1',
+  player_id: 'player-1',
+  actor_profile_id: 'profile-admin',
+  actor_player_id: null,
+  actor_display_name: 'Admin',
+  actor_is_admin: true,
+  changed_fields: ['usa_score', 'europe_score'],
+  row_before: { usa_score: 4, europe_score: 5 },
+  row_after: { usa_score: 3, europe_score: 5 },
+  created_at: '2026-05-03T08:00:00.000Z',
+} as AuditLogRow;
 
 function createPlayerRow(id: string, name: string, team: 'USA' | 'EUROPE', currentCpi: number): PlayerRow {
   return {

@@ -9,6 +9,7 @@ import {
   createTournament2026,
   deletePlayerTournamentStat2026,
   deleteFixture2026,
+  fetchAuditLogExport2026,
   reopenTournament2026,
   setTournamentActive2026,
   updateCourseHole2026,
@@ -28,6 +29,7 @@ import {
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
+import { downloadAuditLogCsv } from '../auditExport';
 import { getErrorMessage } from '../viewUtils';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
@@ -139,56 +141,107 @@ export function AdminSetupSection({
 
 function AuditLogPanel({ auditLogs, players }: { auditLogs: AuditLogRow[]; players: PlayerRow[] }) {
   const playersById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedCount, setExportedCount] = useState<number | null>(null);
 
-  if (auditLogs.length === 0) {
-    return (
-      <StatusCard tone="warning">
-        No admin activity yet. New score and setup changes will appear here once activity logging is available.
-      </StatusCard>
-    );
+  async function handleExport() {
+    setIsExporting(true);
+    setExportError(null);
+    setExportedCount(null);
+    track2026('audit_log_export_started', { source: 'admin_activity' });
+
+    try {
+      const rows = await fetchAuditLogExport2026();
+      downloadAuditLogCsv(rows);
+      setExportedCount(rows.length);
+      track2026('audit_log_export_completed', {
+        source: 'admin_activity',
+        row_count: rows.length,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setExportError(message);
+      track2026('audit_log_export_failed', {
+        source: 'admin_activity',
+        error: message,
+      });
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
-    <div className="grid gap-2">
-      {auditLogs.map((log) => {
-        const actorPlayer = log.actor_player_id ? playersById.get(log.actor_player_id) : null;
-        const targetPlayer = log.player_id ? playersById.get(log.player_id) : null;
-        const actorLabel = actorPlayer?.name ?? log.actor_display_name ?? 'Unknown user';
-        const changedFields = formatChangedFields(log.changed_fields);
+    <div className="grid gap-3">
+      <div className="flex flex-col gap-3 border border-[#27272A] bg-[#09090B] p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-data text-sm font-bold tracking-[0.12em] text-[#FAFAFA]">Audit export</p>
+          <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+            Showing latest {auditLogs.length} rows. Export downloads every audit row your admin account can read.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleExport()}
+          disabled={isExporting}
+          className="min-h-11 rounded-md border border-[#3FB950]/70 px-3 py-2 font-data text-sm font-bold text-[#3FB950] disabled:opacity-60"
+        >
+          {isExporting ? 'Exporting...' : 'Export CSV'}
+        </button>
+      </div>
+      {exportError ? <StatusCard tone="error">Audit export failed: {exportError}</StatusCard> : null}
+      {exportedCount !== null ? (
+        <StatusCard tone="success">Exported {exportedCount} audit rows as CSV.</StatusCard>
+      ) : null}
+      {auditLogs.length === 0 ? (
+        <StatusCard tone="warning">
+          No admin activity yet. New score and setup changes will appear here once activity logging is available.
+        </StatusCard>
+      ) : (
+        <div className="grid gap-2">
+          {auditLogs.map((log) => {
+            const actorPlayer = log.actor_player_id ? playersById.get(log.actor_player_id) : null;
+            const targetPlayer = log.player_id ? playersById.get(log.player_id) : null;
+            const actorLabel = actorPlayer?.name ?? log.actor_display_name ?? 'Unknown user';
+            const changedFields = formatChangedFields(log.changed_fields);
 
-        return (
-          <article key={log.id} className="border border-[#27272A] bg-[#09090B] p-3">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="font-data text-sm font-bold tracking-[0.12em] text-[#FAFAFA]">
-                  {formatAuditAction(log.action)} {formatAuditTable(log.table_name)}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
-                  {actorLabel}
-                  {log.actor_is_admin ? ' · admin' : ''}
-                  {targetPlayer ? ` · target ${targetPlayer.name}` : ''}
-                </p>
-              </div>
-              <time className="font-data text-[10px] tracking-[0.16em] text-[#8B949E]">
-                {formatAuditTime(log.created_at)}
-              </time>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-[10px] tracking-[0.14em] text-[#8B949E]">
-              <span className="border border-[#27272A] px-2 py-1">Record {shortId(log.record_id)}</span>
-              {log.tournament_id ? (
-                <span className="border border-[#27272A] px-2 py-1">Tournament {shortId(log.tournament_id)}</span>
-              ) : null}
-              {log.fixture_id ? (
-                <span className="border border-[#27272A] px-2 py-1">Fixture {shortId(log.fixture_id)}</span>
-              ) : null}
-              {log.segment_id ? (
-                <span className="border border-[#27272A] px-2 py-1">Segment {shortId(log.segment_id)}</span>
-              ) : null}
-            </div>
-            {changedFields ? <p className="mt-2 text-xs text-[#A1A1AA]">Changed: {changedFields}</p> : null}
-          </article>
-        );
-      })}
+            return (
+              <article key={log.id} className="border border-[#27272A] bg-[#09090B] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-data text-sm font-bold tracking-[0.12em] text-[#FAFAFA]">
+                      {formatAuditAction(log.action)} {formatAuditTable(log.table_name)}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+                      {actorLabel}
+                      {log.actor_is_admin ? ' · admin' : ''}
+                      {targetPlayer ? ` · target ${targetPlayer.name}` : ''}
+                    </p>
+                  </div>
+                  <time className="font-data text-[10px] tracking-[0.16em] text-[#8B949E]">
+                    {formatAuditTime(log.created_at)}
+                  </time>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[10px] tracking-[0.14em] text-[#8B949E]">
+                  <span className="border border-[#27272A] px-2 py-1">Record {shortId(log.record_id)}</span>
+                  {log.tournament_id ? (
+                    <span className="border border-[#27272A] px-2 py-1">
+                      Tournament {shortId(log.tournament_id)}
+                    </span>
+                  ) : null}
+                  {log.fixture_id ? (
+                    <span className="border border-[#27272A] px-2 py-1">Fixture {shortId(log.fixture_id)}</span>
+                  ) : null}
+                  {log.segment_id ? (
+                    <span className="border border-[#27272A] px-2 py-1">Segment {shortId(log.segment_id)}</span>
+                  ) : null}
+                </div>
+                {changedFields ? <p className="mt-2 text-xs text-[#A1A1AA]">Changed: {changedFields}</p> : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
