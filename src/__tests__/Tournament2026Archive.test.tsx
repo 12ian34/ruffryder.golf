@@ -81,6 +81,7 @@ describe('ArchiveSection', () => {
 
     expect(dialogView.getByText('Player history')).toBeInTheDocument();
     expect(dialogView.getByText('Current handicap')).toBeInTheDocument();
+    expect(dialogView.getByText('Tier 2')).toBeInTheDocument();
     expect(tableScroller).not.toBeNull();
     expect(tableScroller).toHaveClass('overflow-x-auto');
     expect(tableScroller).toHaveClass('[scrollbar-width:none]');
@@ -178,7 +179,7 @@ function clickPlayerHistoryButton(container: HTMLElement, playerId: string): voi
 function getPlayerArchiveRowNames(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('tbody tr')).map((row) => {
     const nameCell = row.querySelector('td');
-    return nameCell?.textContent?.replace(/[🇺🇸🇪🇺]/gu, '').trim() ?? '';
+    return nameCell?.textContent?.replace(/[🇺🇸🇪🇺]/gu, '').replace(/Tier [123]/g, '').trim() ?? '';
   });
 }
 

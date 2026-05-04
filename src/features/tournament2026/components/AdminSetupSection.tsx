@@ -30,7 +30,7 @@ import {
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
 import { downloadAuditLogCsv } from '../auditExport';
-import { getErrorMessage } from '../viewUtils';
+import { formatPlayerTier, getErrorMessage, normalizePlayerTier, type PlayerTier } from '../viewUtils';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { SetupForm, StatusCard, TerminalPageSection } from './Layout';
@@ -690,6 +690,7 @@ function PlayerForm({
 }) {
   const [name, setName] = useState('');
   const [team, setTeam] = useState<Team>('USA');
+  const [tier, setTier] = useState<PlayerTier>(2);
   const [cpi, setCpi] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -704,9 +705,11 @@ function PlayerForm({
         name,
         team,
         currentCpi: cpi ? Number(cpi) : null,
+        tier,
       });
-      track2026('player_created', { team });
+      track2026('player_created', { team, tier });
       setName('');
+      setTier(2);
       setCpi('');
       await onSaved();
       onComplete?.();
@@ -732,6 +735,7 @@ function PlayerForm({
         </select>
       </label>
       <TextField label="Current CPI" value={cpi} onChange={setCpi} type="number" />
+      <PlayerTierSelect value={tier} onChange={setTier} />
       <SubmitButton isSaving={isSaving}>Create player</SubmitButton>
     </SetupForm>
   );
@@ -1522,7 +1526,7 @@ function PlayerCorrectionRow({
             <PlayerIdentity player={player} />
           </PlayerHistoryTrigger>
           <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
-            Current CPI {player.current_cpi ?? '-'} · Updated {formatCompactDateTime(player.updated_at)}
+            Current CPI {player.current_cpi ?? '-'} · {formatPlayerTier(player.tier)} · Updated {formatCompactDateTime(player.updated_at)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -1546,17 +1550,20 @@ function PlayerEditForm({
 }) {
   const [name, setName] = useState(player.name);
   const [team, setTeam] = useState<Team>(player.team);
+  const [tier, setTier] = useState<PlayerTier>(normalizePlayerTier(player.tier));
   const [cpi, setCpi] = useState(player.current_cpi?.toString() ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasChanged =
     name !== player.name ||
     team !== player.team ||
+    tier !== normalizePlayerTier(player.tier) ||
     cpi !== (player.current_cpi?.toString() ?? '');
 
   useEffect(() => {
     setName(player.name);
     setTeam(player.team);
+    setTier(normalizePlayerTier(player.tier));
     setCpi(player.current_cpi?.toString() ?? '');
   }, [player]);
 
@@ -1570,8 +1577,13 @@ function PlayerEditForm({
         name,
         team,
         currentCpi: cpi ? Number(cpi) : null,
+        tier,
       });
-      track2026('player_updated', { player_id: player.id });
+      track2026('player_updated', {
+        player_id: player.id,
+        tier,
+        tier_changed: tier !== normalizePlayerTier(player.tier),
+      });
       await onSaved();
       onComplete();
     } catch (err) {
@@ -1585,7 +1597,7 @@ function PlayerEditForm({
     <div>
       <div className="grid gap-2">
         <TextField label="Name" value={name} onChange={setName} />
-        <div className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
+        <div className="grid gap-2 sm:grid-cols-[1fr_7rem_8rem_auto] sm:items-end">
           <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
             Team
             <select
@@ -1598,6 +1610,7 @@ function PlayerEditForm({
             </select>
           </label>
           <TextField label="CPI" value={cpi} onChange={setCpi} type="number" />
+          <PlayerTierSelect value={tier} onChange={setTier} label="Tier" />
           <button
             type="button"
             onClick={savePlayer}
@@ -1610,6 +1623,31 @@ function PlayerEditForm({
       </div>
       {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
     </div>
+  );
+}
+
+function PlayerTierSelect({
+  value,
+  onChange,
+  label = 'Roster tier',
+}: {
+  value: PlayerTier;
+  onChange: (tier: PlayerTier) => void;
+  label?: string;
+}) {
+  return (
+    <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(normalizePlayerTier(Number(event.target.value)))}
+        className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+      >
+        <option value={1}>Tier 1</option>
+        <option value={2}>Tier 2</option>
+        <option value={3}>Tier 3</option>
+      </select>
+    </label>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
@@ -32,6 +32,7 @@ import {
 } from '../insights';
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
+import { buildWinPressureForecast } from '../winProbability';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { CollapsibleSection, StatusCard } from './Layout';
 import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
@@ -56,6 +57,10 @@ export function LeaderboardSection({
   onSaved: () => Promise<void>;
 }) {
   const totals = calculateTotals(fixtures);
+  const winPressure = useMemo(
+    () => buildWinPressureForecast({ fixtures, players, tournament }),
+    [fixtures, players, tournament]
+  );
   const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
   const timeline = buildProgressTimeline(fixtures, players);
   const recentTimeline = timeline.slice(-8);
@@ -221,6 +226,7 @@ export function LeaderboardSection({
       >
         <ScoreLedger totals={totals} />
       </CollapsibleSection>
+      <WinPressureSection forecast={winPressure} />
       <CollapsibleSection
         title="Live Score Curve"
         description="Tournament movement across saved holes."
@@ -478,6 +484,92 @@ function ScoreLedger({ totals }: { totals: { overall: TeamScore; foursomes: Team
       <ScoreLedgerRow label="Overall" score={totals.overall} isPrimary />
       <ScoreLedgerRow label="Foursomes" score={totals.foursomes} />
       <ScoreLedgerRow label="Singles" score={totals.singles} />
+    </div>
+  );
+}
+
+function WinPressureSection({ forecast }: { forecast: ReturnType<typeof buildWinPressureForecast> }) {
+  const usaPercent = formatProbabilityPercent(forecast.probabilities.USA);
+  const europePercent = formatProbabilityPercent(forecast.probabilities.EUROPE);
+  const tiePercent = formatProbabilityPercent(forecast.probabilities.tie);
+  const meta = forecast.locked
+    ? 'Locked'
+    : forecast.scoredHoles === 0
+      ? 'No signal'
+      : `${forecast.remainingHoles} holes live`;
+
+  return (
+    <CollapsibleSection
+      title="Win Pressure"
+      description="Derived forecast from the live saved board. forecast, not fate."
+      meta={meta}
+    >
+      <div className="px-3 py-3 sm:px-4">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_17rem] md:items-end">
+          <div className="min-w-0">
+            <div
+              className="flex h-2 overflow-hidden rounded-sm border border-[#27272A] bg-[#18181B]"
+              aria-label={`Win pressure: USA ${usaPercent}, tie ${tiePercent}, Europe ${europePercent}`}
+            >
+              <span
+                className="h-full bg-[#F2B84B]"
+                style={{ width: usaPercent }}
+                aria-hidden="true"
+              />
+              <span
+                className="h-full bg-[#3F3F46]"
+                style={{ width: tiePercent }}
+                aria-hidden="true"
+              />
+              <span
+                className="h-full bg-[#58A6FF]"
+                style={{ width: europePercent }}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 tabular-nums">
+              <ProbabilityReadout label="USA" value={usaPercent} className="text-[#F2B84B]" />
+              <ProbabilityReadout label="Tie" value={tiePercent} className="text-[#E6EDF3]" align="center" />
+              <ProbabilityReadout
+                label="Europe"
+                value={europePercent}
+                className="text-[#58A6FF]"
+                align="right"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5 border-t border-[#27272A] pt-3 text-xs leading-5 text-[#A1A1AA] md:border-l md:border-t-0 md:pl-4 md:pt-0">
+            {forecast.reasons.slice(0, 3).map((reason) => (
+              <p key={reason}>{reason}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+function ProbabilityReadout({
+  label,
+  value,
+  className,
+  align = 'left',
+}: {
+  label: string;
+  value: string;
+  className: string;
+  align?: 'left' | 'center' | 'right';
+}) {
+  const alignClassName = {
+    left: '',
+    center: 'text-center',
+    right: 'text-right',
+  }[align];
+
+  return (
+    <div className={alignClassName}>
+      <p className="text-[10px] tracking-[0.16em] text-[#8B949E]">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tracking-[-0.06em] sm:text-3xl ${className}`}>{value}</p>
     </div>
   );
 }
@@ -787,6 +879,10 @@ function formatTeamName(team: 'USA' | 'EUROPE'): string {
 
 function formatHandicap(value: number | null): string {
   return value === null ? '-' : value.toString();
+}
+
+function formatProbabilityPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
 function formatTime(value: string): string {

@@ -130,6 +130,7 @@ export interface CreatePlayerInput {
   name: string;
   team: Team;
   currentCpi: number | null;
+  tier: number;
 }
 
 export interface UpdatePlayerInput {
@@ -137,6 +138,7 @@ export interface UpdatePlayerInput {
   name: string;
   team: Team;
   currentCpi: number | null;
+  tier: number;
 }
 
 export interface UpdateFixtureInput {
@@ -488,6 +490,7 @@ export async function createPlayer2026(
     name: input.name,
     team: input.team,
     current_cpi: input.currentCpi,
+    tier: input.tier,
   });
 
   throwIfSupabaseError(error, 'Failed to create player');
@@ -503,6 +506,7 @@ export async function updatePlayer2026(
       name: input.name,
       team: input.team,
       current_cpi: input.currentCpi,
+      tier: input.tier,
     })
     .eq('id', input.playerId);
 

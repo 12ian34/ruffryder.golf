@@ -178,6 +178,7 @@ function createPlayer(id: string, name: string, team: PlayerRow['team']): Player
     legacy_firebase_id: null,
     name,
     team,
+    tier: 2,
     updated_at: timestamp,
   };
 }

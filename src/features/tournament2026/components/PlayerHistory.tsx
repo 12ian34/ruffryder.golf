@@ -6,6 +6,7 @@ import type {
   ProfileRow,
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
+import { formatPlayerTier } from '../viewUtils';
 import { PlayerAiOverview } from './PlayerAiOverview';
 
 const TEAM_EMOJI = {
@@ -121,10 +122,12 @@ export function PlayerIdentity({
   player,
   fallback = 'Unknown player',
   showTeam = true,
+  showTier = false,
 }: {
   player?: PlayerRow | null;
   fallback?: string;
   showTeam?: boolean;
+  showTier?: boolean;
 }) {
   const teamEmoji = player?.team === 'EUROPE' ? TEAM_EMOJI.EUROPE : TEAM_EMOJI.USA;
   const teamLabel = player?.team === 'EUROPE' ? 'Europe' : 'USA';
@@ -134,6 +137,11 @@ export function PlayerIdentity({
       {showTeam && <span aria-label={teamLabel} title={teamLabel}>{teamEmoji}</span>}
       {player?.custom_emoji && <span>{player.custom_emoji}</span>}
       <span className="truncate">{player?.name ?? fallback}</span>
+      {showTier && player && (
+        <span className="shrink-0 whitespace-nowrap rounded-sm border border-[#27272A] px-1.5 py-0.5 text-[10px] tracking-[0.12em] text-[#8B949E]">
+          {formatPlayerTier(player.tier)}
+        </span>
+      )}
     </span>
   );
 }
@@ -262,7 +270,13 @@ function PlayerHistoryPopover({
               {player?.name ?? 'Unknown player'}
             </h3>
             <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
-              Current handicap <span className="tabular-nums text-[#E6EDF3]">{formatNumber(player?.current_cpi ?? null)}</span>
+              <span>Current handicap</span>{' '}
+              <span className="tabular-nums text-[#E6EDF3]">{formatNumber(player?.current_cpi ?? null)}</span>
+              {player && (
+                <>
+                  {' '}· <span className="text-[#E6EDF3]">{formatPlayerTier(player.tier)}</span>
+                </>
+              )}
             </p>
           </div>
           <button

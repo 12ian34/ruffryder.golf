@@ -192,6 +192,7 @@ describe('2026 score permissions', () => {
         name: 'Ian Updated',
         team: 'EUROPE',
         currentCpi: 91,
+        tier: 1,
       },
       { from } as unknown as SupabaseClient<Database>
     );
@@ -201,6 +202,7 @@ describe('2026 score permissions', () => {
       name: 'Ian Updated',
       team: 'EUROPE',
       current_cpi: 91,
+      tier: 1,
     });
     expect(eqPlayer).toHaveBeenCalledWith('id', 'usa-1');
     expect(from).toHaveBeenNthCalledWith(2, 'profiles');
@@ -929,4 +931,3 @@ const fixtureWithPlayers = {
   ],
   segments: [],
 } as unknown as FixtureView;
-

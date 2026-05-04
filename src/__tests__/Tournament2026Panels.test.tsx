@@ -88,6 +88,9 @@ describe('2026 leaderboard panel', () => {
     expect(view.getByText('Overall')).toBeInTheDocument();
     expect(view.getByText('Foursomes')).toBeInTheDocument();
     expect(view.getByText('Singles')).toBeInTheDocument();
+    expect(view.getByText('Win Pressure')).toBeInTheDocument();
+    expect(view.getByText('Derived forecast from the live saved board. forecast, not fate.')).toBeInTheDocument();
+    expect(view.getByText('All square with 1 hole still live.')).toBeInTheDocument();
     expect(view.getByText(/4\/5 holes · 80%/)).toBeInTheDocument();
     expect(view.getByText('Front 9: Match halved')).toBeInTheDocument();
     expect(view.getByText('Singles A: All square')).toBeInTheDocument();
@@ -897,6 +900,7 @@ function createPlayerRow(id: string, name: string, team: 'USA' | 'EUROPE', curre
     name,
     team,
     current_cpi: currentCpi,
+    tier: 2,
     custom_emoji: null,
     legacy_firebase_id: null,
     created_at: '2026-05-03T08:00:00.000Z',

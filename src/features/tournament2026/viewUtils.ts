@@ -13,6 +13,8 @@ export interface TeamScore {
   unplayed: number;
 }
 
+export type PlayerTier = 1 | 2 | 3;
+
 export function calculateTotals(fixtures: FixtureView[]): {
   overall: TeamScore;
   foursomes: TeamScore;
@@ -103,6 +105,14 @@ export function formatSegmentMatchup(segment: SegmentView, players: PlayerRow[])
     : 'Europe player';
 
   return `${usaPlayer} vs ${europePlayer}`;
+}
+
+export function normalizePlayerTier(tier: number | null | undefined): PlayerTier {
+  return tier === 1 || tier === 3 ? tier : 2;
+}
+
+export function formatPlayerTier(tier: number | null | undefined): string {
+  return `Tier ${normalizePlayerTier(tier)}`;
 }
 
 export function formatOutcome(

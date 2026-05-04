@@ -5,6 +5,7 @@ import type {
 } from '../../services/tournament2026Queries';
 import type { CourseHoleMetadata } from '../../domain/2026/course';
 import { calculateSegmentMatchPlayStatus } from '../../domain/2026/matchPlayStatus';
+import { normalizePlayerTier } from './viewUtils';
 
 type Team = 'USA' | 'EUROPE';
 
@@ -36,6 +37,14 @@ interface ScoredSide {
   score: number;
   holeNumber: number;
   par: number | null;
+  tier: number;
+}
+
+interface HighlightCandidate {
+  text: string;
+  priority: number;
+  holeNumber: number;
+  score?: number;
 }
 
 export function buildProgressTimeline(fixtures: FixtureView[], players: PlayerRow[] = []): ProgressPoint[] {
@@ -157,48 +166,58 @@ export function generateTournamentHighlights({
 }): string[] {
   const highlights: string[] = [];
   const scoredSides = collectScoredSides(fixtures, players, courseHoles);
-  const blowUp = scoredSides.reduce<ScoredSide | null>(
-    (current, score) => (!current || score.score > current.score ? score : current),
-    null
-  );
+  const badScores = scoredSides
+    .map(getBadScoreHighlight)
+    .filter(isHighlightCandidate)
+    .sort(compareHighlightCandidates);
+  const positiveScores = scoredSides
+    .map(getPositiveScoreHighlight)
+    .filter(isHighlightCandidate)
+    .sort(compareHighlightCandidates);
+  const smackdowns = collectSmackdownHighlights(fixtures, players);
+  const closeMatches: string[] = [];
+  const halvedRuns: string[] = [];
+  const earlyWins: string[] = [];
+  const upsets: string[] = [];
 
-  if (blowUp && blowUp.score >= 6) {
-    highlights.push(`${blowUp.label} took ${blowUp.score} on H${blowUp.holeNumber}.`);
-  }
-
-  const aces = scoredSides.filter((score) => score.score === 1);
-  highlights.push(...aces.slice(0, 3).map((score) => `${score.label} made an ace on H${score.holeNumber}.`));
-
-  const birdies = scoredSides.filter(
-    (score) => typeof score.par === 'number' && score.score === score.par - 1
-  );
-  highlights.push(
-    ...birdies.slice(0, 5).map((score) => `${score.label} birdied H${score.holeNumber}.`)
-  );
+  highlights.push(...badScores.slice(0, 2).map((candidate) => candidate.text));
+  highlights.push(...positiveScores.slice(0, 3).map((candidate) => candidate.text));
+  highlights.push(...smackdowns.slice(0, 1));
 
   for (const fixture of fixtures) {
     for (const segment of fixture.segments) {
       const longestHalvedRun = getLongestHalvedRun(segment.holeScores);
 
       if (longestHalvedRun >= 3) {
-        highlights.push(
+        halvedRuns.push(
           `${segment.name ?? fixture.name ?? 'A match'} had ${longestHalvedRun} halved holes in a row.`
         );
+      }
+
+      const closeMatch = getCloseMatchHighlight(fixture, segment, players);
+
+      if (closeMatch) {
+        closeMatches.push(closeMatch);
       }
 
       const earlyWin = getEarlyWinHighlight(fixture, segment, players);
 
       if (earlyWin) {
-        highlights.push(earlyWin);
+        earlyWins.push(earlyWin);
       }
 
       const upset = getUpsetHighlight(segment, players, tournament?.cpi_threshold ?? 7);
 
       if (upset) {
-        highlights.push(upset);
+        upsets.push(upset);
       }
     }
   }
+
+  highlights.push(...closeMatches.slice(0, 1));
+  highlights.push(...halvedRuns.slice(0, 1));
+  highlights.push(...earlyWins.slice(0, 2));
+  highlights.push(...upsets.slice(0, 1));
 
   return dedupe(highlights).slice(0, 8);
 }
@@ -220,12 +239,24 @@ function collectScoredSides(
       const europeLabel = segment.europe_player_id
         ? playerLookup.get(segment.europe_player_id)?.name ?? 'Side B'
         : 'Europe';
+      const usaTier = segment.usa_player_id
+        ? normalizePlayerTier(playerLookup.get(segment.usa_player_id)?.tier)
+        : 2;
+      const europeTier = segment.europe_player_id
+        ? normalizePlayerTier(playerLookup.get(segment.europe_player_id)?.tier)
+        : 2;
 
       for (const score of segment.holeScores) {
         const par = parByHole.get(score.hole_number) ?? null;
 
         if (score.usa_score !== null) {
-          scoredSides.push({ label: usaLabel, score: score.usa_score, holeNumber: score.hole_number, par });
+          scoredSides.push({
+            label: usaLabel,
+            score: score.usa_score,
+            holeNumber: score.hole_number,
+            par,
+            tier: usaTier,
+          });
         }
 
         if (score.europe_score !== null) {
@@ -234,6 +265,7 @@ function collectScoredSides(
             score: score.europe_score,
             holeNumber: score.hole_number,
             par,
+            tier: europeTier,
           });
         }
       }
@@ -241,6 +273,125 @@ function collectScoredSides(
   }
 
   return scoredSides;
+}
+
+function getBadScoreHighlight(score: ScoredSide): HighlightCandidate | null {
+  const tier = normalizePlayerTier(score.tier);
+  const threshold = typeof score.par === 'number'
+    ? score.par + getTierBadScoreOffset(tier)
+    : getTierBadScoreFallback(tier);
+
+  if (score.score < threshold) {
+    return null;
+  }
+
+  return {
+    text: `${score.label} took ${score.score} on H${score.holeNumber}.`,
+    priority: tier,
+    holeNumber: score.holeNumber,
+    score: -score.score,
+  };
+}
+
+function getPositiveScoreHighlight(score: ScoredSide): HighlightCandidate | null {
+  if (score.score === 1) {
+    return {
+      text: `${score.label} made an ace on H${score.holeNumber}.`,
+      priority: 0,
+      holeNumber: score.holeNumber,
+      score: score.score,
+    };
+  }
+
+  if (typeof score.par !== 'number') {
+    return null;
+  }
+
+  const tier = normalizePlayerTier(score.tier);
+
+  if (tier === 3 && score.score <= score.par) {
+    return {
+      text: score.score < score.par
+        ? `${score.label} birdied H${score.holeNumber}.`
+        : `${score.label} made par on H${score.holeNumber}.`,
+      priority: score.score < score.par ? 1 : 2,
+      holeNumber: score.holeNumber,
+      score: score.score - score.par,
+    };
+  }
+
+  if (score.score <= score.par - 1) {
+    return {
+      text: `${score.label} birdied H${score.holeNumber}.`,
+      priority: tier === 2 ? 3 : 4,
+      holeNumber: score.holeNumber,
+      score: score.score - score.par,
+    };
+  }
+
+  return null;
+}
+
+function getTierBadScoreOffset(tier: 1 | 2 | 3): number {
+  if (tier === 1) {
+    return 2;
+  }
+
+  return tier === 2 ? 3 : 4;
+}
+
+function getTierBadScoreFallback(tier: 1 | 2 | 3): number {
+  if (tier === 1) {
+    return 5;
+  }
+
+  return tier === 2 ? 6 : 7;
+}
+
+function compareHighlightCandidates(a: HighlightCandidate, b: HighlightCandidate): number {
+  if (a.priority !== b.priority) {
+    return a.priority - b.priority;
+  }
+
+  if ((a.score ?? 0) !== (b.score ?? 0)) {
+    return (a.score ?? 0) - (b.score ?? 0);
+  }
+
+  return a.holeNumber - b.holeNumber;
+}
+
+function isHighlightCandidate(candidate: HighlightCandidate | null): candidate is HighlightCandidate {
+  return candidate !== null;
+}
+
+function collectSmackdownHighlights(fixtures: FixtureView[], players: PlayerRow[]): string[] {
+  const highlights: string[] = [];
+
+  for (const fixture of fixtures) {
+    for (const segment of fixture.segments) {
+      for (const score of segment.holeScores) {
+        if (
+          score.usa_score === null ||
+          score.europe_score === null ||
+          score.outcome === 'halved' ||
+          score.outcome === 'unplayed'
+        ) {
+          continue;
+        }
+
+        const margin = Math.abs(score.usa_score - score.europe_score);
+
+        if (margin < 4) {
+          continue;
+        }
+
+        const winnerLabel = getSegmentSideLabel(segment, score.outcome, players);
+        highlights.push(`${winnerLabel} won H${score.hole_number} by ${margin} gross shots.`);
+      }
+    }
+  }
+
+  return highlights;
 }
 
 function getLongestHalvedRun(scores: FixtureView['segments'][number]['holeScores']): number {
@@ -257,6 +408,46 @@ function getLongestHalvedRun(scores: FixtureView['segments'][number]['holeScores
   }
 
   return longestRun;
+}
+
+function getCloseMatchHighlight(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number],
+  players: PlayerRow[]
+): string | null {
+  const progressiveScores: FixtureView['segments'][number]['holeScores'] = [];
+  const segmentLabel = segment.name ?? fixture.name ?? 'A match';
+  let oneUpFallback: string | null = null;
+
+  for (const score of [...segment.holeScores].sort((a, b) => a.hole_number - b.hole_number)) {
+    if (score.outcome === 'unplayed') {
+      continue;
+    }
+
+    progressiveScores.push(score);
+
+    const status = calculateSegmentMatchPlayStatus({
+      ...segment,
+      holeScores: progressiveScores,
+    });
+
+    if (status.state === 'won' || status.state === 'halved') {
+      continue;
+    }
+
+    if (!status.leader && status.completedHoles >= Math.ceil(status.totalHoles / 2)) {
+      return `${segmentLabel} is all square after H${score.hole_number}.`;
+    }
+
+    if (status.leader && status.margin === 1 && status.holesRemaining <= 3) {
+      const leaderLabel = getSegmentSideLabel(segment, status.leader, players);
+      const holeLabel = status.holesRemaining === 1 ? 'hole' : 'holes';
+
+      oneUpFallback ??= `${segmentLabel} is tight: ${leaderLabel} 1 up with ${status.holesRemaining} ${holeLabel} to play.`;
+    }
+  }
+
+  return oneUpFallback;
 }
 
 function getEarlyWinHighlight(

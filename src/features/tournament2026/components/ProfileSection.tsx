@@ -10,7 +10,7 @@ import {
   type TournamentRow,
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
-import { getErrorMessage } from '../viewUtils';
+import { formatPlayerTier, getErrorMessage } from '../viewUtils';
 import { AvatarEmojiPicker } from './AvatarEmojiPicker';
 import { PlayerSelect } from './FormControls';
 import { StatusCard, TerminalPageSection } from './Layout';
@@ -70,6 +70,11 @@ export function ProfileSection({
               <span className="text-[#FAFAFA]">Not linked yet</span>
             )}
           </p>
+          {linkedPlayer && (
+            <p>
+              Roster tier: <span className="text-[#FAFAFA]">{formatPlayerTier(linkedPlayer.tier)}</span>
+            </p>
+          )}
           <p>
             Tournament:{' '}
             <span className="text-[#FAFAFA]">{tournament?.name ?? 'No active tournament'}</span>
@@ -530,4 +535,3 @@ function ProfileLinkRow({
     </div>
   );
 }
-

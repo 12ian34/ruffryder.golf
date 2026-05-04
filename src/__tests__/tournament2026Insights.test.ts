@@ -49,6 +49,55 @@ describe('2026 tournament insights', () => {
     expect(highlights).toContain('Tommy birdied H1.');
   });
 
+  it('weights positive and bad-hole highlights by player tier', () => {
+    const tierPlayers = [
+      createPlayer('usa-1', 'Ace', 'USA', 72, 1),
+      createPlayer('europe-1', 'Scrapper', 'EUROPE', 96, 3),
+    ] satisfies PlayerRow[];
+    const highlights = generateTournamentHighlights({
+      tournament: null,
+      fixtures: [
+        createFixtureWithScores([
+          createScore('score-1', 1, 5, 3, 'EUROPE', '2026-05-03T07:01:00.000Z'),
+          createScore('score-2', 2, 3, 3, 'halved', '2026-05-03T07:02:00.000Z'),
+        ]),
+      ],
+      players: tierPlayers,
+      courseHoles: [
+        { holeNumber: 1, strokeIndex: 1, par: 3, yardage: 150 },
+        { holeNumber: 2, strokeIndex: 2, par: 3, yardage: 150 },
+      ],
+    });
+
+    expect(highlights).toContain('Ace took 5 on H1.');
+    expect(highlights).toContain('Scrapper made par on H1.');
+    expect(highlights).toContain('Scrapper made par on H2.');
+  });
+
+  it('adds capped smackdown and close-match highlights', () => {
+    const highlights = generateTournamentHighlights({
+      tournament: null,
+      fixtures: [
+        createFixtureWithScores([
+          createScore('score-1', 1, 3, 8, 'USA', '2026-05-03T07:01:00.000Z'),
+          createScore('score-2', 2, 4, 3, 'EUROPE', '2026-05-03T07:02:00.000Z'),
+          createScore('score-3', 3, 4, 3, 'EUROPE', '2026-05-03T07:03:00.000Z'),
+        ]),
+        createFixtureWithScores(
+          [createScore('score-4', 1, 8, 3, 'EUROPE', '2026-05-03T07:04:00.000Z')],
+          'Fixture 2'
+        ),
+      ],
+      players,
+      courseHoles: [{ holeNumber: 1, strokeIndex: 1, par: 3, yardage: 150 }],
+    });
+
+    expect(highlights.filter((highlight) => highlight.includes('gross shots'))).toHaveLength(1);
+    expect(highlights).toContain('Ian won H1 by 5 gross shots.');
+    expect(highlights).toContain('Singles A is all square after H2.');
+    expect(highlights.length).toBeLessThanOrEqual(8);
+  });
+
   it('highlights matches closed out before the final hole', () => {
     const highlights = generateTournamentHighlights({
       tournament: null,
@@ -152,11 +201,31 @@ function createEarlyWinFixture(): FixtureView {
   };
 }
 
+function createFixtureWithScores(
+  holeScores: FixtureView['segments'][number]['holeScores'],
+  name = 'Fixture 1'
+): FixtureView {
+  const fixture = createFixture();
+  const [segment] = fixture.segments;
+
+  return {
+    ...fixture,
+    name,
+    segments: [
+      {
+        ...segment,
+        holeScores,
+      },
+    ],
+  };
+}
+
 function createPlayer(
   id: string,
   name: string,
   team: PlayerRow['team'],
-  currentCpi: number
+  currentCpi: number,
+  tier = 2
 ): PlayerRow {
   return {
     id,
@@ -164,6 +233,7 @@ function createPlayer(
     name,
     team,
     current_cpi: currentCpi,
+    tier,
     custom_emoji: null,
     created_at: '2026-05-03T07:00:00.000Z',
     updated_at: '2026-05-03T07:00:00.000Z',

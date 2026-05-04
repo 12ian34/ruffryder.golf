@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Tournament2026Data } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
+import { formatPlayerTier } from '../viewUtils';
 import { StatusCard, TerminalPageSection } from './Layout';
 import {
   PlayerHistoryTrigger,
@@ -557,7 +558,7 @@ function formatPlayerCount(count: number): string {
 function PlayerArchiveName({ player }: { player: Tournament2026Data['players'][number] | undefined }) {
   return (
     <PlayerHistoryTrigger player={player} fallback="Unknown player" className="inline-flex max-w-48 items-center gap-2">
-      <PlayerIdentity player={player} fallback="Unknown player" />
+      <PlayerIdentity player={player} fallback="Unknown player" showTier />
     </PlayerHistoryTrigger>
   );
 }
@@ -653,6 +654,11 @@ function PlayerNameLine({
       {handicap !== null && (
         <span className="whitespace-nowrap text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
           HCP <span className="tabular-nums text-[#A1A1AA]">{handicap}</span>
+        </span>
+      )}
+      {player && (
+        <span className="whitespace-nowrap text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
+          {formatPlayerTier(player.tier)}
         </span>
       )}
     </p>

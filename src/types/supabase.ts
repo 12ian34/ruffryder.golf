@@ -671,6 +671,7 @@ export type Database = {
           legacy_firebase_id: string | null
           name: string
           team: Database["public"]["Enums"]["app_team"]
+          tier: number
           updated_at: string
         }
         Insert: {
@@ -681,6 +682,7 @@ export type Database = {
           legacy_firebase_id?: string | null
           name: string
           team: Database["public"]["Enums"]["app_team"]
+          tier?: number
           updated_at?: string
         }
         Update: {
@@ -691,6 +693,7 @@ export type Database = {
           legacy_firebase_id?: string | null
           name?: string
           team?: Database["public"]["Enums"]["app_team"]
+          tier?: number
           updated_at?: string
         }
         Relationships: []

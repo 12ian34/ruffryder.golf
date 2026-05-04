@@ -163,6 +163,7 @@ function createPlayer({
     legacy_firebase_id: null,
     name,
     team,
+    tier: 2,
     updated_at: timestamp,
   };
 }
