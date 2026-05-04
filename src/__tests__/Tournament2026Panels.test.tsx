@@ -17,6 +17,7 @@ import {
   deleteFixture2026,
   fetchAuditLogExport2026,
   saveHoleScore2026,
+  updateCourseHole2026,
   updateSegmentCpiEnabled,
 } from '../services/tournament2026Queries';
 import type {
@@ -52,6 +53,7 @@ vi.mock('../services/tournament2026Queries', async () => {
     deleteFixture2026: vi.fn().mockResolvedValue(undefined),
     fetchAuditLogExport2026: vi.fn().mockResolvedValue([]),
     saveHoleScore2026: vi.fn().mockResolvedValue(undefined),
+    updateCourseHole2026: vi.fn().mockResolvedValue(undefined),
     updateFixture2026: vi.fn().mockResolvedValue(undefined),
     updateSegmentCpiEnabled: vi.fn().mockResolvedValue(undefined),
   };
@@ -411,6 +413,42 @@ describe('2026 admin setup panel', () => {
       'Course',
       'Activity',
     ]);
+  });
+
+  it('edits course yardage and stroke index from tappable metadata tiles', async () => {
+    const onSaved = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          courseHoles: [{ holeNumber: 1, par: 3, yardage: 124, strokeIndex: 16 }],
+        }}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Course');
+
+    expect(view.getByText('H01')).toBeInTheDocument();
+    expect(view.getByText('124')).toBeInTheDocument();
+    expect(view.getByText('16')).toBeInTheDocument();
+
+    fireEvent.click(view.getByRole('button', { name: 'Edit Yards', hidden: true }));
+    fireEvent.change(view.getByLabelText('Yards'), { target: { value: '131' } });
+    fireEvent.click(view.getByRole('button', { name: 'Edit SI', hidden: true }));
+    fireEvent.change(view.getByLabelText('SI'), { target: { value: '12' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save', hidden: true }));
+
+    await waitFor(() => {
+      expect(updateCourseHole2026).toHaveBeenCalledWith({
+        holeNumber: 1,
+        strokeIndex: 12,
+        par: 3,
+        yardage: 131,
+      });
+    });
+    expect(onSaved).toHaveBeenCalled();
+    expect(track2026).toHaveBeenCalledWith('course_hole_updated', { hole_number: 1 });
   });
 
   it('shows explicit fixture templates without auto-filling player slots', () => {

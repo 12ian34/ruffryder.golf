@@ -1184,7 +1184,9 @@ function CourseMetadataCorrections({
     <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
         <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Course</p>
-        <p className="mt-1 text-xs leading-5 text-[#8B949E]">Set par and yardage for score-entry context.</p>
+        <p className="mt-1 text-xs leading-5 text-[#8B949E]">
+          Tap par, yardage, or stroke index to correct the score-entry metadata.
+        </p>
       </div>
       <div className="max-h-[32rem] overflow-y-auto border-t border-[#27272A]">
         {courseHoles.map((hole) => (
@@ -1204,27 +1206,41 @@ function CourseHoleCorrectionRow({
 }) {
   const [par, setPar] = useState(hole.par?.toString() ?? '');
   const [yardage, setYardage] = useState(hole.yardage?.toString() ?? '');
+  const [strokeIndex, setStrokeIndex] = useState(hole.strokeIndex.toString());
+  const [activeField, setActiveField] = useState<CourseMetricField | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasChanged = par !== (hole.par?.toString() ?? '') || yardage !== (hole.yardage?.toString() ?? '');
+  const validationError = getCourseMetricValidationError({ par, yardage, strokeIndex });
+  const hasChanged =
+    par !== (hole.par?.toString() ?? '') ||
+    yardage !== (hole.yardage?.toString() ?? '') ||
+    strokeIndex !== hole.strokeIndex.toString();
 
   useEffect(() => {
     setPar(hole.par?.toString() ?? '');
     setYardage(hole.yardage?.toString() ?? '');
+    setStrokeIndex(hole.strokeIndex.toString());
+    setActiveField(null);
   }, [hole]);
 
   const saveHole = async () => {
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
     try {
       await updateCourseHole2026({
         holeNumber: hole.holeNumber,
-        strokeIndex: hole.strokeIndex,
+        strokeIndex: Number(strokeIndex),
         par: par ? Number(par) : null,
         yardage: yardage ? Number(yardage) : null,
       });
       track2026('course_hole_updated', { hole_number: hole.holeNumber });
+      setActiveField(null);
       await onSaved();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -1235,34 +1251,135 @@ function CourseHoleCorrectionRow({
 
   return (
     <div className="border-t border-[#27272A] px-3 py-3 first:border-t-0">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-data text-sm font-bold text-[#FAFAFA]">H{hole.holeNumber}</p>
-          <p className="text-[10px] tracking-[0.14em] text-[#8B949E]">SI {hole.strokeIndex}</p>
-          <p className="mt-1 text-[10px] tracking-[0.12em] text-[#A1A1AA]">
-            Current: {formatCurrentCourseValue('Par', hole.par)} · {formatCurrentCourseValue('Yards', hole.yardage)}
-          </p>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] sm:items-center">
+        <div className="flex items-center justify-between gap-3 sm:block">
+          <div>
+            <p className="font-data text-lg font-bold text-[#FAFAFA]">
+              H{hole.holeNumber.toString().padStart(2, '0')}
+            </p>
+            <p className="mt-0.5 text-[10px] tracking-[0.14em] text-[#8B949E]">Course metadata</p>
+          </div>
+          {hasChanged ? (
+            <span className="rounded-sm border border-[#F59E0B] bg-[#171006] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#F59E0B]">
+              Unsaved
+            </span>
+          ) : (
+            <span className="rounded-sm border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.14em] text-[#8B949E]">
+              Synced
+            </span>
+          )}
         </div>
-        <div className="grid flex-1 grid-cols-2 gap-2">
-          <TextField label="Par" value={par} onChange={setPar} type="number" />
-          <TextField label="Yards" value={yardage} onChange={setYardage} type="number" />
+        <div className="grid min-w-0 grid-cols-3 gap-2">
+          <CourseMetricTile
+            label="Par"
+            value={par}
+            placeholder="-"
+            active={activeField === 'par'}
+            onActivate={() => setActiveField('par')}
+            onChange={setPar}
+          />
+          <CourseMetricTile
+            label="Yards"
+            value={yardage}
+            placeholder="Set"
+            active={activeField === 'yardage'}
+            onActivate={() => setActiveField('yardage')}
+            onChange={setYardage}
+          />
+          <CourseMetricTile
+            label="SI"
+            value={strokeIndex}
+            placeholder="-"
+            active={activeField === 'strokeIndex'}
+            onActivate={() => setActiveField('strokeIndex')}
+            onChange={setStrokeIndex}
+          />
         </div>
         <button
           type="button"
           onClick={saveHole}
-          disabled={!hasChanged || isSaving}
-          className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          disabled={!hasChanged || isSaving || Boolean(validationError)}
+          className="min-h-11 w-full rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] hover:bg-[#06170B] disabled:border-[#27272A] disabled:text-[#484F58] disabled:hover:bg-transparent sm:w-auto"
         >
           {isSaving ? 'Saving' : 'Save'}
         </button>
       </div>
-      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+      {(validationError || error) && <p className="mt-2 text-xs text-[#F85149]">{validationError ?? error}</p>}
     </div>
   );
 }
 
-function formatCurrentCourseValue(label: string, value: number | null): string {
-  return value === null ? `${label} not set` : `${label} ${value}`;
+type CourseMetricField = 'par' | 'yardage' | 'strokeIndex';
+
+function CourseMetricTile({
+  label,
+  value,
+  placeholder,
+  active,
+  onActivate,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  active: boolean;
+  onActivate: () => void;
+  onChange: (value: string) => void;
+}) {
+  if (active) {
+    return (
+      <label className="block min-w-0 rounded-md border border-[#3FB950] bg-[#06170B] p-2 font-data text-[10px] tracking-[0.14em] text-[#3FB950]">
+        {label}
+        <input
+          autoFocus
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          type="number"
+          inputMode="numeric"
+          className="mt-1 min-h-11 min-w-0 w-full rounded border border-[#3F3F46] bg-[#050506] px-2 text-center text-lg font-bold tabular-nums tracking-normal text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+        />
+      </label>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onActivate}
+      className="min-h-[4.5rem] min-w-0 rounded-md border border-[#27272A] bg-[#0F0F11] p-2 text-left transition hover:border-[#3F3F46] hover:bg-[#18181B] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+      aria-label={`Edit ${label}`}
+    >
+      <span className="block text-[10px] tracking-[0.14em] text-[#8B949E]">{label}</span>
+      <span className="mt-1 block truncate font-data text-xl font-bold tabular-nums text-[#FAFAFA]">
+        {value || placeholder}
+      </span>
+      <span className="mt-1 block text-[10px] tracking-[0.12em] text-[#3FB950]">Tap edit</span>
+    </button>
+  );
+}
+
+function getCourseMetricValidationError({
+  par,
+  yardage,
+  strokeIndex,
+}: {
+  par: string;
+  yardage: string;
+  strokeIndex: string;
+}): string | null {
+  if (par && (!Number.isInteger(Number(par)) || Number(par) < 1)) {
+    return 'Par must be a whole number greater than 0.';
+  }
+
+  if (yardage && (!Number.isInteger(Number(yardage)) || Number(yardage) < 1)) {
+    return 'Yardage must be a whole number greater than 0.';
+  }
+
+  if (!Number.isInteger(Number(strokeIndex)) || Number(strokeIndex) < 1 || Number(strokeIndex) > 18) {
+    return 'Stroke index must be a whole number from 1 to 18.';
+  }
+
+  return null;
 }
 
 function TournamentCorrections({
