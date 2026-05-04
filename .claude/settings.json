@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npm run *)",
+      "Bash(grep -rn \"H\\\\${holeNumber}\\\\|H{holeNumber}\\\\|H\\\\${hole_number}\\\\|HoleMetadata\\\\|Length\\\\|SI \\\\|Par \" /Users/ian/dev/ruffryder.golf/src/features/tournament2026/components/ScoreEntrySection.tsx)"
+    ]
+  }
+}

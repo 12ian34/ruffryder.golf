@@ -133,5 +133,8 @@ function createPoint(
     europe,
     halved,
     updatedAt,
+    holeOutcome: 'halved',
+    holeUsaScore: null,
+    holeEuropeScore: null,
   };
 }

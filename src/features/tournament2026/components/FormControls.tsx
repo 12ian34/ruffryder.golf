@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PlayerRow } from '../../../services/tournament2026Queries';
+import { formatPlayerTier } from '../viewUtils';
 
 export function TextField({
   label,
@@ -28,22 +29,29 @@ export function TextField({
 
 export function ScorePicker({
   label,
+  subtitle,
   value,
   onChange,
 }: {
   label: string;
+  subtitle?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   const numericValue = parseScoreValue(value);
   const selectedValue = numericValue?.toString() ?? '';
   const quickValues = getQuickScoreValues(numericValue);
-  const decrementValue = numericValue ? Math.max(1, numericValue - 1) : 4;
-  const incrementValue = numericValue ? numericValue + 1 : 4;
+  const decrementValue = numericValue ? Math.max(1, numericValue - 1) : 3;
+  const incrementValue = numericValue ? numericValue + 1 : 5;
 
   return (
     <div className="min-w-0 font-data text-xs tracking-[0.14em] text-[#8B949E]">
       <div>{label}</div>
+      {subtitle && (
+        <div className="mt-0.5 truncate text-[10px] normal-case tracking-normal text-[#A1A1AA]">
+          {subtitle}
+        </div>
+      )}
       <div className="mt-1 min-w-0 border-y border-[#27272A] bg-[#050506] py-2 sm:rounded-md sm:border sm:px-2">
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <button
@@ -105,7 +113,7 @@ function parseScoreValue(value: string): number | null {
 }
 
 function getQuickScoreValues(value: number | null): number[] {
-  const center = value ?? 5;
+  const center = value ?? 4;
   const start = Math.max(1, center - 2);
 
   return Array.from({ length: 5 }, (_, index) => start + index);
@@ -133,12 +141,16 @@ export function PlayerSelect({
         <option value="">Select player</option>
         {players.map((player) => (
           <option key={player.id} value={player.id}>
-            {player.name} · {player.team}
+            {formatPlayerOptionLabel(player)}
           </option>
         ))}
       </select>
     </label>
   );
+}
+
+function formatPlayerOptionLabel(player: PlayerRow): string {
+  return `${player.name} · ${player.team} · HCP ${player.current_cpi ?? '-'} · ${formatPlayerTier(player.tier)}`;
 }
 
 export function SubmitButton({

@@ -609,8 +609,17 @@ export async function updateSegment2026(
   }
 
   if (input.segment.kind === 'singles') {
-    const usaParticipant = getFixturePlayerForTeam(input.fixture, input.usaPlayerId, 'USA');
-    const europeParticipant = getFixturePlayerForTeam(input.fixture, input.europePlayerId, 'EUROPE');
+    const isSideBasedSingles = isFullCourseSinglesSegment(input.fixture, input.segment);
+    const usaParticipant = isSideBasedSingles
+      ? getFixturePlayerById(input.fixture, input.usaPlayerId, 'Side A')
+      : getFixturePlayerForTeam(input.fixture, input.usaPlayerId, 'USA');
+    const europeParticipant = isSideBasedSingles
+      ? getFixturePlayerById(input.fixture, input.europePlayerId, 'Side B')
+      : getFixturePlayerForTeam(input.fixture, input.europePlayerId, 'EUROPE');
+
+    if (usaParticipant.player_id === europeParticipant.player_id) {
+      throw new Error('Select two distinct singles players.');
+    }
 
     if (isSinglesPlayerChange && input.clearScoresOnPlayerChange) {
       await clearSegmentScores(input.segment.id, client);
@@ -1325,6 +1334,32 @@ function getFixturePlayerForTeam(
   }
 
   return participant;
+}
+
+function getFixturePlayerById(
+  fixture: FixtureView,
+  playerId: string | undefined,
+  label: string
+): FixturePlayerView {
+  const participant = fixture.participants.find((fixturePlayer) => fixturePlayer.player_id === playerId);
+
+  if (!participant) {
+    throw new Error(`Select a player assigned to ${label}.`);
+  }
+
+  return participant;
+}
+
+function isFullCourseSinglesSegment(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number]
+): boolean {
+  return (
+    segment.kind === 'singles' &&
+    segment.hole_start === 1 &&
+    segment.hole_end === 18 &&
+    fixture.participants.length === 2
+  );
 }
 
 function getFixturePlayersForFoursomes(

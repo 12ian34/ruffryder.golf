@@ -307,7 +307,7 @@ export function ProfileLinkingPanel({
   );
 }
 
-function ProfileLinkRow({
+export function ProfileLinkRow({
   profile,
   players,
   onSaved,

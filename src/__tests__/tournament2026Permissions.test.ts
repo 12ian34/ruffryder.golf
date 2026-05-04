@@ -391,6 +391,52 @@ describe('2026 score permissions', () => {
     ]);
   });
 
+  it('updates full-course singles sides when both players are on the same real team', async () => {
+    const segmentEq = vi.fn().mockResolvedValue({ error: null });
+    const updateSegment = vi.fn(() => ({ eq: segmentEq }));
+    const deleteEq = vi.fn().mockResolvedValue({ error: null });
+    const deleteRows = vi.fn(() => ({ eq: deleteEq }));
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'segments') {
+        return { update: updateSegment };
+      }
+
+      return { delete: deleteRows, insert };
+    });
+
+    await updateSegment2026(
+      {
+        tournament: { is_complete: false } as Database['public']['Tables']['tournaments']['Row'],
+        fixture: sameTeamFullCourseFixture,
+        segment: {
+          id: 'segment-1',
+          kind: 'singles',
+          name: 'Singles A',
+          usa_player_id: 'europe-1',
+          europe_player_id: 'europe-2',
+          hole_start: 1,
+          hole_end: 18,
+          holeScores: [],
+        } as unknown as FixtureView['segments'][number],
+        name: 'Mirror match',
+        usaPlayerId: 'europe-2',
+        europePlayerId: 'europe-1',
+      },
+      { from } as unknown as SupabaseClient<Database>
+    );
+
+    expect(updateSegment).toHaveBeenCalledWith({
+      name: 'Mirror match',
+      usa_player_id: 'europe-2',
+      europe_player_id: 'europe-1',
+    });
+    expect(insert).toHaveBeenCalledWith([
+      { segment_id: 'segment-1', player_id: 'europe-2', team: 'EUROPE', slot: 2 },
+      { segment_id: 'segment-1', player_id: 'europe-1', team: 'EUROPE', slot: 1 },
+    ]);
+  });
+
   it('blocks singles player changes when the segment has saved scores', async () => {
     const from = vi.fn();
 
@@ -928,6 +974,15 @@ const fixtureWithPlayers = {
     { player_id: 'usa-1', team: 'USA', slot: 1 },
     { player_id: 'usa-2', team: 'USA', slot: 2 },
     { player_id: 'europe-1', team: 'EUROPE', slot: 1 },
+  ],
+  segments: [],
+} as unknown as FixtureView;
+
+const sameTeamFullCourseFixture = {
+  id: 'fixture-same-team',
+  participants: [
+    { player_id: 'europe-1', team: 'EUROPE', slot: 1 },
+    { player_id: 'europe-2', team: 'EUROPE', slot: 2 },
   ],
   segments: [],
 } as unknown as FixtureView;

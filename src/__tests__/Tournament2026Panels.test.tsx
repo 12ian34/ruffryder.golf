@@ -87,9 +87,11 @@ describe('2026 leaderboard panel', () => {
     const view = within(container);
 
     expect(view.getByText('live leaderboard')).toBeInTheDocument();
-    expect(view.getByText('Overall')).toBeInTheDocument();
-    expect(view.getByText('Foursomes')).toBeInTheDocument();
-    expect(view.getByText('Singles')).toBeInTheDocument();
+    expect(view.getByText('Overall Score')).toBeInTheDocument();
+    expect(view.getByText('Holes Won')).toBeInTheDocument();
+    expect(view.getAllByText('Overall').length).toBeGreaterThan(0);
+    expect(view.getAllByText('Foursomes').length).toBeGreaterThan(0);
+    expect(view.getAllByText('Singles').length).toBeGreaterThan(0);
     expect(view.getByText('Win Pressure')).toBeInTheDocument();
     expect(view.getByText('Derived forecast from the live saved board. forecast, not fate.')).toBeInTheDocument();
     expect(view.getByText('All square with 1 hole still live.')).toBeInTheDocument();
@@ -104,7 +106,7 @@ describe('2026 leaderboard panel', () => {
     expect(scoreMovement).not.toBeNull();
     expect(within(scoreMovement!).getAllByText('Ian').length).toBeGreaterThan(0);
     expect(within(scoreMovement!).getAllByText('Tom').length).toBeGreaterThan(0);
-    expect(within(scoreMovement!).getAllByText('HCP').length).toBeGreaterThan(0);
+    expect(within(scoreMovement!).queryAllByText('HCP').length).toBe(0);
     expect(within(scoreMovement!).queryByText(/Group 1 H/)).not.toBeInTheDocument();
     const fixtureProgress = view.getByText('Fixture Progress').closest('details');
     expect(fixtureProgress).not.toBeNull();
@@ -415,6 +417,122 @@ describe('2026 admin setup panel', () => {
     ]);
   });
 
+  it('keeps open admin task headers sticky and lets the title return to the section start', async () => {
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    try {
+      const { container } = render(<AdminSetupSection data={adminData} onSaved={vi.fn()} />);
+      const playersTask = getAdminTask(container, 'Players');
+      playersTask.scrollIntoView = scrollIntoView;
+      const summary = playersTask.querySelector('summary') as HTMLElement;
+
+      expect(summary).toHaveClass('sticky', 'top-0');
+
+      fireEvent.click(summary);
+
+      await waitFor(() => expect(within(summary).getByText('Top')).toBeInTheDocument());
+      const returnButton = within(summary).getByText('Top').closest('button') as HTMLButtonElement;
+
+      fireEvent.click(returnButton);
+
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: 'start',
+        behavior: 'smooth',
+      });
+      expect(playersTask.open).toBe(true);
+    } finally {
+      if (originalScrollIntoView) {
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+          configurable: true,
+          value: originalScrollIntoView,
+        });
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+      }
+    }
+  });
+
+  it('shows linked profile name and email inside the player edit modal', () => {
+    const linkedProfile = {
+      ...adminProfile,
+      id: 'profile-ian',
+      email: 'ian@ruffryder.golf',
+      display_name: 'Ian Login',
+      linked_player_id: 'usa-1',
+      team: 'USA',
+    } as ProfileRow;
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          players: fixtureBuilderPlayers,
+          profiles: [linkedProfile],
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    openAdminTask(container, 'Players');
+
+    const playerTask = getAdminTask(container, 'Players');
+    expect(getAdminPlayerRowNames(container)).toContain('Ian');
+
+    const ianRow = container.querySelector('[data-player-row-name="Ian"]');
+    if (!ianRow) {
+      throw new Error('Missing Ian player row');
+    }
+
+    fireEvent.click(ianRow);
+
+    expect(playerTask.textContent).toContain('Ian Login');
+    expect(playerTask.textContent).toContain('ian@ruffryder.golf');
+  });
+
+  it('filters and sorts the admin player roster table', () => {
+    const linkedProfile = {
+      ...adminProfile,
+      id: 'profile-ian',
+      email: 'ian@ruffryder.golf',
+      display_name: 'Ian Login',
+      linked_player_id: 'usa-1',
+      team: 'USA',
+    } as ProfileRow;
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          players: fixtureBuilderPlayers,
+          profiles: [linkedProfile],
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    openAdminTask(container, 'Players');
+    const playerTask = getAdminTask(container, 'Players');
+    const playerTaskView = within(playerTask);
+
+    fireEvent.click(getAdminPlayerSortButton(container, 'Name'));
+
+    expect(getAdminPlayerRowNames(container).slice(0, 3)).toEqual(['Alex', 'Ian', 'Max']);
+
+    fireEvent.click(getAdminPlayerSortButton(container, 'Name'));
+
+    expect(getAdminPlayerRowNames(container).slice(0, 3)).toEqual(['Tom', 'Sam', 'Reyno']);
+
+    fireEvent.change(playerTaskView.getByLabelText('Filter roster'), { target: { value: 'ian@ruffryder.golf' } });
+
+    expect(getAdminPlayerRowNames(container)).toEqual(['Ian']);
+
+    fireEvent.change(playerTaskView.getByLabelText('Filter roster'), { target: { value: '' } });
+    fireEvent.click(playerTaskView.getByRole('button', { name: 'Open', hidden: true }));
+
+    expect(getAdminPlayerRowNames(container)).not.toContain('Ian');
+  });
+
   it('edits course yardage and stroke index from tappable metadata tiles', async () => {
     const onSaved = vi.fn().mockResolvedValue(undefined);
     const { container } = render(
@@ -435,6 +553,13 @@ describe('2026 admin setup panel', () => {
 
     fireEvent.click(view.getByRole('button', { name: 'Edit Yards', hidden: true }));
     fireEvent.change(view.getByLabelText('Yards'), { target: { value: '131' } });
+    fireEvent.click(view.getByRole('button', { name: 'Done Yards', hidden: true }));
+    expect(view.getByRole('button', { name: 'Edit Yards', hidden: true })).toHaveTextContent('131');
+
+    fireEvent.click(view.getByRole('button', { name: 'Edit SI', hidden: true }));
+    fireEvent.keyDown(view.getByLabelText('SI'), { key: 'Escape' });
+    expect(view.getByRole('button', { name: 'Edit SI', hidden: true })).toHaveTextContent('16');
+
     fireEvent.click(view.getByRole('button', { name: 'Edit SI', hidden: true }));
     fireEvent.change(view.getByLabelText('SI'), { target: { value: '12' } });
     fireEvent.click(view.getByRole('button', { name: 'Save', hidden: true }));
@@ -541,6 +666,8 @@ describe('2026 admin setup panel', () => {
 
     expect(getSelectOptionValues(usaSlotSelects[0])).toEqual(['', 'usa-2', 'usa-3']);
     expect(getSelectOptionValues(europeSlotSelects[0])).toEqual(['', 'europe-2', 'europe-3']);
+    expect(getSelectOptionLabels(usaSlotSelects[0])).toContain('Sam · USA · HCP 82 · Tier 2');
+    expect(getSelectOptionLabels(europeSlotSelects[0])).toContain('Alex · EUROPE · HCP 84 · Tier 2');
 
     fireEvent.change(usaSlotSelects[0], { target: { value: 'usa-2' } });
 
@@ -568,6 +695,36 @@ describe('2026 admin setup panel', () => {
     expect(view.getByText('Clear scores')).toBeInTheDocument();
     expect(view.getByText('CPI enabled')).toBeInTheDocument();
     expect(view.queryByText('Corrections')).not.toBeInTheDocument();
+  });
+
+  it('shows full-18 same-team singles as side-based correction selects', () => {
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          fixtures: [sameTeamFullCourseFixture],
+          players: fixtureBuilderPlayers,
+        }}
+        onSaved={vi.fn()}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+
+    expect(view.getByText('Fixture repair')).toBeInTheDocument();
+    const repairRow = view.getByText('Editing Europe mirror match').closest('.border-t') as HTMLElement;
+    expect(repairRow).not.toBeNull();
+    const repairView = within(repairRow);
+
+    const sideASelect = repairView.getByLabelText('Side A');
+    const sideBSelect = repairView.getByLabelText('Side B');
+
+    expect(getSelectOptionValues(sideASelect)).toEqual(['', 'europe-1']);
+    expect(getSelectOptionValues(sideBSelect)).toEqual(['', 'europe-2']);
+    expect(getSelectOptionLabels(sideASelect)).toContain('Tom · EUROPE · HCP 78 · Tier 2');
+    expect(getSelectOptionLabels(sideBSelect)).toContain('Alex · EUROPE · HCP 84 · Tier 2');
+    expect(repairView.queryByLabelText('USA')).not.toBeInTheDocument();
   });
 
   it('exports the full audit log from the admin Activity task', async () => {
@@ -788,6 +945,34 @@ const fixtureWithAssignedPlayers = {
   segments: [],
 } as unknown as FixtureView;
 
+const sameTeamFullCourseFixture = {
+  id: 'same-team-full-course',
+  name: 'Europe mirror match',
+  sort_order: 1,
+  participants: [
+    { player_id: 'europe-1', team: 'EUROPE', slot: 1, player: fixtureBuilderPlayers[3] },
+    { player_id: 'europe-2', team: 'EUROPE', slot: 2, player: fixtureBuilderPlayers[4] },
+  ],
+  segments: [
+    {
+      id: 'same-team-singles',
+      name: 'Singles A',
+      kind: 'singles',
+      hole_start: 1,
+      hole_end: 18,
+      sort_order: 0,
+      cpi_enabled: true,
+      usa_player_id: 'europe-1',
+      europe_player_id: 'europe-2',
+      players: [
+        { player_id: 'europe-1', team: 'EUROPE', slot: 1, player: fixtureBuilderPlayers[3] },
+        { player_id: 'europe-2', team: 'EUROPE', slot: 2, player: fixtureBuilderPlayers[4] },
+      ],
+      holeScores: [],
+    },
+  ],
+} as unknown as FixtureView;
+
 const fixture = {
   id: 'fixture-1',
   name: 'Group 1',
@@ -950,16 +1135,42 @@ function getSelectOptionValues(select: HTMLElement): string[] {
   return Array.from((select as HTMLSelectElement).options).map((option) => option.value);
 }
 
-function openAdminTask(container: HTMLElement, title: string): void {
-  const task = Array.from(container.querySelectorAll('section[aria-labelledby="admin-title"] > div > details')).find(
-    (details) => details.querySelector('h3')?.textContent === title
+function getSelectOptionLabels(select: HTMLElement): string[] {
+  return Array.from((select as HTMLSelectElement).options).map((option) => option.textContent ?? '');
+}
+
+function getAdminPlayerRowNames(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll<HTMLTableRowElement>('[data-player-row-name]')).map(
+    (row) => row.dataset.playerRowName ?? ''
   );
+}
+
+function getAdminPlayerSortButton(container: HTMLElement, label: string): HTMLButtonElement {
+  const button = container.querySelector<HTMLButtonElement>(`button[aria-label="Sort players by ${label}"]`);
+
+  if (!button) {
+    throw new Error(`Missing player sort button: ${label}`);
+  }
+
+  return button;
+}
+
+function openAdminTask(container: HTMLElement, title: string): void {
+  const task = getAdminTask(container, title);
+
+  task.open = true;
+}
+
+function getAdminTask(container: HTMLElement, title: string): HTMLDetailsElement {
+  const task = Array.from(
+    container.querySelectorAll<HTMLDetailsElement>('section[aria-labelledby="admin-title"] > div > details')
+  ).find((details) => details.querySelector('h3')?.textContent === title);
 
   if (!task) {
     throw new Error(`Missing admin task: ${title}`);
   }
 
-  (task as HTMLDetailsElement).open = true;
+  return task;
 }
 
 function createHoleScore(

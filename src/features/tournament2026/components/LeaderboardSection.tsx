@@ -25,11 +25,13 @@ import {
 } from '../aiOverview';
 import { buildAiRecapSnapshot } from '../aiRecap';
 import {
+  buildPointsProgressTimeline,
   buildProgressTimeline,
   generateTournamentHighlights,
   type ProgressPointPlayer,
   type ProgressPointSide,
 } from '../insights';
+import { calculatePointTotals, type PointsBreakdown, type TeamPoints } from '../../../domain/2026/points';
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
 import { buildWinPressureForecast } from '../winProbability';
@@ -57,13 +59,15 @@ export function LeaderboardSection({
   onSaved: () => Promise<void>;
 }) {
   const totals = calculateTotals(fixtures);
+  const pointTotals = useMemo(() => calculatePointTotals(fixtures), [fixtures]);
+  const pointsTimeline = useMemo(() => buildPointsProgressTimeline(fixtures, players), [fixtures, players]);
   const winPressure = useMemo(
     () => buildWinPressureForecast({ fixtures, players, tournament }),
     [fixtures, players, tournament]
   );
   const highlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles });
   const timeline = buildProgressTimeline(fixtures, players);
-  const recentTimeline = timeline.slice(-8);
+  const reverseTimeline = useMemo(() => timeline.slice().reverse(), [timeline]);
   const totalChartHoles = fixtures.reduce(
     (total, fixture) => total + calculateFixtureProgress(fixture.segments).totalHoles,
     0
@@ -192,7 +196,7 @@ export function LeaderboardSection({
   ]);
 
   return (
-    <section className="relative overflow-hidden border-y border-[#27272A] bg-[#050506] sm:-mx-4">
+    <section className="relative overflow-x-clip border-y border-[#27272A] bg-[#050506] sm:-mx-4">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
       <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
@@ -220,16 +224,30 @@ export function LeaderboardSection({
         </div>
       </header>
       <CollapsibleSection
-        title="Score Ledger"
-        description="Overall score first, then how it splits between foursomes and singles."
+        title="Overall Score"
+        description="Match-play points (and stroke-play in 1v1 fixtures). On-table is decided matches; provisional projects current leaders."
+        meta={formatPointsMeta(pointTotals.onTable.overall, pointTotals.provisional.overall)}
+      >
+        <PointsLedger totals={pointTotals} />
+      </CollapsibleSection>
+      <CollapsibleSection
+        title="Points Curve"
+        description="Provisional team points across saved holes."
+        meta={`${pointsTimeline.length} moves`}
+      >
+        <LiveTournamentProgressChart points={pointsTimeline} totalHoles={totalChartHoles} />
+      </CollapsibleSection>
+      <CollapsibleSection
+        title="Holes Won"
+        description="Per-hole tally across foursomes and singles. Momentum, not the score."
         meta={boardStatus.scoreLabel}
       >
         <ScoreLedger totals={totals} />
       </CollapsibleSection>
       <WinPressureSection forecast={winPressure} />
       <CollapsibleSection
-        title="Live Score Curve"
-        description="Tournament movement across saved holes."
+        title="Holes Won Curve"
+        description="Per-hole tally over time. Momentum, not the score."
         meta={`${timeline.length} moves`}
       >
         <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
@@ -247,7 +265,7 @@ export function LeaderboardSection({
         isGenerating={isGeneratingOverview}
         scoredHoleCount={scoredHoleCount}
       />
-      <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
+      <ProgressTimeline points={reverseTimeline} />
       <AiNewsroomGrid
         artifacts={tournament ? aiNewsroomArtifacts.filter((artifact) => artifact.tournament_id === tournament.id) : []}
         error={newsroomError}
@@ -382,14 +400,12 @@ function AiNewsroomGrid({
 
 function ProgressTimeline({
   points,
-  totalPoints,
 }: {
   points: ReturnType<typeof buildProgressTimeline>;
-  totalPoints: number;
 }) {
   if (points.length === 0) {
     return (
-      <CollapsibleSection title="Score Movement" description="Latest saved-hole movement." meta={`0 of ${totalPoints}`}>
+      <CollapsibleSection title="Score Movement" description="Newest saved holes first." meta="0 saved">
         <div className="px-3 pb-3 sm:px-4">
           <StatusCard>No score movement yet.</StatusCard>
         </div>
@@ -400,39 +416,95 @@ function ProgressTimeline({
   return (
     <CollapsibleSection
       title="Score Movement"
-      description="Latest saved-hole movement."
-      meta={`Last ${points.length} of ${totalPoints}`}
+      description="Newest saved holes first."
+      meta={`${points.length} saved`}
     >
-      <div className="space-y-2 px-3 py-3 sm:px-4">
+      <div className="divide-y divide-[#18181B] px-3 sm:px-4">
         {points.map((point) => (
-          <div key={point.id} className="grid gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
-            <div className="min-w-0">
-              <ProgressMatchup point={point} />
-              <p className="mt-1 text-[#8B949E]">
-                H{point.holeNumber} · {formatTime(point.updatedAt)}
-              </p>
-            </div>
-            <p className="tabular-nums text-[#E6EDF3] sm:text-right">
-              USA {point.usa} - EUR {point.europe}
-              {point.halved > 0 ? ` (${point.halved} H)` : ''}
-            </p>
-          </div>
+          <ProgressTimelineRow key={point.id} point={point} />
         ))}
       </div>
     </CollapsibleSection>
   );
 }
 
-function ProgressMatchup({ point }: { point: ReturnType<typeof buildProgressTimeline>[number] }) {
+function ProgressTimelineRow({ point }: { point: ReturnType<typeof buildProgressTimeline>[number] }) {
+  const usaSide = point.sides.find((side) => side.team === 'USA');
+  const europeSide = point.sides.find((side) => side.team === 'EUROPE');
+  const usaWon = point.holeOutcome === 'USA';
+  const europeWon = point.holeOutcome === 'EUROPE';
+
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 font-bold text-[#FAFAFA]">
-      {point.sides.map((side, index) => (
-        <span key={`${point.id}-${side.team}`} className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
-          {index > 0 && <span className="text-[#3F3F46]">vs</span>}
-          <ProgressSide side={side} />
-        </span>
-      ))}
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 py-2 text-xs">
+      <div className="flex flex-col items-end pt-0.5 tabular-nums leading-tight text-[#8B949E]">
+        <span>{formatTime(point.updatedAt)}</span>
+        <span className="text-[10px] tracking-[0.14em] text-[#52525B]">H{point.holeNumber}</span>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_minmax(0,1fr)] items-center gap-x-2 leading-tight">
+        <ProgressTimelineSide
+          side={usaSide}
+          align="right"
+          teamClassName="text-[#F2B84B]"
+        />
+        <ProgressTimelineScore value={point.holeUsaScore} won={usaWon} />
+        <span className="text-[10px] tracking-[0.18em] text-[#3F3F46]">vs</span>
+        <ProgressTimelineScore value={point.holeEuropeScore} won={europeWon} />
+        <ProgressTimelineSide
+          side={europeSide}
+          align="left"
+          teamClassName="text-[#58A6FF]"
+        />
+      </div>
     </div>
+  );
+}
+
+function ProgressTimelineSide({
+  side,
+  align,
+  teamClassName,
+}: {
+  side: ProgressPointSide | undefined;
+  align: 'left' | 'right';
+  teamClassName: string;
+}) {
+  const alignClass = align === 'right' ? 'justify-end text-right' : 'justify-start text-left';
+
+  if (!side || side.players.length === 0) {
+    return <span className={`flex min-w-0 ${alignClass} text-[#52525B]`}>—</span>;
+  }
+
+  return (
+    <span className={`flex min-w-0 items-baseline gap-x-1.5 ${alignClass}`}>
+      <span className={`shrink-0 text-[10px] tracking-[0.14em] ${teamClassName}`}>
+        {side.team === 'USA' ? 'USA' : 'EUR'}
+      </span>
+      <span className="min-w-0 truncate font-bold text-[#FAFAFA]">
+        {side.players.map((player, index) => (
+          <span key={`${side.team}-${player.playerId ?? player.name}-${index}`}>
+            {index > 0 && <span className="px-1 text-[#3F3F46]">+</span>}
+            <PlayerHistoryTrigger
+              player={player.player}
+              playerId={player.playerId}
+              fallback={player.name}
+              className="pointer-events-auto"
+            >
+              {player.name}
+            </PlayerHistoryTrigger>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+function ProgressTimelineScore({ value, won }: { value: number | null; won: boolean }) {
+  const display = value === null ? '–' : value;
+  const className = won
+    ? 'rounded-sm bg-[#3FB950]/15 px-1.5 py-0.5 text-[#3FB950]'
+    : 'px-1.5 py-0.5 text-[#E6EDF3]';
+  return (
+    <span className={`tabular-nums text-sm font-bold leading-none ${className}`}>{display}</span>
   );
 }
 
@@ -486,6 +558,107 @@ function ScoreLedger({ totals }: { totals: { overall: TeamScore; foursomes: Team
       <ScoreLedgerRow label="Singles" score={totals.singles} />
     </div>
   );
+}
+
+function PointsLedger({
+  totals,
+}: {
+  totals: { onTable: PointsBreakdown; provisional: PointsBreakdown; hasOneVOne: boolean };
+}) {
+  return (
+    <div className="bg-[#050506]">
+      <PointsLedgerRow
+        label="Overall"
+        onTable={totals.onTable.overall}
+        provisional={totals.provisional.overall}
+        isPrimary
+      />
+      <PointsLedgerRow
+        label="Foursomes"
+        onTable={totals.onTable.foursomes}
+        provisional={totals.provisional.foursomes}
+      />
+      <PointsLedgerRow
+        label="Singles"
+        onTable={totals.onTable.singles}
+        provisional={totals.provisional.singles}
+      />
+      {totals.hasOneVOne ? (
+        <PointsLedgerRow
+          label="Stroke Play"
+          onTable={totals.onTable.strokePlay}
+          provisional={totals.provisional.strokePlay}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PointsLedgerRow({
+  label,
+  onTable,
+  provisional,
+  isPrimary = false,
+}: {
+  label: string;
+  onTable: TeamPoints;
+  provisional: TeamPoints;
+  isPrimary?: boolean;
+}) {
+  const provisionalDiffers =
+    provisional.USA !== onTable.USA || provisional.EUROPE !== onTable.EUROPE;
+
+  return (
+    <div
+      className={`border-t border-[#27272A] px-3 py-3 first:border-t-0 sm:px-4 ${
+        isPrimary ? 'bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.12),transparent_34%)] py-4' : ''
+      }`}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[10px] tracking-[0.2em] text-[#8B949E]">{label}</p>
+        <p className="text-[10px] tracking-[0.14em] text-[#8B949E]">On table</p>
+      </div>
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3 tabular-nums sm:gap-5">
+        <TeamTotal
+          flag="🇺🇸"
+          label="USA"
+          value={formatPointValue(onTable.USA)}
+          className="text-[#F2B84B]"
+          isPrimary={isPrimary}
+          align="right"
+        />
+        <span className="text-xs tracking-[0.2em] text-[#3F3F46] sm:text-sm">vs</span>
+        <TeamTotal
+          flag="🇪🇺"
+          label="Europe"
+          value={formatPointValue(onTable.EUROPE)}
+          className="text-[#58A6FF]"
+          isPrimary={isPrimary}
+          align="left"
+        />
+      </div>
+      {provisionalDiffers ? (
+        <p className="mt-2 text-center text-[10px] uppercase tracking-[0.2em] text-[#52525B]">
+          Provisional{' '}
+          <span className="text-[#F2B84B]">{formatPointValue(provisional.USA)}</span>
+          <span className="text-[#3F3F46]"> · </span>
+          <span className="text-[#58A6FF]">{formatPointValue(provisional.EUROPE)}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function formatPointValue(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function formatPointsMeta(onTable: TeamPoints, provisional: TeamPoints): string {
+  const decided = `${formatPointValue(onTable.USA)}–${formatPointValue(onTable.EUROPE)}`;
+  const projectedDiffers =
+    provisional.USA !== onTable.USA || provisional.EUROPE !== onTable.EUROPE;
+  if (!projectedDiffers) return decided;
+  return `${decided} · proj ${formatPointValue(provisional.USA)}–${formatPointValue(provisional.EUROPE)}`;
 }
 
 function WinPressureSection({ forecast }: { forecast: ReturnType<typeof buildWinPressureForecast> }) {
@@ -589,51 +762,65 @@ function ScoreLedgerRow({
         isPrimary ? 'bg-[radial-gradient(circle_at_top_right,rgba(63,185,80,0.12),transparent_34%)] py-4' : ''
       }`}
     >
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-        <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.2em] text-[#8B949E]">{label}</p>
-          <p className="mt-1 text-xs tracking-[0.14em] text-[#8B949E]">
-            {score.halved} halved · {score.unplayed} unplayed
-          </p>
-        </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3 tabular-nums sm:min-w-[24rem] sm:gap-5">
-          <TeamTotal label="USA" value={score.USA} className="text-[#F2B84B]" isPrimary={isPrimary} />
-          <span className="pb-1 text-center text-sm tracking-[0.18em] text-[#3F3F46] sm:pb-2">vs</span>
-          <TeamTotal
-            label="Europe"
-            value={score.EUROPE}
-            className="text-[#58A6FF]"
-            isPrimary={isPrimary}
-            align="right"
-          />
-        </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[10px] tracking-[0.2em] text-[#8B949E]">{label}</p>
+        <p className="text-[10px] tracking-[0.14em] text-[#8B949E]">
+          {score.halved} halved · {score.unplayed} unplayed
+        </p>
+      </div>
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3 tabular-nums sm:gap-5">
+        <TeamTotal
+          flag="🇺🇸"
+          label="USA"
+          value={score.USA}
+          className="text-[#F2B84B]"
+          isPrimary={isPrimary}
+          align="right"
+        />
+        <span className="text-xs tracking-[0.2em] text-[#3F3F46] sm:text-sm">vs</span>
+        <TeamTotal
+          flag="🇪🇺"
+          label="Europe"
+          value={score.EUROPE}
+          className="text-[#58A6FF]"
+          isPrimary={isPrimary}
+          align="left"
+        />
       </div>
     </div>
   );
 }
 
 function TeamTotal({
+  flag,
   label,
   value,
   className,
   isPrimary = false,
-  align = 'left',
+  align,
 }: {
+  flag: string;
   label: string;
-  value: number;
+  value: number | string;
   className: string;
   isPrimary?: boolean;
-  align?: 'left' | 'right';
+  align: 'left' | 'right';
 }) {
+  const isLeft = align === 'left';
+
   return (
-    <div>
-      <p className={`text-xs tracking-[0.18em] text-[#8B949E] ${align === 'right' ? 'text-right' : ''}`}>
-        {label}
-      </p>
+    <div className={isLeft ? 'text-left' : 'text-right'}>
+      <div className={`flex items-center gap-2 ${isLeft ? 'justify-start' : 'justify-end'}`}>
+        {isLeft ? <span className="text-xl sm:text-2xl">{flag}</span> : null}
+        <span className={`text-base font-semibold tracking-[0.04em] sm:text-lg ${className}`}>
+          {label}
+        </span>
+        {isLeft ? null : <span className="text-xl sm:text-2xl">{flag}</span>}
+      </div>
       <p
-        className={`font-bold tracking-[-0.07em] tabular-nums ${
-          isPrimary ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl'
-        } ${align === 'right' ? 'text-right' : ''} ${className}`}
+        className={`mt-1 font-bold tracking-[-0.07em] tabular-nums ${className} ${
+          isPrimary ? 'text-5xl sm:text-6xl' : 'text-3xl sm:text-4xl'
+        }`}
       >
         {value}
       </p>

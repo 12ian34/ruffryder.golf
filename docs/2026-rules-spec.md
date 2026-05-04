@@ -10,7 +10,7 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
   - 4-player standard match: two USA players and two Europe players.
   - 6-player flexible match: three USA players and three Europe players.
 - Captains/admins choose the fixtures and the singles pairings inside each fixture.
-- All scoring is match-play-only. There is no separate stroke-play points competition.
+- Matches are scored by match play. 2-player full-18 fixtures additionally award a stroke-play point. See "Points".
 
 ## Holes 1-9: Foursomes
 
@@ -59,6 +59,28 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 - A halved hole is equivalent to no hole won by either team for team totals.
 - Unplayed holes should be represented separately from halved holes.
 
+## Points
+
+A match awards points based on its result:
+
+- A match-play match (foursomes or singles) awards 1 point to the winning side, or 0.5 points to each side if the match is halved.
+- Foursomes points are credited to each player on the winning team. Both players on a winning 4-player-standard side score 1 point each, and both selected front-nine players on a winning 6-player-flexible side score 1 point each. A halved foursomes match awards 0.5 to each player on each side.
+- Singles points are credited to the individual winner.
+- A 2-player full-18 fixture additionally awards 1 stroke-play point to the side with the lower total stroke score over the 18 holes, or 0.5 to each side on a tie. When CPI is enabled for the fixture, stroke-play uses CPI-adjusted (net) totals; otherwise it uses raw/gross totals.
+
+Maximum points per fixture template:
+
+- 2-player full 18: 2 points (1 match-play + 1 stroke-play).
+- 4-player standard: 4 points (2 from foursomes match + 2 from singles).
+- 6-player flexible: 5 points (2 from foursomes match + 3 from singles).
+
+Team totals sum the individual point allocations across all fixtures.
+
+Points are reported in two views:
+
+- Points on table: only counts finalized matches (won or halved) and finalized 1v1 stroke-play results (all 18 holes complete).
+- Provisional points: includes the projected leader for in-progress matches and the current stroke-play leader for 2-player fixtures, updated live as new holes are scored.
+
 ## Score Entry Permissions
 
 - Any player in a fixture can enter scores for that fixture.
@@ -73,9 +95,12 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 
 ## Leaderboard
 
-- The leaderboard shows live team totals from foursomes and singles.
-- It should make clear how much of the score came from front-nine foursomes and back-nine singles.
-- It should not show separate stroke-play points for 2026 tournaments.
+- The leaderboard shows live team totals and breakdowns:
+  - Holes won: a per-hole tally across all matches as a momentum indicator (separate from the points score).
+  - Points on table: team points from finalized matches only (see "Points").
+  - Provisional points: includes the projected leader for in-progress matches and the live stroke-play leader for 2-player fixtures.
+- A live chart should visualize provisional team points over time, so viewers can watch the points lead develop.
+- Breakdowns should make clear how points came from front-nine foursomes vs back-nine singles, and (for 2-player fixtures) match play vs stroke play.
 
 ## Historical Results
 

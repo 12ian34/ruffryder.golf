@@ -67,7 +67,7 @@ describe('ScoreEntrySection', () => {
     expect(onViewProfile).toHaveBeenCalledTimes(1);
   });
 
-  it('only shows the current unplayed hole for score entry', async () => {
+  it('shows played holes collapsed alongside the active hole', async () => {
     const { container } = render(
       <ScoreEntrySection
         tournament={tournament}
@@ -80,25 +80,25 @@ describe('ScoreEntrySection', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('Length 355 m')).toBeInTheDocument();
-    expect(view.getByText('SI 7')).toBeInTheDocument();
-    expect(view.getAllByText('Par 3')).toHaveLength(1);
-    expect(view.getByText('Now H2')).toBeInTheDocument();
-    expect(view.getByText('H2')).toBeInTheDocument();
-    expect(view.queryByText('H1')).not.toBeInTheDocument();
+    expect(view.getByText('355 m')).toBeInTheDocument();
+    expect(view.getByText('index')).toBeInTheDocument();
+    expect(view.getByText('par')).toBeInTheDocument();
+    expect(view.getByText('length')).toBeInTheDocument();
+    expect(view.getByText('now hole 2')).toBeInTheDocument();
+    expect(view.getByText('hole 2')).toBeInTheDocument();
+    expect(view.getByText('hole 1')).toBeInTheDocument();
     expect(view.getByText('1/2')).toBeInTheDocument();
     expect(view.getByText('USA dormie 1')).toBeInTheDocument();
     expect(view.getByText('1/2 played')).toBeInTheDocument();
-    expect(view.queryByText(/USA 4 - Europe 5/)).not.toBeInTheDocument();
-    expect(view.queryByText(/Saved \d/)).not.toBeInTheDocument();
-    expect(view.queryByText('By Ian')).not.toBeInTheDocument();
-    expect(view.queryByText('Edit')).not.toBeInTheDocument();
+    expect(view.getByText(/saved \d/)).toBeInTheDocument();
+    expect(view.getByText('by Ian')).toBeInTheDocument();
+    expect(view.getByText('edit')).toBeInTheDocument();
     expect(view.queryByText('Save now')).not.toBeInTheDocument();
     expect(view.queryByText(/Save all/)).not.toBeInTheDocument();
 
     fireEvent.click(view.getAllByLabelText('Show lengths in yards')[0]);
 
-    expect(view.getByText('Length 388 yds')).toBeInTheDocument();
+    expect(view.getByText('388 yds')).toBeInTheDocument();
 
     fireEvent.change(view.getAllByLabelText('USA score')[0], { target: { value: '6' } });
 
@@ -163,7 +163,7 @@ describe('ScoreEntrySection', () => {
     fireEvent.change(view.getAllByLabelText('Europe score')[0], { target: { value: '5' } });
 
     await act(async () => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(1500);
       await Promise.resolve();
     });
 
@@ -194,7 +194,7 @@ describe('ScoreEntrySection', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(1500);
       await Promise.resolve();
     });
     vi.useRealTimers();
@@ -227,8 +227,8 @@ describe('ScoreEntrySection', () => {
     );
     const view = within(container);
 
-    expect(view.getByText('Edit')).toBeInTheDocument();
-    expect(view.queryByText('Clear')).not.toBeInTheDocument();
+    expect(view.getAllByText('edit').length).toBeGreaterThan(0);
+    expect(view.queryByText('clear')).not.toBeInTheDocument();
     expect(view.queryByText('Disable CPI')).not.toBeInTheDocument();
     expect(clearHoleScore2026).not.toHaveBeenCalled();
   });
@@ -253,13 +253,15 @@ describe('ScoreEntrySection', () => {
     fireEvent.click(view.getByText('Back 9'));
 
     expect(view.getByText('Back 9 Singles')).toBeInTheDocument();
-    expect(view.getByText('Now H10')).toBeInTheDocument();
-    expect(view.getAllByText('H10')).toHaveLength(1);
-    expect(view.queryByText('H11')).not.toBeInTheDocument();
+    expect(view.getByText('now hole 10')).toBeInTheDocument();
+    expect(view.getAllByText('hole 10')).toHaveLength(1);
+    expect(view.queryByText('hole 11')).not.toBeInTheDocument();
     expect(view.getByLabelText('Ian score')).toBeInTheDocument();
     expect(view.getByLabelText('Tommy score')).toBeInTheDocument();
     expect(view.getByLabelText('Sam score')).toBeInTheDocument();
     expect(view.getByLabelText('Alex score')).toBeInTheDocument();
+    expect(view.getByText('CPI enabled. Ian HCP 98; Tommy HCP 78. Gap 20.')).toBeInTheDocument();
+    expect(view.queryByText(/receives strokes/)).not.toBeInTheDocument();
   });
 });
 
@@ -351,7 +353,7 @@ const completedFixture = {
 } as unknown as FixtureView;
 
 const groupedPlayers = [
-  { id: 'player-1', name: 'Ian', team: 'USA', current_cpi: 82 },
+  { id: 'player-1', name: 'Ian', team: 'USA', current_cpi: 98 },
   { id: 'player-2', name: 'Tommy', team: 'EUROPE', current_cpi: 78 },
   { id: 'player-3', name: 'Sam', team: 'USA', current_cpi: 88 },
   { id: 'player-4', name: 'Alex', team: 'EUROPE', current_cpi: 84 },
@@ -407,4 +409,3 @@ const groupedFixture = {
     },
   ],
 } as unknown as FixtureView;
-

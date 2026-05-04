@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { ThemeToggle } from './ThemeToggle';
 
 export interface AppNavItem<T extends string> {
@@ -181,7 +181,7 @@ export function TerminalPageSection({
   return (
     <section
       aria-labelledby={titleId}
-      className="relative overflow-hidden border-y border-[#27272A] bg-[#050506] sm:-mx-4"
+      className="relative overflow-x-clip border-y border-[#27272A] bg-[#050506] sm:-mx-4"
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#F2B84B]/70 via-[#3FB950]/60 to-[#58A6FF]/70" />
       <header className="relative grid gap-4 border-b border-[#27272A] px-3 py-4 sm:px-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -221,22 +221,60 @@ export function CollapsibleSection({
   className?: string;
   children: ReactNode;
 }) {
+  const sectionRef = useRef<HTMLDetailsElement | null>(null);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  function handleReturnToSectionStart(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+
+    sectionRef.current?.scrollIntoView?.({
+      block: 'start',
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  }
+
   return (
-    <details open={defaultOpen} className={`group border-b border-[#27272A] bg-[#050506] ${className}`}>
-      <summary className="grid cursor-pointer list-none gap-3 px-3 py-3 transition hover:bg-[#0C0C0E] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950] sm:grid-cols-[minmax(0,1fr)_auto] sm:px-4 [&::-webkit-details-marker]:hidden">
-        <div className="min-w-0">
-          {eyebrow ? <p className="text-[10px] tracking-[0.22em] text-[#3FB950]">{eyebrow}</p> : null}
-          <p className="text-sm font-bold tracking-[-0.02em] text-[#FAFAFA] sm:text-base">{title}</p>
-          {description ? <p className="mt-1 text-xs leading-5 text-[#8B949E]">{description}</p> : null}
-        </div>
-        <span className="flex items-center gap-3 text-[10px] tracking-[0.14em] text-[#8B949E] sm:justify-end">
-          {meta ? <span className="border border-[#27272A] px-2 py-1">{meta}</span> : null}
-          <span className="text-[#3FB950]">
-            <span className="group-open:hidden">Open</span>
-            <span className="hidden group-open:inline">Hide</span>
-            <span className="ml-1 inline-block transition group-open:rotate-90">&gt;</span>
+    <details
+      ref={sectionRef}
+      open={defaultOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+      className={`group scroll-mt-2 border-b border-[#27272A] bg-[#050506] ${className}`}
+    >
+      <summary className="sticky top-0 z-10 cursor-pointer list-none bg-[#050506]/95 px-3 py-2.5 backdrop-blur transition hover:bg-[#0C0C0E] focus:outline-none focus-visible:bg-[#0C0C0E] sm:px-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-start justify-between gap-3">
+          {isOpen ? (
+            <button
+              type="button"
+              onClick={handleReturnToSectionStart}
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-[#FAFAFA] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+              aria-label={`Return to ${title} section start`}
+            >
+              <span className="min-w-0 truncate text-sm font-bold tracking-[-0.02em] sm:text-base">{title}</span>
+              <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
+                Top
+              </span>
+            </button>
+          ) : (
+            <div className="min-w-0">
+              {eyebrow ? <p className="text-[10px] tracking-[0.22em] text-[#3FB950]">{eyebrow}</p> : null}
+              <p className="text-sm font-bold tracking-[-0.02em] text-[#FAFAFA] sm:text-base">{title}</p>
+              {description ? <p className="mt-1 text-xs leading-5 text-[#8B949E]">{description}</p> : null}
+            </div>
+          )}
+          <span className="flex shrink-0 items-center gap-3 text-[10px] tracking-[0.14em] text-[#8B949E]">
+            {meta ? <span className="border border-[#27272A] px-2 py-1">{meta}</span> : null}
+            <span className="text-[#3FB950]">
+              <span className="group-open:hidden">Open</span>
+              <span className="hidden group-open:inline">Hide</span>
+              <span className="ml-1 inline-block transition group-open:rotate-90">&gt;</span>
+            </span>
           </span>
-        </span>
+        </div>
       </summary>
       <div className="border-t border-[#27272A]">{children}</div>
     </details>

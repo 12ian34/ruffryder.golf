@@ -49,6 +49,8 @@ interface HoleDraft {
 interface ScoreLabels {
   usa: string;
   europe: string;
+  usaSubtitle?: string;
+  europeSubtitle?: string;
 }
 
 type LengthUnit = 'metres' | 'yards';
@@ -422,6 +424,35 @@ function FixtureScoreCard({
               />
             ))
           )}
+          {hasFrontAndBack && activeView === 'front' && (
+            <FixtureViewAdvance
+              label="advance to back 9"
+              progress={calculateFixtureProgress(frontSegments)}
+              onClick={() => {
+                setActiveView('back');
+                track2026('score_fixture_view_changed', {
+                  fixture_id: fixture.id,
+                  view: 'back',
+                  source: 'advance_button',
+                });
+              }}
+            />
+          )}
+          {hasFrontAndBack && activeView === 'back' && (
+            <FixtureViewAdvance
+              label="back to front 9"
+              direction="back"
+              progress={calculateFixtureProgress(backSegments)}
+              onClick={() => {
+                setActiveView('front');
+                track2026('score_fixture_view_changed', {
+                  fixture_id: fixture.id,
+                  view: 'front',
+                  source: 'advance_button',
+                });
+              }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -600,6 +631,43 @@ function PlayerList({ players }: { players: PlayerRow[] }) {
   );
 }
 
+function FixtureViewAdvance({
+  label,
+  progress,
+  direction = 'forward',
+  onClick,
+}: {
+  label: string;
+  progress: { completedHoles: number; totalHoles: number };
+  direction?: 'forward' | 'back';
+  onClick: () => void;
+}) {
+  const isComplete = progress.totalHoles > 0 && progress.completedHoles >= progress.totalHoles;
+  const arrow = direction === 'back' ? '←' : '→';
+
+  return (
+    <div className="border-t border-dashed border-[#27272A] bg-[#050506] px-3 py-4">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-md border px-4 py-3 font-data text-sm font-bold lowercase tracking-[0.14em] transition-colors ${
+          isComplete
+            ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950] hover:bg-[#082611]'
+            : 'border-[#27272A] bg-[#0C0C0E] text-[#E6EDF3] hover:border-[#3FB950] hover:text-[#3FB950]'
+        }`}
+      >
+        <span>{label}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-data text-[10px] tracking-[0.16em] tabular-nums opacity-80">
+            {progress.completedHoles}/{progress.totalHoles}
+          </span>
+          <span aria-hidden className="text-base">{arrow}</span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function ScoreViewButton({
   label,
   isActive,
@@ -663,11 +731,23 @@ function SegmentScoreCard({
   const matchStatus = calculateSegmentMatchPlayStatus(segment);
   const matchStatusLabel = formatMatchStatusLabel(matchStatus, scoreLabels);
   const currentHoleNumber = getCurrentHoleNumber(holes, scoreByHole);
-  const visibleHoles = currentHoleNumber ? [currentHoleNumber] : [];
+  const visibleHoles = holes.filter(
+    (holeNumber) =>
+      holeNumber === currentHoleNumber || isPlayedScore(scoreByHole.get(holeNumber))
+  );
   const dirtyHoles = visibleHoles.filter((holeNumber) =>
     isHoleDirty(drafts[holeNumber], scoreByHole.get(holeNumber))
   );
   const isSavingAny = savingHoles.size > 0;
+  const activeHoleRef = useRef<HTMLDivElement | null>(null);
+  const showJumpButton =
+    currentHoleNumber !== null &&
+    visibleHoles.length > 1 &&
+    visibleHoles[0] !== currentHoleNumber;
+  const jumpToCurrentHole = () => {
+    activeHoleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    track2026('score_jump_to_current_hole', { hole_number: currentHoleNumber });
+  };
 
   useEffect(() => {
     setDrafts(createDrafts(holes, scoreByHole, tournament.id, segment.id));
@@ -820,12 +900,24 @@ function SegmentScoreCard({
               {isSavingAny ? 'Saving…' : `Save all (${dirtyHoles.length})`}
             </button>
           )}
-          <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] tracking-[0.18em] text-[#A1A1AA]">
-            {currentHoleNumber ? `Now H${currentHoleNumber}` : `Holes ${segment.hole_start}-${segment.hole_end}`}
+          <span className="border border-[#27272A] px-3 py-1 font-data text-[10px] lowercase tracking-[0.18em] text-[#A1A1AA]">
+            {currentHoleNumber ? `now hole ${currentHoleNumber}` : `holes ${segment.hole_start}-${segment.hole_end}`}
           </span>
         </div>
       </div>
       {saveAllError && <p className="px-3 pb-3 font-data text-xs text-[#F85149]">{saveAllError}</p>}
+      {showJumpButton && (
+        <div className="border-t border-dashed border-[#27272A] bg-[#050506] px-3 py-2">
+          <button
+            type="button"
+            onClick={jumpToCurrentHole}
+            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md border border-[#3FB950]/60 bg-[#06170B] px-3 py-2 font-data text-xs font-bold lowercase tracking-[0.14em] text-[#3FB950] hover:bg-[#082611]"
+          >
+            <span>jump to current hole</span>
+            <span className="font-data tabular-nums">hole {currentHoleNumber} ↓</span>
+          </button>
+        </div>
+      )}
       <div>
         {visibleHoles.map((holeNumber) => {
           const score = segment.holeScores.find((row) => row.hole_number === holeNumber) ?? null;
@@ -834,25 +926,31 @@ function SegmentScoreCard({
           const isSaving = savingHoles.has(holeNumber);
           const rowError = rowErrors[holeNumber] ?? null;
           const courseHole = courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber);
+          const isActive = holeNumber === currentHoleNumber;
 
           return (
-            <HoleScoreForm
+            <div
               key={holeNumber}
-              rowKey={getScoreDraftKey(tournament.id, segment.id, holeNumber)}
-              holeNumber={holeNumber}
-              courseHole={courseHole}
-              score={score}
-              draft={draft}
-              saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
-              error={rowError}
-              scoreLabels={scoreLabels}
-              lengthUnit={lengthUnit}
-              canClear={false}
-              onLengthUnitToggle={onLengthUnitToggle}
-              onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
-              onSave={() => saveHole(holeNumber)}
-              onClear={() => Promise.resolve()}
-            />
+              ref={isActive ? activeHoleRef : undefined}
+              className="scroll-mt-4"
+            >
+              <HoleScoreForm
+                rowKey={getScoreDraftKey(tournament.id, segment.id, holeNumber)}
+                holeNumber={holeNumber}
+                courseHole={courseHole}
+                score={score}
+                draft={draft}
+                saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
+                error={rowError}
+                scoreLabels={scoreLabels}
+                lengthUnit={lengthUnit}
+                canClear={false}
+                onLengthUnitToggle={onLengthUnitToggle}
+                onDraftChange={(nextDraft) => updateDraft(holeNumber, nextDraft)}
+                onSave={() => saveHole(holeNumber)}
+                onClear={() => Promise.resolve()}
+              />
+            </div>
           );
         })}
       </div>
@@ -881,10 +979,26 @@ function BackNineGroupedScoreCard({
 }) {
   const holeNumbers = createGroupedHoleRange(segments);
   const currentHoleNumber = getCurrentGroupedHoleNumber(segments, holeNumbers);
+  const visibleHoleNumbers = holeNumbers.filter(
+    (holeNumber) =>
+      holeNumber === currentHoleNumber ||
+      segments.some((segment) =>
+        isPlayedScore(segment.holeScores.find((score) => score.hole_number === holeNumber))
+      )
+  );
   const courseHoleLookup = useMemo(
     () => new Map(courseHoles.map((hole) => [hole.holeNumber, hole])),
     [courseHoles]
   );
+  const activeHoleRef = useRef<HTMLDivElement | null>(null);
+  const showJumpButton =
+    currentHoleNumber !== null &&
+    visibleHoleNumbers.length > 1 &&
+    visibleHoleNumbers[0] !== currentHoleNumber;
+  const jumpToCurrentHole = () => {
+    activeHoleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    track2026('score_jump_to_current_hole', { hole_number: currentHoleNumber });
+  };
 
   return (
     <div className="border-t border-[#27272A] bg-[#050506]">
@@ -896,8 +1010,8 @@ function BackNineGroupedScoreCard({
           Enter both singles matches by hole, so the group can score the hole they are actually playing.
         </p>
         {currentHoleNumber && (
-          <p className="mt-2 font-data text-[10px] tracking-[0.16em] text-[#8B949E]">
-            Now H{currentHoleNumber}
+          <p className="mt-2 font-data text-[10px] lowercase tracking-[0.16em] text-[#8B949E]">
+            now hole {currentHoleNumber}
           </p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -911,23 +1025,51 @@ function BackNineGroupedScoreCard({
           ))}
         </div>
       </div>
+      {showJumpButton && (
+        <div className="border-t border-dashed border-[#27272A] bg-[#050506] px-3 py-2">
+          <button
+            type="button"
+            onClick={jumpToCurrentHole}
+            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md border border-[#3FB950]/60 bg-[#06170B] px-3 py-2 font-data text-xs font-bold lowercase tracking-[0.14em] text-[#3FB950] hover:bg-[#082611]"
+          >
+            <span>jump to current hole</span>
+            <span className="font-data tabular-nums">hole {currentHoleNumber} ↓</span>
+          </button>
+        </div>
+      )}
       <div>
-        {currentHoleNumber ? [currentHoleNumber].map((holeNumber) => {
+        {visibleHoleNumbers.map((holeNumber) => {
           const courseHole = courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber);
+          const isActive = holeNumber === currentHoleNumber;
 
           return (
-            <div key={holeNumber} className="border-t border-[#27272A] bg-[#0C0C0E]">
-              <div className="flex items-baseline justify-between gap-3 px-3 py-3">
-                <div className="font-data text-2xl font-bold tracking-[-0.07em] text-[#FAFAFA]">
-                  H{holeNumber}
-                </div>
-                <HoleMetadata
+            <div
+              key={holeNumber}
+              ref={isActive ? activeHoleRef : undefined}
+              className={`border-t border-dashed bg-[#0C0C0E] scroll-mt-4 ${
+                isActive ? 'border-[#3FB950]/40' : 'border-[#27272A]'
+              }`}
+            >
+              {isActive ? (
+                <>
+                  <HoleHeaderTitle holeNumber={holeNumber} isActive />
+                  <div className="border-t border-dashed border-[#27272A]" />
+                  <HoleStatsRow
+                    courseHole={courseHole}
+                    lengthUnit={lengthUnit}
+                    onLengthUnitToggle={onLengthUnitToggle}
+                  />
+                </>
+              ) : (
+                <HoleHeaderCompact
+                  holeNumber={holeNumber}
                   courseHole={courseHole}
                   lengthUnit={lengthUnit}
                   onLengthUnitToggle={onLengthUnitToggle}
                 />
-              </div>
-              <div className="grid gap-2 px-2 pb-3 sm:px-3 lg:grid-cols-2">
+              )}
+              <div className="border-t border-dashed border-[#27272A]" />
+              <div className="grid gap-2 px-2 py-2 sm:px-3 lg:grid-cols-2">
                 {segments.map((segment) => (
                   <SingleHoleScoreCard
                     key={`${segment.id}-${holeNumber}`}
@@ -943,7 +1085,7 @@ function BackNineGroupedScoreCard({
               </div>
             </div>
           );
-        }) : null}
+        })}
       </div>
     </div>
   );
@@ -1055,10 +1197,9 @@ function SingleHoleScoreCard({
       saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError: error })}
       error={error}
       scoreLabels={scoreLabels}
-      rowLabel={segment.name ?? formatSegmentMatchup(segment, players)}
-      rowMeta={formatSegmentMatchup(segment, players)}
       showHoleMetadata={false}
       canClear={false}
+      compact
       onDraftChange={updateDraft}
       onSave={saveHole}
       onClear={() => Promise.resolve()}
@@ -1076,10 +1217,9 @@ function HoleScoreForm({
   error,
   scoreLabels,
   lengthUnit,
-  rowLabel,
-  rowMeta,
   showHoleMetadata = true,
   canClear,
+  compact = false,
   onLengthUnitToggle,
   onDraftChange,
   onSave,
@@ -1094,10 +1234,9 @@ function HoleScoreForm({
   error: string | null;
   scoreLabels: ScoreLabels;
   lengthUnit?: LengthUnit;
-  rowLabel?: string;
-  rowMeta?: string;
   showHoleMetadata?: boolean;
   canClear: boolean;
+  compact?: boolean;
   onLengthUnitToggle?: () => void;
   onDraftChange: (draft: HoleDraft) => void;
   onSave: () => void;
@@ -1137,45 +1276,53 @@ function HoleScoreForm({
 
     const timer = window.setTimeout(() => {
       onSave();
-    }, 700);
+    }, 1500);
 
     return () => window.clearTimeout(timer);
   }, [draft.europeScore, draft.usaScore, isEditingSaved, onSave, saveState, score]);
 
+  const cancelEdit = useCallback(() => {
+    if (score) {
+      onDraftChange(createDraft(score));
+    }
+    setIsEditingSaved(false);
+    track2026('score_saved_row_edit_cancelled', { hole_number: holeNumber });
+  }, [holeNumber, onDraftChange, score]);
+
+  useEffect(() => {
+    if (!isEditingSaved) return undefined;
+
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelEdit();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [cancelEdit, isEditingSaved]);
+
   if (score && saveState === 'saved' && !isEditingSaved) {
     return (
-      <div className={`border-t bg-[#101012] px-3 py-3 transition-colors ${borderClass}`}>
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-[#FAFAFA]">
-              {rowLabel ?? `H${holeNumber}`}
-            </p>
-            <p className="mt-1 text-xs tabular-nums text-[#8B949E]">
-              {scoreLabels.usa} {score.usa_score ?? '--'} - {scoreLabels.europe} {score.europe_score ?? '--'} ·{' '}
-              {formatOutcome(score.outcome, scoreLabels)}
-            </p>
-            {rowMeta && <p className="mt-1 truncate text-[10px] tracking-[0.12em] text-[#8B949E]">{rowMeta}</p>}
-            <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] tracking-[0.12em] text-[#A1A1AA]">
-              <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-                Saved {formatAuditTime(score.updated_at)}
-              </span>
-              {score.updatedByProfile && (
-                <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-                  By {score.updatedByProfile.display_name}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2">
+      <div className={`border-t border-dashed bg-[#101012] px-3 py-2 transition-colors ${borderClass}`}>
+        {!compact && (
+          <p className="text-[11px] font-bold lowercase tracking-[0.14em] text-[#8B949E]">
+            hole {holeNumber}
+          </p>
+        )}
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="min-w-0 text-sm font-bold tabular-nums text-[#FAFAFA]">
+            <span>{scoreLabels.usa}</span> <span>{score.usa_score ?? '--'}</span>
+            <span className="text-[#484F58]"> — </span>
+            <span>{scoreLabels.europe}</span> <span>{score.europe_score ?? '--'}</span>
+          </p>
+          <div className="flex shrink-0 gap-1.5 font-data text-[10px] lowercase tracking-[0.12em]">
             <button
               type="button"
               onClick={() => {
                 setIsEditingSaved(true);
                 track2026('score_saved_row_edit_started', { hole_number: holeNumber });
               }}
-              className="min-h-11 rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#E6EDF3]"
+              className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1 font-bold text-[#E6EDF3] hover:border-[#3FB950] hover:text-[#3FB950]"
             >
-              Edit
+              edit
             </button>
             {canClear && (
               <button
@@ -1183,99 +1330,270 @@ function HoleScoreForm({
                 onClick={() => {
                   void onClear();
                 }}
-                className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold tracking-[0.14em] text-[#F85149]"
+                className="rounded border border-[#F85149] bg-[#0C0C0E] px-2 py-1 font-bold text-[#F85149]"
               >
-                Clear
+                clear
               </button>
             )}
           </div>
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 font-data text-[10px] lowercase tracking-[0.12em] text-[#A1A1AA]">
+          <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1 text-[#E6EDF3]">
+            {formatOutcome(score.outcome, scoreLabels)}
+          </span>
+          <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+            saved {formatAuditTime(score.updated_at)}
+          </span>
+          {score.updatedByProfile && (
+            <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+              by {score.updatedByProfile.display_name}
+            </span>
+          )}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className={`border-t bg-[#101012] px-3 py-3 transition-colors ${borderClass}`}>
-      <div className="grid gap-3 lg:grid-cols-[5rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-center">
-        <div className="flex items-baseline justify-between gap-3 lg:block">
-          <div
-            className={`font-data font-bold tabular-nums text-[#FAFAFA] ${
-              rowLabel
-                ? 'text-lg tracking-[-0.04em] lg:text-base'
-                : 'text-2xl tracking-[-0.07em] lg:text-xl'
-            }`}
-          >
-            {rowLabel ?? `H${holeNumber}`}
-          </div>
-          {rowMeta && <div className="text-[10px] tracking-[0.12em] text-[#8B949E]">{rowMeta}</div>}
-          {showHoleMetadata && lengthUnit && onLengthUnitToggle && (
-            <HoleMetadata
-              courseHole={courseHole}
-              lengthUnit={lengthUnit}
-              onLengthUnitToggle={onLengthUnitToggle}
-            />
-          )}
-        </div>
-        <ScorePicker
-          label={scoreLabels.usa}
-          value={draft.usaScore}
-          onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
-        />
-        <ScorePicker
-          label={scoreLabels.europe}
-          value={draft.europeScore}
-          onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
-        />
-        <div className="grid gap-2">
-          {saveState === 'saving' ? (
-            <SyncBadge label="Saving" tone="pending" />
-          ) : saveState === 'saved' ? (
-            <SyncBadge label="Saved" tone="saved" />
-          ) : (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saveState === 'incomplete'}
-              className="min-h-11 rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
-            >
-              {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
-            </button>
-          )}
-          {canClear && (
-            <button
-              type="button"
-              onClick={() => {
-                void onClear();
-              }}
-              className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold text-[#F85149]"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-      {score && (
-        <div className="mt-2 flex flex-wrap gap-2 font-data text-[10px] tracking-[0.12em] text-[#A1A1AA]">
-          <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-            {formatOutcome(score.outcome, scoreLabels)}
-          </span>
-          {score.cpi_applied && (
-            <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
-              CPI gap {score.cpi_difference}, USA {score.cpi_strokes_usa}, EUR {score.cpi_strokes_europe}
-            </span>
-          )}
-          <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-            Saved {formatAuditTime(score.updated_at)}
-          </span>
-          {score.updatedByProfile && (
-            <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
-              By {score.updatedByProfile.display_name}
-            </span>
-          )}
-        </div>
+  const saveControls = (
+    <div className="grid gap-2">
+      {saveState === 'saving' ? (
+        <SyncBadge label="Saving" tone="pending" />
+      ) : saveState === 'saved' ? (
+        <SyncBadge label="Saved" tone="saved" />
+      ) : (
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saveState === 'incomplete'}
+          className="min-h-11 rounded-md border border-[#F59E0B] px-3 py-2 font-data text-xs font-bold text-[#F59E0B] disabled:border-[#27272A] disabled:text-[#484F58]"
+        >
+          {saveState === 'error' ? 'Retry' : saveState === 'incomplete' ? 'Add both' : 'Save now'}
+        </button>
       )}
-      {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
+      {score && isEditingSaved && (
+        <button
+          type="button"
+          onClick={cancelEdit}
+          className="min-h-11 rounded-md border border-[#27272A] px-3 py-2 font-data text-xs font-bold lowercase tracking-[0.14em] text-[#A1A1AA] hover:border-[#FAFAFA] hover:text-[#FAFAFA]"
+        >
+          cancel
+        </button>
+      )}
+      {canClear && (
+        <button
+          type="button"
+          onClick={() => {
+            void onClear();
+          }}
+          className="min-h-11 rounded-md border border-[#F85149] px-3 py-2 font-data text-xs font-bold text-[#F85149]"
+        >
+          Clear
+        </button>
+      )}
     </div>
+  );
+
+  if (compact) {
+    return (
+      <div className={`border-t border-dashed bg-[#101012] px-3 py-3 transition-colors ${borderClass}`}>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-end">
+          <ScorePicker
+            label={scoreLabels.usa}
+            subtitle={scoreLabels.usaSubtitle}
+            value={draft.usaScore}
+            onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
+          />
+          <ScorePicker
+            label={scoreLabels.europe}
+            subtitle={scoreLabels.europeSubtitle}
+            value={draft.europeScore}
+            onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
+          />
+          {saveControls}
+        </div>
+        {score && <ScoreOutcomeChips score={score} scoreLabels={scoreLabels} />}
+        {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`border-t border-dashed bg-[#101012] transition-colors ${borderClass}`}>
+      <HoleHeaderTitle holeNumber={holeNumber} isActive />
+      {showHoleMetadata && lengthUnit && onLengthUnitToggle && (
+        <>
+          <div className="border-t border-dashed border-[#27272A]" />
+          <HoleStatsRow
+            courseHole={courseHole}
+            lengthUnit={lengthUnit}
+            onLengthUnitToggle={onLengthUnitToggle}
+          />
+        </>
+      )}
+      <div className="border-t border-dashed border-[#27272A]" />
+      <div className="px-3 py-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-end">
+          <ScorePicker
+            label={scoreLabels.usa}
+            subtitle={scoreLabels.usaSubtitle}
+            value={draft.usaScore}
+            onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
+          />
+          <ScorePicker
+            label={scoreLabels.europe}
+            subtitle={scoreLabels.europeSubtitle}
+            value={draft.europeScore}
+            onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
+          />
+          {saveControls}
+        </div>
+        {score && <ScoreOutcomeChips score={score} scoreLabels={scoreLabels} />}
+        {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ScoreOutcomeChips({
+  score,
+  scoreLabels,
+}: {
+  score: HoleScoreView;
+  scoreLabels: ScoreLabels;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 font-data text-[10px] tracking-[0.12em] text-[#A1A1AA]">
+      <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+        {formatOutcome(score.outcome, scoreLabels)}
+      </span>
+      {score.cpi_applied && (
+        <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
+          CPI gap {score.cpi_difference}, USA {score.cpi_strokes_usa}, EUR {score.cpi_strokes_europe}
+        </span>
+      )}
+      <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+        Saved {formatAuditTime(score.updated_at)}
+      </span>
+      {score.updatedByProfile && (
+        <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
+          By {score.updatedByProfile.display_name}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function HoleHeaderTitle({
+  holeNumber,
+  isActive,
+}: {
+  holeNumber: number;
+  isActive: boolean;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-3 px-3 pb-4 pt-5">
+      <div
+        className={`font-data font-bold lowercase tabular-nums tracking-[-0.08em] text-[#FAFAFA] ${
+          isActive ? 'text-4xl lg:text-5xl' : 'text-2xl'
+        }`}
+      >
+        hole {holeNumber}
+      </div>
+      {isActive && (
+        <span className="border border-[#3FB950]/60 bg-[#06170B] px-2 py-1 font-data text-[10px] lowercase tracking-[0.16em] text-[#3FB950]">
+          now playing
+        </span>
+      )}
+    </div>
+  );
+}
+
+function HoleHeaderCompact({
+  holeNumber,
+  courseHole,
+  lengthUnit,
+  onLengthUnitToggle,
+}: {
+  holeNumber: number;
+  courseHole: CourseHoleMetadata;
+  lengthUnit: LengthUnit;
+  onLengthUnitToggle: () => void;
+}) {
+  const sep = <span className="text-[#3F3F46]">·</span>;
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 font-data text-[11px] lowercase tracking-[0.12em] text-[#8B949E]">
+      <span className="text-base font-bold tabular-nums tracking-[-0.03em] text-[#FAFAFA]">
+        hole {holeNumber}
+      </span>
+      {sep}
+      {courseHole.yardage ? (
+        <button
+          type="button"
+          onClick={onLengthUnitToggle}
+          aria-label={`Show lengths in ${lengthUnit === 'metres' ? 'yards' : 'metres'}`}
+          className="underline decoration-dotted underline-offset-2 hover:text-[#FAFAFA] focus:text-[#3FB950] focus:outline-none"
+        >
+          <span className="font-bold tabular-nums text-[#FAFAFA]">
+            {formatLengthValue(courseHole.yardage, lengthUnit)}
+          </span>
+        </button>
+      ) : (
+        <span>length --</span>
+      )}
+      {sep}
+      <span>
+        par <span className="font-bold tabular-nums text-[#FAFAFA]">{courseHole.par ?? '--'}</span>
+      </span>
+      {sep}
+      <span>
+        index <span className="font-bold tabular-nums text-[#FAFAFA]">{courseHole.strokeIndex}</span>
+      </span>
+    </div>
+  );
+}
+
+function HoleStatsRow({
+  courseHole,
+  lengthUnit,
+  onLengthUnitToggle,
+}: {
+  courseHole: CourseHoleMetadata;
+  lengthUnit: LengthUnit;
+  onLengthUnitToggle: () => void;
+}) {
+  return (
+    <dl className="grid grid-cols-3">
+      <div className="px-3 py-3">
+        <dt className="font-data text-[10px] lowercase tracking-[0.18em] text-[#8B949E]">length</dt>
+        <dd className="mt-1">
+          {courseHole.yardage ? (
+            <button
+              type="button"
+              onClick={onLengthUnitToggle}
+              aria-label={`Show lengths in ${lengthUnit === 'metres' ? 'yards' : 'metres'}`}
+              className="-mx-1 rounded px-1 font-data text-2xl font-bold tabular-nums text-[#FAFAFA] underline decoration-dotted underline-offset-4 hover:text-[#3FB950] focus:outline-none focus:ring-1 focus:ring-[#3FB950]"
+            >
+              {formatLengthValue(courseHole.yardage, lengthUnit)}
+            </button>
+          ) : (
+            <span className="font-data text-2xl font-bold tabular-nums text-[#484F58]">--</span>
+          )}
+        </dd>
+      </div>
+      <div className="border-l border-dashed border-[#27272A] px-3 py-3">
+        <dt className="font-data text-[10px] lowercase tracking-[0.18em] text-[#8B949E]">par</dt>
+        <dd className="mt-1 font-data text-2xl font-bold tabular-nums text-[#FAFAFA]">
+          {courseHole.par ?? '--'}
+        </dd>
+      </div>
+      <div className="border-l border-dashed border-[#27272A] px-3 py-3">
+        <dt className="font-data text-[10px] lowercase tracking-[0.18em] text-[#8B949E]">index</dt>
+        <dd className="mt-1 font-data text-2xl font-bold tabular-nums text-[#FAFAFA]">
+          {courseHole.strokeIndex}
+        </dd>
+      </div>
+    </dl>
   );
 }
 
@@ -1290,35 +1608,6 @@ function SyncBadge({ label, tone }: { label: string; tone: 'saved' | 'pending' }
       className={`border px-3 py-2 text-center font-data text-[10px] font-bold tracking-[0.14em] sm:rounded-md ${className}`}
     >
       {label}
-    </div>
-  );
-}
-
-function HoleMetadata({
-  courseHole,
-  lengthUnit,
-  onLengthUnitToggle,
-}: {
-  courseHole: CourseHoleMetadata;
-  lengthUnit: LengthUnit;
-  onLengthUnitToggle: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap justify-end gap-2 font-data text-[10px] tracking-[0.12em] text-[#8B949E] lg:mt-1 lg:justify-start">
-      {courseHole.yardage ? (
-        <button
-          type="button"
-          onClick={onLengthUnitToggle}
-          aria-label={`Show lengths in ${lengthUnit === 'metres' ? 'yards' : 'metres'}`}
-          className="-mx-1 rounded border border-transparent px-1 text-[#A1A1AA] underline decoration-dotted underline-offset-2 hover:border-[#3F3F46] hover:text-[#FAFAFA] focus:border-[#3FB950] focus:outline-none"
-        >
-          {formatLengthLabel(courseHole.yardage, lengthUnit)}
-        </button>
-      ) : (
-        <span>Length --</span>
-      )}
-      {courseHole.par && <span>Par {courseHole.par}</span>}
-      <span>SI {courseHole.strokeIndex}</span>
     </div>
   );
 }
@@ -1346,7 +1635,22 @@ function MatchStatusBadge({
 
 function getSegmentScoreLabels(segment: SegmentView, players: PlayerRow[]): ScoreLabels {
   if (segment.kind !== 'singles') {
-    return { usa: 'USA', europe: 'Europe' };
+    const playerLookup = new Map(players.map((player) => [player.id, player]));
+    const usaNames = segment.players
+      .filter((entry) => entry.team === 'USA')
+      .map((entry) => entry.player?.name ?? playerLookup.get(entry.player_id)?.name)
+      .filter((name): name is string => Boolean(name));
+    const europeNames = segment.players
+      .filter((entry) => entry.team === 'EUROPE')
+      .map((entry) => entry.player?.name ?? playerLookup.get(entry.player_id)?.name)
+      .filter((name): name is string => Boolean(name));
+
+    return {
+      usa: 'USA',
+      europe: 'Europe',
+      usaSubtitle: usaNames.length > 0 ? usaNames.join(' + ') : undefined,
+      europeSubtitle: europeNames.length > 0 ? europeNames.join(' + ') : undefined,
+    };
   }
 
   const playerLookup = new Map(players.map((player) => [player.id, player.name]));
@@ -1442,12 +1746,12 @@ function formatMatchStatusLabel(
   return `${leaderLabel} ${status.margin} up`;
 }
 
-function formatLengthLabel(yardage: number, unit: LengthUnit): string {
+function formatLengthValue(yardage: number, unit: LengthUnit): string {
   if (unit === 'yards') {
-    return `Length ${yardage} yds`;
+    return `${yardage} yds`;
   }
 
-  return `Length ${Math.round(yardage * 0.9144)} m`;
+  return `${Math.round(yardage * 0.9144)} m`;
 }
 
 async function saveHoleDraft({
@@ -1624,11 +1928,29 @@ function getSegmentCpiStatus(
     return `CPI disabled. Gap ${cpi.difference}, threshold ${threshold}.`;
   }
 
+  const matchupCpiStatus = formatMatchupCpiStatus(
+    labels,
+    usaPlayer?.current_cpi ?? null,
+    europePlayer?.current_cpi ?? null,
+    cpi.difference
+  );
+
   if (!cpi.applies) {
-    return `CPI enabled, not applied. Gap ${cpi.difference}, threshold ${threshold}.`;
+    return `CPI enabled. ${matchupCpiStatus} Threshold ${threshold}.`;
   }
 
-  const higherCpiPlayer = cpi.higherCpiTeam === 'USA' ? labels.usa : labels.europe;
+  return `CPI enabled. ${matchupCpiStatus}`;
+}
 
-  return `CPI enabled. Gap ${cpi.difference}; ${higherCpiPlayer} receives strokes.`;
+function formatMatchupCpiStatus(
+  labels: ScoreLabels,
+  usaCpi: number | null,
+  europeCpi: number | null,
+  difference: number
+): string {
+  return `${labels.usa} HCP ${formatHandicap(usaCpi)}; ${labels.europe} HCP ${formatHandicap(europeCpi)}. Gap ${difference}.`;
+}
+
+function formatHandicap(value: number | null): string {
+  return value === null ? '-' : value.toString();
 }

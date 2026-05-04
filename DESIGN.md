@@ -199,7 +199,7 @@ Admin is a phone-first operations console, not a desktop control room:
 - The Admin route should be flat by default: one compact page header, then full-width divider rows. Do not wrap the whole admin console in the shared `Panel` shell or default-open task cards.
 - Keep active Admin task headers sticky and compact while their section is open, with the same `Open` / `Hide` plus chevron treatment used by other disclosure rows.
 - Use compact popovers for admin creation/edit forms that would otherwise turn lists into rows of input boxes. Tournament creation belongs below the activation list; player creation and roster edits should not interrupt roster scanning.
-- Player admin should use the Archive view's flat roster language: full list, thin dividers, team/name filters, player names wired to the shared player-history popover, and a left-side edit action for each row.
+- Player admin should use a flat roster table: full list, thin dividers, compact team/link/search filters, sortable scan columns, player names wired to the shared player-history popover, and a left-side edit action for each row.
 - Keep the normal workflow top-to-bottom. Fixture repair work belongs inside `Fixtures`, below creation/review controls, with sparse confirmation-gated destructive actions.
 - Course metadata, profile linking, access control, tournament activation, and player-history edits belong in `Admin`, not user `Profile`.
 - Admin `Activity` is an internal setup/audit trail. Keep it visually similar to the public activity feed, but label it as admin activity rather than exposing database or migration language.

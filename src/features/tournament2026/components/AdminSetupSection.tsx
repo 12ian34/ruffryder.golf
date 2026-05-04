@@ -1,4 +1,4 @@
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { FormEvent, type MouseEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import type { CourseHoleMetadata } from '../../../domain/2026/course';
 import {
   clearFixtureScores2026,
@@ -24,6 +24,7 @@ import {
   type FixtureView,
   type PlayerRow,
   type PlayerTournamentStatsRow,
+  type ProfileRow,
   type Team,
   type Tournament2026Data,
   type TournamentRow,
@@ -35,7 +36,7 @@ import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { SetupForm, StatusCard, TerminalPageSection } from './Layout';
 import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
-import { ProfileLinkingPanel } from './ProfileSection';
+import { ProfileLinkRow } from './ProfileSection';
 
 export function AdminSetupSection({
   data,
@@ -87,18 +88,13 @@ export function AdminSetupSection({
           title="Players"
           description="Create players, correct player details, and link signed-in profiles to players."
         >
-          <PlayerCorrections players={data.players} onSaved={onSaved} />
-          <div className="mt-4">
-            <ProfileLinkingPanel profiles={data.profiles} players={data.players} onSaved={onSaved} />
-          </div>
-          <div className="mt-4">
-            <PlayerStatsEditor
-              stats={data.playerStats}
-              players={data.players}
-              tournaments={data.tournaments}
-              onSaved={onSaved}
-            />
-          </div>
+          <PlayerCorrections
+            players={data.players}
+            profiles={data.profiles}
+            playerStats={data.playerStats}
+            tournaments={data.tournaments}
+            onSaved={onSaved}
+          />
         </AdminTaskSection>
         <AdminTaskSection
           title="Fixtures"
@@ -255,14 +251,49 @@ function AdminTaskSection({
   description: string;
   children: ReactNode;
 }) {
+  const sectionRef = useRef<HTMLDetailsElement | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  function handleReturnToSectionStart(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+
+    sectionRef.current?.scrollIntoView?.({
+      block: 'start',
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  }
+
   return (
-    <details className="group border-b border-[#27272A] bg-transparent">
+    <details
+      ref={sectionRef}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+      className="group scroll-mt-2 border-b border-[#27272A] bg-transparent"
+    >
       <summary className="sticky top-0 z-20 cursor-pointer list-none bg-[#050506]/95 px-3 py-2.5 backdrop-blur transition hover:bg-[#0C0C0E] focus:outline-none focus-visible:bg-[#0C0C0E] sm:px-4 [&::-webkit-details-marker]:hidden">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-base font-bold tracking-[-0.03em] text-[#FAFAFA] sm:text-lg">{title}</h3>
-            <p className="mt-1 text-xs leading-5 text-[#8B949E] sm:text-sm">{description}</p>
-          </div>
+          {isOpen ? (
+            <button
+              type="button"
+              onClick={handleReturnToSectionStart}
+              className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-[#FAFAFA] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+              aria-label={`Return to ${title} section start`}
+            >
+              <span className="min-w-0 truncate text-base font-bold tracking-[-0.03em] sm:text-lg">{title}</span>
+              <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#8B949E]">
+                Top
+              </span>
+            </button>
+          ) : (
+            <div className="min-w-0">
+              <h3 className="text-base font-bold tracking-[-0.03em] text-[#FAFAFA] sm:text-lg">{title}</h3>
+              <p className="mt-1 text-xs leading-5 text-[#8B949E] sm:text-sm">{description}</p>
+            </div>
+          )}
           <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold tracking-[0.16em] text-[#3FB950]">
             <span className="group-open:hidden">Open</span>
             <span className="hidden group-open:inline">Hide</span>
@@ -272,6 +303,79 @@ function AdminTaskSection({
       </summary>
       <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">{children}</div>
     </details>
+  );
+}
+
+function AdminActionDialog({
+  isOpen,
+  onClose,
+  title,
+  description,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description?: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      onClose();
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end bg-black/70 px-3 py-4 sm:items-center sm:justify-center"
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[#27272A] bg-[#09090B] shadow-[0_18px_42px_rgba(0,0,0,0.42)]"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-[#27272A] px-3 py-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold tracking-[0.22em] text-[#3FB950]">Admin action</p>
+            <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-[#FAFAFA]">{title}</h3>
+            {description ? <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md border border-[#27272A] px-3 py-2 text-xs text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#FAFAFA]"
+          >
+            Close
+          </button>
+        </div>
+        <div className="p-3">{children(onClose)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -289,26 +393,6 @@ function AdminActionPopover({
   children: (close: () => void) => ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-
-      event.preventDefault();
-      setIsOpen(false);
-    };
-
-    document.addEventListener('keydown', handleEscape);
-
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
-
   const close = () => setIsOpen(false);
 
   return (
@@ -321,39 +405,9 @@ function AdminActionPopover({
       >
         {buttonLabel}
       </button>
-      {isOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end bg-black/70 px-3 py-4 sm:items-center sm:justify-center"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) {
-              close();
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={title}
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[#27272A] bg-[#09090B] shadow-[0_18px_42px_rgba(0,0,0,0.42)]"
-          >
-            <div className="flex items-start justify-between gap-3 border-b border-[#27272A] px-3 py-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold tracking-[0.22em] text-[#3FB950]">Admin action</p>
-                <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-[#FAFAFA]">{title}</h3>
-                {description ? <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p> : null}
-              </div>
-              <button
-                type="button"
-                onClick={close}
-                className="shrink-0 rounded-md border border-[#27272A] px-3 py-2 text-xs text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#FAFAFA]"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-3">{children(close)}</div>
-          </div>
-        </div>
-      ) : null}
+      <AdminActionDialog isOpen={isOpen} onClose={close} title={title} description={description}>
+        {children}
+      </AdminActionDialog>
     </>
   );
 }
@@ -741,67 +795,16 @@ function PlayerForm({
   );
 }
 
-function PlayerStatsEditor({
-  stats,
-  players,
-  tournaments,
-  onSaved,
-}: {
-  stats: PlayerTournamentStatsRow[];
-  players: PlayerRow[];
-  tournaments: TournamentRow[];
-  onSaved: () => Promise<void>;
-}) {
-  const sortedStats = useMemo(
-    () =>
-      [...stats].sort((a, b) => {
-        if (b.completion_year !== a.completion_year) {
-          return b.completion_year - a.completion_year;
-        }
-
-        return a.player_id.localeCompare(b.player_id);
-      }),
-    [stats]
-  );
-
-  return (
-    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
-      <div className="px-3 py-3">
-        <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Player history editor</p>
-        <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
-          Correct app-generated or migrated player history without leaving the admin console.
-        </p>
-      </div>
-      <PlayerStatCreateForm players={players} tournaments={tournaments} onSaved={onSaved} />
-      {sortedStats.length === 0 ? (
-        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
-          No player history rows yet.
-        </p>
-      ) : (
-        sortedStats.map((stat) => (
-          <PlayerStatRow
-            key={stat.id}
-            stat={stat}
-            players={players}
-            tournaments={tournaments}
-            onSaved={onSaved}
-          />
-        ))
-      )}
-    </div>
-  );
-}
 
 function PlayerStatCreateForm({
-  players,
+  playerId,
   tournaments,
   onSaved,
 }: {
-  players: PlayerRow[];
+  playerId: string;
   tournaments: TournamentRow[];
   onSaved: () => Promise<void>;
 }) {
-  const [playerId, setPlayerId] = useState('');
   const [tournamentId, setTournamentId] = useState('');
   const [source, setSource] = useState('manual');
   const [completionYear, setCompletionYear] = useState(new Date().getFullYear().toString());
@@ -839,7 +842,6 @@ function PlayerStatCreateForm({
         source,
         completion_year: Number(completionYear),
       });
-      setPlayerId('');
       setTournamentId('');
       setSource('manual');
       setSinglesHolesPlayed('0');
@@ -857,10 +859,9 @@ function PlayerStatCreateForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-[#27272A] px-3 py-3">
+    <form onSubmit={handleSubmit} className="border-t border-[#27272A] bg-[#0F0F11] px-3 py-3">
       <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Add history row</p>
-      <div className="mt-3 grid gap-2 lg:grid-cols-4">
-        <PlayerSelect label="Player" value={playerId} players={players} onChange={setPlayerId} />
+      <div className="mt-3 grid gap-2 lg:grid-cols-3">
         <TournamentSelect
           label="Tournament"
           value={tournamentId}
@@ -870,10 +871,12 @@ function PlayerStatCreateForm({
         <AdminTextInput label="Source" value={source} onChange={setSource} />
         <AdminTextInput label="Year" value={completionYear} onChange={setCompletionYear} type="number" />
       </div>
-      <div className="mt-2 grid gap-2 lg:grid-cols-6">
+      <div className="mt-2 grid gap-2 lg:grid-cols-3">
         <AdminTextInput label="Singles holes" value={singlesHolesPlayed} onChange={setSinglesHolesPlayed} type="number" />
         <AdminTextInput label="Singles strokes" value={singlesStrokes} onChange={setSinglesStrokes} type="number" />
         <AdminTextInput label="Singles avg" value={singlesAverage} onChange={setSinglesAverage} type="number" required={false} />
+      </div>
+      <div className="mt-2 grid gap-2 lg:grid-cols-3">
         <AdminTextInput label="Holes won" value={holesWon} onChange={setHolesWon} type="number" />
         <AdminTextInput label="Holes halved" value={holesHalved} onChange={setHolesHalved} type="number" />
         <AdminTextInput label="CPI after" value={cpiAfter} onChange={setCpiAfter} type="number" required={false} />
@@ -893,18 +896,17 @@ function PlayerStatCreateForm({
   );
 }
 
-function PlayerStatRow({
+function PlayerStatEditor({
   stat,
-  players,
   tournaments,
   onSaved,
+  onClose,
 }: {
   stat: PlayerTournamentStatsRow;
-  players: PlayerRow[];
   tournaments: TournamentRow[];
   onSaved: () => Promise<void>;
+  onClose?: () => void;
 }) {
-  const [playerId, setPlayerId] = useState(stat.player_id);
   const [tournamentId, setTournamentId] = useState(stat.tournament_id ?? '');
   const [source, setSource] = useState(stat.source);
   const [completionYear, setCompletionYear] = useState(stat.completion_year.toString());
@@ -918,9 +920,7 @@ function PlayerStatRow({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const player = players.find((candidate) => candidate.id === stat.player_id);
   const hasChanged =
-    playerId !== stat.player_id ||
     tournamentId !== (stat.tournament_id ?? '') ||
     source !== stat.source ||
     completionYear !== stat.completion_year.toString() ||
@@ -933,7 +933,6 @@ function PlayerStatRow({
     completedAt !== toDateInputValue(stat.completed_at);
 
   useEffect(() => {
-    setPlayerId(stat.player_id);
     setTournamentId(stat.tournament_id ?? '');
     setSource(stat.source);
     setCompletionYear(stat.completion_year.toString());
@@ -953,7 +952,7 @@ function PlayerStatRow({
     try {
       await updatePlayerTournamentStat2026({
         statId: stat.id,
-        playerId,
+        playerId: stat.player_id,
         tournamentId: tournamentId || null,
         source,
         completionYear: Number(completionYear),
@@ -967,11 +966,12 @@ function PlayerStatRow({
         legacyPayload: stat.legacy_payload,
       });
       track2026('player_history_row_updated', {
-        player_id: playerId,
+        player_id: stat.player_id,
         stat_id: stat.id,
         source,
       });
       await onSaved();
+      onClose?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -980,9 +980,7 @@ function PlayerStatRow({
   };
 
   const deleteStat = async () => {
-    const confirmed = window.confirm(
-      `Delete ${player?.name ?? 'this player'}'s ${stat.completion_year} history row?`
-    );
+    const confirmed = window.confirm(`Delete this ${stat.completion_year} history row?`);
 
     if (!confirmed) {
       return;
@@ -998,6 +996,7 @@ function PlayerStatRow({
         stat_id: stat.id,
       });
       await onSaved();
+      onClose?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -1006,22 +1005,8 @@ function PlayerStatRow({
   };
 
   return (
-    <div className="border-t border-[#27272A] px-3 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-bold tracking-[-0.03em] text-[#FAFAFA]">
-            {player?.name ?? 'Unknown player'} · {stat.completion_year}
-          </p>
-          <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
-            {stat.source} · completed {formatCompactDateTime(stat.completed_at)}
-          </p>
-        </div>
-        <StatusPill tone={stat.source === 'app' ? 'success' : stat.source === 'manual' ? 'warning' : 'muted'}>
-          {stat.source}
-        </StatusPill>
-      </div>
-      <div className="mt-3 grid gap-2 lg:grid-cols-4">
-        <PlayerSelect label="Player" value={playerId} players={players} onChange={setPlayerId} />
+    <div>
+      <div className="grid gap-2 lg:grid-cols-3">
         <TournamentSelect
           label="Tournament"
           value={tournamentId}
@@ -1031,10 +1016,12 @@ function PlayerStatRow({
         <AdminTextInput label="Source" value={source} onChange={setSource} />
         <AdminTextInput label="Year" value={completionYear} onChange={setCompletionYear} type="number" />
       </div>
-      <div className="mt-2 grid gap-2 lg:grid-cols-6">
+      <div className="mt-2 grid gap-2 lg:grid-cols-3">
         <AdminTextInput label="Singles holes" value={singlesHolesPlayed} onChange={setSinglesHolesPlayed} type="number" />
         <AdminTextInput label="Singles strokes" value={singlesStrokes} onChange={setSinglesStrokes} type="number" />
         <AdminTextInput label="Singles avg" value={singlesAverage} onChange={setSinglesAverage} type="number" required={false} />
+      </div>
+      <div className="mt-2 grid gap-2 lg:grid-cols-3">
         <AdminTextInput label="Holes won" value={holesWon} onChange={setHolesWon} type="number" />
         <AdminTextInput label="Holes halved" value={holesHalved} onChange={setHolesHalved} type="number" />
         <AdminTextInput label="CPI after" value={cpiAfter} onChange={setCpiAfter} type="number" required={false} />
@@ -1044,7 +1031,7 @@ function PlayerStatRow({
         <button
           type="button"
           onClick={saveStat}
-          disabled={!hasChanged || isSaving || isDeleting || !playerId}
+          disabled={!hasChanged || isSaving || isDeleting}
           className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
         >
           {isSaving ? 'Saving' : 'Save'}
@@ -1276,6 +1263,7 @@ function CourseHoleCorrectionRow({
             placeholder="-"
             active={activeField === 'par'}
             onActivate={() => setActiveField('par')}
+            onDeactivate={() => setActiveField(null)}
             onChange={setPar}
           />
           <CourseMetricTile
@@ -1284,6 +1272,7 @@ function CourseHoleCorrectionRow({
             placeholder="Set"
             active={activeField === 'yardage'}
             onActivate={() => setActiveField('yardage')}
+            onDeactivate={() => setActiveField(null)}
             onChange={setYardage}
           />
           <CourseMetricTile
@@ -1292,6 +1281,7 @@ function CourseHoleCorrectionRow({
             placeholder="-"
             active={activeField === 'strokeIndex'}
             onActivate={() => setActiveField('strokeIndex')}
+            onDeactivate={() => setActiveField(null)}
             onChange={setStrokeIndex}
           />
         </div>
@@ -1317,6 +1307,7 @@ function CourseMetricTile({
   placeholder,
   active,
   onActivate,
+  onDeactivate,
   onChange,
 }: {
   label: string;
@@ -1324,21 +1315,39 @@ function CourseMetricTile({
   placeholder: string;
   active: boolean;
   onActivate: () => void;
+  onDeactivate: () => void;
   onChange: (value: string) => void;
 }) {
   if (active) {
     return (
-      <label className="block min-w-0 rounded-md border border-[#3FB950] bg-[#06170B] p-2 font-data text-[10px] tracking-[0.14em] text-[#3FB950]">
-        {label}
+      <div className="min-w-0 rounded-md border border-[#3FB950] bg-[#06170B] p-2 font-data">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] tracking-[0.14em] text-[#3FB950]">{label}</span>
+          <button
+            type="button"
+            onClick={onDeactivate}
+            className="rounded-sm border border-[#27272A] px-1.5 py-1 text-[10px] tracking-[0.12em] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#FAFAFA] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+            aria-label={`Done ${label}`}
+          >
+            Done
+          </button>
+        </div>
         <input
           autoFocus
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              onDeactivate();
+            }
+          }}
+          aria-label={label}
           type="number"
           inputMode="numeric"
           className="mt-1 min-h-11 min-w-0 w-full rounded border border-[#3F3F46] bg-[#050506] px-2 text-center text-lg font-bold tabular-nums tracking-normal text-[#FAFAFA] outline-none focus:border-[#3FB950]"
         />
-      </label>
+      </div>
     );
   }
 
@@ -1527,29 +1536,162 @@ function TournamentEditForm({
   );
 }
 
+type PlayerRosterSortKey = 'team' | 'tier' | 'handicap' | 'updated' | 'linked' | 'name' | 'email';
+
+type PlayerRosterSortConfig = {
+  key: PlayerRosterSortKey;
+  direction: 'asc' | 'desc';
+};
+
+type PlayerRosterRow = {
+  player: PlayerRow;
+  linkedProfiles: ProfileRow[];
+  linkedNames: string;
+  linkedEmails: string;
+  linkedStatus: 'Linked' | 'Unlinked';
+  searchableText: string;
+};
+
+type TierCpiStats = {
+  min: number | null;
+  max: number | null;
+  median: number | null;
+  count: number;
+};
+
+type TierStatsMap = Record<PlayerTier, TierCpiStats>;
+
+function computeTierCpiStats(players: PlayerRow[]): TierStatsMap {
+  const buckets: Record<PlayerTier, number[]> = { 1: [], 2: [], 3: [] };
+
+  for (const player of players) {
+    if (player.current_cpi == null) {
+      continue;
+    }
+
+    buckets[normalizePlayerTier(player.tier)].push(player.current_cpi);
+  }
+
+  const summarize = (values: number[]): TierCpiStats => {
+    if (values.length === 0) {
+      return { min: null, max: null, median: null, count: 0 };
+    }
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median =
+      sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+
+    return { min: sorted[0], max: sorted[sorted.length - 1], median, count: sorted.length };
+  };
+
+  return { 1: summarize(buckets[1]), 2: summarize(buckets[2]), 3: summarize(buckets[3]) };
+}
+
+function formatTierStat(value: number | null): string {
+  if (value == null) {
+    return '–';
+  }
+
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 function PlayerCorrections({
   players,
+  profiles,
+  playerStats,
+  tournaments,
   onSaved,
 }: {
   players: PlayerRow[];
+  profiles: ProfileRow[];
+  playerStats: PlayerTournamentStatsRow[];
+  tournaments: TournamentRow[];
   onSaved: () => Promise<void>;
 }) {
   const [teamFilter, setTeamFilter] = useState<'ALL' | Team>('ALL');
+  const [linkedFilter, setLinkedFilter] = useState<'ALL' | 'LINKED' | 'UNLINKED'>('ALL');
   const [query, setQuery] = useState('');
-  const filteredPlayers = useMemo(
-    () =>
-      [...players]
-        .filter((player) => teamFilter === 'ALL' || player.team === teamFilter)
-        .filter((player) => player.name.toLowerCase().includes(query.trim().toLowerCase()))
-        .sort((a, b) => {
-          if (a.team !== b.team) {
-            return a.team.localeCompare(b.team);
-          }
+  const [sortConfig, setSortConfig] = useState<PlayerRosterSortConfig>({
+    key: 'team',
+    direction: 'asc',
+  });
+  const profilesByPlayerId = useMemo(() => {
+    const nextProfilesByPlayerId = new Map<string, ProfileRow[]>();
 
-          return a.name.localeCompare(b.name);
-        }),
-    [players, query, teamFilter]
+    for (const profile of profiles) {
+      if (!profile.linked_player_id) {
+        continue;
+      }
+
+      nextProfilesByPlayerId.set(profile.linked_player_id, [
+        ...(nextProfilesByPlayerId.get(profile.linked_player_id) ?? []),
+        profile,
+      ]);
+    }
+
+    return nextProfilesByPlayerId;
+  }, [profiles]);
+  const rosterRows = useMemo(
+    () =>
+      players.map((player) => {
+        const linkedProfiles = profilesByPlayerId.get(player.id) ?? [];
+        const linkedNames = linkedProfiles.map((profile) => profile.display_name).join(', ');
+        const linkedEmails = linkedProfiles.map((profile) => profile.email).join(', ');
+        const linkedStatus: PlayerRosterRow['linkedStatus'] = linkedProfiles.length > 0 ? 'Linked' : 'Unlinked';
+        const searchableText = [
+          player.name,
+          player.team,
+          formatPlayerTier(player.tier),
+          player.current_cpi?.toString() ?? '',
+          linkedStatus,
+          linkedNames,
+          linkedEmails,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return {
+          player,
+          linkedProfiles,
+          linkedNames,
+          linkedEmails,
+          linkedStatus,
+          searchableText,
+        };
+      }),
+    [players, profilesByPlayerId]
   );
+  const tierStats = useMemo(() => computeTierCpiStats(players), [players]);
+  const unlinkedProfiles = useMemo(
+    () => profiles.filter((profile) => !profile.linked_player_id),
+    [profiles]
+  );
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return rosterRows
+      .filter(({ player }) => teamFilter === 'ALL' || player.team === teamFilter)
+      .filter(({ linkedProfiles }) => {
+        if (linkedFilter === 'LINKED') {
+          return linkedProfiles.length > 0;
+        }
+
+        if (linkedFilter === 'UNLINKED') {
+          return linkedProfiles.length === 0;
+        }
+
+        return true;
+      })
+      .filter((row) => !normalizedQuery || row.searchableText.includes(normalizedQuery))
+      .sort((a, b) => comparePlayerRosterRows(a, b, sortConfig));
+  }, [linkedFilter, query, rosterRows, sortConfig, teamFilter]);
+  const updateSort = (key: PlayerRosterSortKey) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
 
   return (
     <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
@@ -1562,34 +1704,113 @@ function PlayerCorrections({
         </div>
         <CreatePlayerButton onSaved={onSaved} />
       </div>
+      <UnlinkedProfilesPanel profiles={unlinkedProfiles} players={players} onSaved={onSaved} />
       <div className="border-t border-[#27272A] px-3 py-3">
-        <div className="flex flex-wrap gap-2">
-          <PlayerFilterButton label="All" isActive={teamFilter === 'ALL'} onClick={() => setTeamFilter('ALL')} />
-          <PlayerFilterButton label="USA" isActive={teamFilter === 'USA'} onClick={() => setTeamFilter('USA')} />
-          <PlayerFilterButton
-            label="Europe"
-            isActive={teamFilter === 'EUROPE'}
-            onClick={() => setTeamFilter('EUROPE')}
-          />
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+          <label className="block font-data text-xs tracking-[0.14em] text-[#8B949E]">
+            Filter roster
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Name, email, team, tier, or link"
+              className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
+            />
+          </label>
+          <div>
+            <p className="font-data text-xs tracking-[0.14em] text-[#8B949E]">Team</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <PlayerFilterButton label="All" isActive={teamFilter === 'ALL'} onClick={() => setTeamFilter('ALL')} />
+              <PlayerFilterButton label="USA" isActive={teamFilter === 'USA'} onClick={() => setTeamFilter('USA')} />
+              <PlayerFilterButton
+                label="Europe"
+                isActive={teamFilter === 'EUROPE'}
+                onClick={() => setTeamFilter('EUROPE')}
+              />
+            </div>
+          </div>
+          <div>
+            <p className="font-data text-xs tracking-[0.14em] text-[#8B949E]">Linked</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <PlayerFilterButton
+                label="All"
+                isActive={linkedFilter === 'ALL'}
+                onClick={() => setLinkedFilter('ALL')}
+              />
+              <PlayerFilterButton
+                label="Linked"
+                isActive={linkedFilter === 'LINKED'}
+                onClick={() => setLinkedFilter('LINKED')}
+              />
+              <PlayerFilterButton
+                label="Open"
+                isActive={linkedFilter === 'UNLINKED'}
+                onClick={() => setLinkedFilter('UNLINKED')}
+              />
+            </div>
+          </div>
         </div>
-        <label className="mt-3 block font-data text-xs tracking-[0.14em] text-[#8B949E]">
-          Filter by name
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Player name"
-            className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
-          />
-        </label>
       </div>
-      {filteredPlayers.length === 0 ? (
+      {filteredRows.length === 0 ? (
         <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
           {players.length === 0 ? 'No players yet.' : 'No players match this filter.'}
         </p>
       ) : (
-        filteredPlayers.map((player) => (
-          <PlayerCorrectionRow key={player.id} player={player} onSaved={onSaved} />
-        ))
+        <div className="border-t border-[#27272A] overflow-x-auto">
+          <table className="w-full border-collapse text-left font-data text-xs">
+            <thead className="bg-[#09090B] text-[#8B949E]">
+              <tr className="border-b border-[#27272A]">
+                <PlayerRosterSortHeader
+                  label="Name"
+                  sortKey="name"
+                  sortConfig={sortConfig}
+                  onSort={updateSort}
+                  className="sticky left-0 z-20 w-px whitespace-nowrap bg-[#09090B]"
+                />
+                <PlayerRosterSortHeader
+                  label="Team"
+                  sortKey="team"
+                  sortConfig={sortConfig}
+                  onSort={updateSort}
+                  className="w-24"
+                />
+                <PlayerRosterSortHeader
+                  label="Tier"
+                  sortKey="tier"
+                  sortConfig={sortConfig}
+                  onSort={updateSort}
+                  className="w-20"
+                />
+                <PlayerRosterSortHeader
+                  label="Handicap"
+                  sortKey="handicap"
+                  sortConfig={sortConfig}
+                  onSort={updateSort}
+                  className="w-24"
+                />
+                <PlayerRosterSortHeader
+                  label="Last updated"
+                  sortKey="updated"
+                  sortConfig={sortConfig}
+                  onSort={updateSort}
+                  className="w-32"
+                />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row) => (
+                <PlayerCorrectionRow
+                  key={row.player.id}
+                  row={row}
+                  tierStats={tierStats}
+                  players={players}
+                  playerStats={playerStats}
+                  tournaments={tournaments}
+                  onSaved={onSaved}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -1619,49 +1840,189 @@ function PlayerFilterButton({
   );
 }
 
-function PlayerCorrectionRow({
-  player,
-  onSaved,
+function PlayerRosterSortHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  className = '',
 }: {
-  player: PlayerRow;
-  onSaved: () => Promise<void>;
+  label: string;
+  sortKey: PlayerRosterSortKey;
+  sortConfig: PlayerRosterSortConfig;
+  onSort: (sortKey: PlayerRosterSortKey) => void;
+  className?: string;
 }) {
+  const isActive = sortConfig.key === sortKey;
+
   return (
-    <div className="border-t border-[#27272A] px-3 py-3">
-      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-        <div className="sm:order-none">
-          <AdminActionPopover
-            buttonLabel="Edit"
-            title={`Edit ${player.name}`}
-            description="Correct roster details and current CPI."
-          >
-            {(close) => <PlayerEditForm player={player} onSaved={onSaved} onComplete={close} />}
-          </AdminActionPopover>
-        </div>
-        <div className="min-w-0">
-          <PlayerHistoryTrigger player={player} className="font-bold tracking-[-0.03em] text-[#FAFAFA]">
-            <PlayerIdentity player={player} />
-          </PlayerHistoryTrigger>
-          <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
-            Current CPI {player.current_cpi ?? '-'} · {formatPlayerTier(player.tier)} · Updated {formatCompactDateTime(player.updated_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <StatusPill tone={player.team === 'USA' ? 'warning' : 'muted'}>
-            {player.team === 'USA' ? 'USA' : 'Europe'}
-          </StatusPill>
-        </div>
-      </div>
-    </div>
+    <th scope="col" className={`px-3 py-0 font-bold tracking-[0.12em] ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`flex min-h-11 w-full items-center justify-between gap-2 text-left hover:text-[#E6EDF3] ${
+          isActive ? 'text-[#3FB950]' : 'text-[#8B949E]'
+        }`}
+        aria-label={`Sort players by ${label}`}
+      >
+        <span>{label}</span>
+        <span className="text-[10px]">{isActive ? (sortConfig.direction === 'asc' ? 'asc' : 'desc') : '-'}</span>
+      </button>
+    </th>
   );
 }
 
+function comparePlayerRosterRows(
+  a: PlayerRosterRow,
+  b: PlayerRosterRow,
+  sortConfig: PlayerRosterSortConfig
+): number {
+  const directionMultiplier = sortConfig.direction === 'asc' ? 1 : -1;
+  const primary = compareRosterSortValues(
+    getPlayerRosterSortValue(a, sortConfig.key),
+    getPlayerRosterSortValue(b, sortConfig.key)
+  );
+
+  if (primary !== 0) {
+    return primary * directionMultiplier;
+  }
+
+  return a.player.name.localeCompare(b.player.name) || a.player.team.localeCompare(b.player.team);
+}
+
+function getPlayerRosterSortValue(row: PlayerRosterRow, sortKey: PlayerRosterSortKey): string | number {
+  switch (sortKey) {
+    case 'team':
+      return row.player.team === 'USA' ? 0 : 1;
+    case 'tier':
+      return normalizePlayerTier(row.player.tier);
+    case 'handicap':
+      return row.player.current_cpi ?? Number.POSITIVE_INFINITY;
+    case 'updated':
+      return new Date(row.player.updated_at).getTime();
+    case 'linked':
+      return row.linkedProfiles.length > 0 ? 0 : 1;
+    case 'name':
+      return row.player.name.toLowerCase();
+    case 'email':
+      return row.linkedEmails.toLowerCase() || '~';
+    default: {
+      const exhaustive: never = sortKey;
+      return exhaustive;
+    }
+  }
+}
+
+function compareRosterSortValues(a: string | number, b: string | number): number {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return a - b;
+  }
+
+  return String(a).localeCompare(String(b));
+}
+
+function PlayerCorrectionRow({
+  row,
+  tierStats,
+  players,
+  playerStats,
+  tournaments,
+  onSaved,
+}: {
+  row: PlayerRosterRow;
+  tierStats: TierStatsMap;
+  players: PlayerRow[];
+  playerStats: PlayerTournamentStatsRow[];
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const { player, linkedProfiles } = row;
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const openEdit = () => setIsEditOpen(true);
+  const closeEdit = () => setIsEditOpen(false);
+
+  const playerHistory = useMemo(
+    () => playerStats.filter((stat) => stat.player_id === player.id),
+    [playerStats, player.id]
+  );
+
+  return (
+    <tr
+      className="group cursor-pointer border-t border-[#27272A] align-middle text-[#E6EDF3] hover:bg-[#0F1A12] focus-visible:bg-[#0F1A12] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+      data-player-row-name={player.name}
+      onClick={openEdit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openEdit();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Edit ${player.name}`}
+    >
+      <td className="sticky left-0 z-10 w-px whitespace-nowrap bg-[#050506] px-3 py-2 group-hover:bg-[#0F1A12] group-focus-visible:bg-[#0F1A12]">
+        <div
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <PlayerHistoryTrigger player={player} className="font-bold tracking-[-0.03em] text-[#FAFAFA]">
+            <PlayerIdentity player={player} showTeam={false} />
+          </PlayerHistoryTrigger>
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <StatusPill tone={player.team === 'USA' ? 'warning' : 'muted'}>
+          {player.team === 'USA' ? 'USA' : 'Europe'}
+        </StatusPill>
+      </td>
+      <td className="px-3 py-2 text-[#A1A1AA]">{formatPlayerTier(player.tier)}</td>
+      <td className="px-3 py-2 tabular-nums text-[#FAFAFA]">{player.current_cpi ?? '-'}</td>
+      <td className="px-3 py-2 tabular-nums text-[#A1A1AA]">
+        {formatCompactDateTime(player.updated_at)}
+        <AdminActionDialog
+          isOpen={isEditOpen}
+          onClose={closeEdit}
+          title={`Edit ${player.name}`}
+          description="Correct roster details, linked profile, and history."
+        >
+          {(close) => (
+            <PlayerEditForm
+              player={player}
+              tierStats={tierStats}
+              linkedProfiles={linkedProfiles}
+              players={players}
+              tournaments={tournaments}
+              playerHistory={playerHistory}
+              onSaved={onSaved}
+              onComplete={close}
+            />
+          )}
+        </AdminActionDialog>
+      </td>
+    </tr>
+  );
+}
+
+type PlayerEditField = 'name' | 'team' | 'cpi' | 'tier';
+
 function PlayerEditForm({
   player,
+  tierStats,
+  linkedProfiles,
+  players,
+  tournaments,
+  playerHistory,
   onSaved,
   onComplete,
 }: {
   player: PlayerRow;
+  tierStats: TierStatsMap;
+  linkedProfiles: ProfileRow[];
+  players: PlayerRow[];
+  tournaments: TournamentRow[];
+  playerHistory: PlayerTournamentStatsRow[];
   onSaved: () => Promise<void>;
   onComplete: () => void;
 }) {
@@ -1669,6 +2030,7 @@ function PlayerEditForm({
   const [team, setTeam] = useState<Team>(player.team);
   const [tier, setTier] = useState<PlayerTier>(normalizePlayerTier(player.tier));
   const [cpi, setCpi] = useState(player.current_cpi?.toString() ?? '');
+  const [activeField, setActiveField] = useState<PlayerEditField | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasChanged =
@@ -1710,36 +2072,390 @@ function PlayerEditForm({
     }
   };
 
+  const closeField = () => setActiveField(null);
+
   return (
     <div>
-      <div className="grid gap-2">
-        <TextField label="Name" value={name} onChange={setName} />
-        <div className="grid gap-2 sm:grid-cols-[1fr_7rem_8rem_auto] sm:items-end">
-          <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
-            Team
-            <select
-              value={team}
-              onChange={(event) => setTeam(event.target.value as Team)}
-              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
-            >
-              <option value="USA">USA</option>
-              <option value="EUROPE">Europe</option>
-            </select>
-          </label>
-          <TextField label="CPI" value={cpi} onChange={setCpi} type="number" />
-          <PlayerTierSelect value={tier} onChange={setTier} label="Tier" />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <PlayerFieldTile
+          label="Name"
+          displayValue={name || '—'}
+          active={activeField === 'name'}
+          onActivate={() => setActiveField('name')}
+          onDone={closeField}
+        >
+          <input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === 'Escape') {
+                event.preventDefault();
+                closeField();
+              }
+            }}
+            aria-label="Name"
+            className="min-h-11 w-full rounded border border-[#3F3F46] bg-[#050506] px-2 text-base font-bold text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+          />
+        </PlayerFieldTile>
+        <PlayerFieldTile
+          label="Team"
+          displayValue={`${team === 'USA' ? '🇺🇸' : '🇪🇺'} ${team === 'USA' ? 'USA' : 'Europe'}`}
+          active={activeField === 'team'}
+          onActivate={() => setActiveField('team')}
+          onDone={closeField}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            {(['USA', 'EUROPE'] as Team[]).map((option) => {
+              const isActive = team === option;
+              const emoji = option === 'USA' ? '🇺🇸' : '🇪🇺';
+              const label = option === 'USA' ? 'USA' : 'Europe';
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setTeam(option);
+                    closeField();
+                  }}
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded border px-2 py-2 text-xs font-bold tracking-[0.14em] ${
+                    isActive
+                      ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+                      : 'border-[#27272A] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#FAFAFA]'
+                  }`}
+                >
+                  <span aria-hidden="true">{emoji}</span>
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </PlayerFieldTile>
+        <PlayerFieldTile
+          label="CPI"
+          displayValue={cpi || '—'}
+          active={activeField === 'cpi'}
+          onActivate={() => setActiveField('cpi')}
+          onDone={closeField}
+        >
+          <input
+            autoFocus
+            value={cpi}
+            onChange={(event) => setCpi(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === 'Escape') {
+                event.preventDefault();
+                closeField();
+              }
+            }}
+            aria-label="CPI"
+            type="number"
+            inputMode="numeric"
+            className="min-h-11 w-full rounded border border-[#3F3F46] bg-[#050506] px-2 text-center text-lg font-bold tabular-nums text-[#FAFAFA] outline-none focus:border-[#3FB950]"
+          />
+        </PlayerFieldTile>
+        <PlayerFieldTile
+          label="Tier"
+          displayValue={formatPlayerTier(tier)}
+          active={activeField === 'tier'}
+          onActivate={() => setActiveField('tier')}
+          onDone={closeField}
+        >
+          <p className="mb-1 font-data text-[10px] tracking-[0.14em] text-[#8B949E]">CPI min · med · max</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([1, 2, 3] as PlayerTier[]).map((option) => {
+              const isActive = tier === option;
+              const stats = tierStats[option];
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setTier(option);
+                    closeField();
+                  }}
+                  className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded border px-1 py-2 text-xs font-bold tracking-[0.14em] ${
+                    isActive
+                      ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+                      : 'border-[#27272A] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#FAFAFA]'
+                  }`}
+                >
+                  <span>Tier {option}</span>
+                  <span className="font-data text-[10px] font-normal tabular-nums tracking-normal text-[#8B949E]">
+                    {formatTierStat(stats.min)} · {formatTierStat(stats.median)} · {formatTierStat(stats.max)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </PlayerFieldTile>
+      </div>
+      <button
+        type="button"
+        onClick={savePlayer}
+        disabled={!hasChanged || isSaving}
+        className="mt-3 min-h-11 w-full rounded-md bg-[#3FB950] px-3 py-2 font-data text-sm font-bold text-[#09090B] disabled:bg-transparent disabled:text-[#484F58] disabled:outline disabled:outline-1 disabled:outline-[#27272A]"
+      >
+        {isSaving ? 'Saving…' : hasChanged ? 'Save changes' : 'No changes'}
+      </button>
+      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
+      <PlayerLinkedProfilePanel linkedProfiles={linkedProfiles} players={players} onSaved={onSaved} />
+      <PlayerHistoryPanel
+        player={player}
+        playerHistory={playerHistory}
+        tournaments={tournaments}
+        onSaved={onSaved}
+      />
+    </div>
+  );
+}
+
+function UnlinkedProfilesPanel({
+  profiles,
+  players,
+  onSaved,
+}: {
+  profiles: ProfileRow[];
+  players: PlayerRow[];
+  onSaved: () => Promise<void>;
+}) {
+  if (profiles.length === 0) {
+    return null;
+  }
+
+  return (
+    <details className="border-t border-[#27272A] open:bg-[#0F0F11]">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-3 font-data text-xs tracking-[0.16em] text-[#F59E0B] hover:text-[#FAFAFA]">
+        <span>
+          Unlinked profiles ({profiles.length}) — sign-ins not tied to any player
+        </span>
+        <span className="text-[10px] tracking-[0.12em] text-[#3FB950]">Tap to expand</span>
+      </summary>
+      <div className="border-t border-[#27272A]">
+        {profiles.map((profile) => (
+          <ProfileLinkRow key={profile.id} profile={profile} players={players} onSaved={onSaved} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function PlayerLinkedProfilePanel({
+  linkedProfiles,
+  players,
+  onSaved,
+}: {
+  linkedProfiles: ProfileRow[];
+  players: PlayerRow[];
+  onSaved: () => Promise<void>;
+}) {
+  return (
+    <details className="mt-4 rounded-md border border-[#27272A] bg-[#0F0F11] open:border-[#3F3F46]">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 font-data text-xs tracking-[0.14em] text-[#8B949E] hover:text-[#FAFAFA]">
+        <span>Linked profile{linkedProfiles.length === 1 ? '' : 's'} ({linkedProfiles.length})</span>
+        <span className="text-[10px] tracking-[0.12em] text-[#3FB950]">Tap to expand</span>
+      </summary>
+      <div className="border-t border-[#27272A]">
+        {linkedProfiles.length === 0 ? (
+          <p className="px-3 py-3 text-xs text-[#8B949E]">
+            No signed-in profile is linked yet. Use the &ldquo;Unlinked profiles&rdquo; panel above the player table
+            to link one.
+          </p>
+        ) : (
+          linkedProfiles.map((profile) => (
+            <ProfileLinkRow key={profile.id} profile={profile} players={players} onSaved={onSaved} />
+          ))
+        )}
+      </div>
+    </details>
+  );
+}
+
+function PlayerHistoryPanel({
+  player,
+  playerHistory,
+  tournaments,
+  onSaved,
+}: {
+  player: PlayerRow;
+  playerHistory: PlayerTournamentStatsRow[];
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const sortedHistory = useMemo(
+    () => [...playerHistory].sort((a, b) => b.completion_year - a.completion_year),
+    [playerHistory]
+  );
+  const [isAdding, setIsAdding] = useState(false);
+
+  return (
+    <details className="mt-3 rounded-md border border-[#27272A] bg-[#0F0F11] open:border-[#3F3F46]">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 font-data text-xs tracking-[0.14em] text-[#8B949E] hover:text-[#FAFAFA]">
+        <span>History ({sortedHistory.length})</span>
+        <span className="text-[10px] tracking-[0.12em] text-[#3FB950]">Tap to expand</span>
+      </summary>
+      <div className="border-t border-[#27272A]">
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <p className="font-data text-[10px] tracking-[0.14em] text-[#8B949E]">
+            App-generated and manual entries
+          </p>
           <button
             type="button"
-            onClick={savePlayer}
-            disabled={!hasChanged || isSaving}
-            className="min-h-11 rounded-md border border-[#3FB950] px-3 py-2 text-xs font-bold tracking-[0.12em] text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+            onClick={() => setIsAdding((value) => !value)}
+            className="rounded-md border border-[#3FB950] px-3 py-1 text-[10px] font-bold tracking-[0.14em] text-[#3FB950] hover:bg-[#06170B]"
           >
-            {isSaving ? 'Saving' : 'Save'}
+            {isAdding ? 'Cancel' : 'Add row'}
           </button>
         </div>
+        {isAdding ? (
+          <PlayerStatCreateForm
+            playerId={player.id}
+            tournaments={tournaments}
+            onSaved={async () => {
+              await onSaved();
+              setIsAdding(false);
+            }}
+          />
+        ) : null}
+        {sortedHistory.length === 0 ? (
+          <p className="border-t border-[#27272A] px-3 py-3 text-xs text-[#8B949E]">
+            No history rows yet.
+          </p>
+        ) : (
+          <div className="border-t border-[#27272A] overflow-x-auto">
+            <table className="w-full border-collapse text-left font-data text-xs">
+              <thead className="bg-[#09090B] text-[#8B949E]">
+                <tr className="border-b border-[#27272A]">
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">Year</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">Source</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">Avg</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">W/H</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">CPI</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2 font-bold tracking-[0.12em]">Date</th>
+                  <th scope="col" className="whitespace-nowrap px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedHistory.map((stat) => (
+                  <PlayerHistoryTableRow
+                    key={stat.id}
+                    stat={stat}
+                    tournaments={tournaments}
+                    onSaved={onSaved}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      {error && <p className="mt-2 text-xs text-[#F85149]">{error}</p>}
-    </div>
+    </details>
+  );
+}
+
+function PlayerHistoryTableRow({
+  stat,
+  tournaments,
+  onSaved,
+}: {
+  stat: PlayerTournamentStatsRow;
+  tournaments: TournamentRow[];
+  onSaved: () => Promise<void>;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const sourceTone =
+    stat.source === 'app' ? 'success' : stat.source === 'manual' ? 'warning' : 'muted';
+
+  return (
+    <>
+      <tr className="border-t border-[#27272A] align-middle text-[#E6EDF3]">
+        <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#FAFAFA]">{stat.completion_year}</td>
+        <td className="whitespace-nowrap px-2 py-2">
+          <StatusPill tone={sourceTone}>{stat.source}</StatusPill>
+        </td>
+        <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+          {stat.singles_average ?? '-'}
+        </td>
+        <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#A1A1AA]">
+          {stat.holes_won}/{stat.holes_halved}
+        </td>
+        <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#FAFAFA]">{stat.cpi_after ?? '-'}</td>
+        <td className="whitespace-nowrap px-2 py-2 tabular-nums text-[#8B949E]">
+          {formatCompactDateTime(stat.completed_at)}
+        </td>
+        <td className="whitespace-nowrap px-2 py-2 text-right">
+          <button
+            type="button"
+            onClick={() => setIsExpanded((value) => !value)}
+            className="rounded-md border border-[#3FB950] px-2 py-1 text-[10px] font-bold tracking-[0.14em] text-[#3FB950] hover:bg-[#06170B]"
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? `Close ${stat.completion_year} history row` : `Edit ${stat.completion_year} history row`}
+          >
+            {isExpanded ? 'Close' : 'Edit'}
+          </button>
+        </td>
+      </tr>
+      {isExpanded ? (
+        <tr className="border-t border-[#27272A] bg-[#050506]">
+          <td colSpan={7} className="px-3 py-3">
+            <PlayerStatEditor
+              stat={stat}
+              tournaments={tournaments}
+              onSaved={onSaved}
+              onClose={() => setIsExpanded(false)}
+            />
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+function PlayerFieldTile({
+  label,
+  displayValue,
+  active,
+  onActivate,
+  onDone,
+  children,
+}: {
+  label: string;
+  displayValue: string;
+  active: boolean;
+  onActivate: () => void;
+  onDone: () => void;
+  children: ReactNode;
+}) {
+  if (active) {
+    return (
+      <div className="min-w-0 rounded-md border border-[#3FB950] bg-[#06170B] p-2 font-data">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] tracking-[0.14em] text-[#3FB950]">{label}</span>
+          <button
+            type="button"
+            onClick={onDone}
+            className="rounded-sm border border-[#27272A] px-1.5 py-1 text-[10px] tracking-[0.12em] text-[#A1A1AA] hover:border-[#3F3F46] hover:text-[#FAFAFA] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+            aria-label={`Done ${label}`}
+          >
+            Done
+          </button>
+        </div>
+        <div className="mt-1">{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onActivate}
+      className="min-h-[4.5rem] min-w-0 rounded-md border border-[#27272A] bg-[#0F0F11] p-2 text-left transition hover:border-[#3F3F46] hover:bg-[#18181B] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+      aria-label={`Edit ${label}`}
+    >
+      <span className="block text-[10px] tracking-[0.14em] text-[#8B949E]">{label}</span>
+      <span className="mt-1 block truncate font-data text-base font-bold text-[#FAFAFA]">{displayValue}</span>
+      <span className="mt-1 block text-[10px] tracking-[0.12em] text-[#3FB950]">Tap edit</span>
+    </button>
   );
 }
 
@@ -1782,12 +2498,15 @@ function FixtureCorrections({
   onSaved: () => Promise<void>;
 }) {
   return (
-    <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
-      <div className="px-3 py-3">
-        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Fixtures</p>
+    <div className="border-t border-[#27272A] pt-4">
+      <div className="px-3 pb-3 sm:px-0">
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Fixture repair</p>
+        <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+          Rename fixtures, correct segment players, toggle CPI, or clear accidental scores.
+        </p>
       </div>
       {fixtures.length === 0 ? (
-        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No fixtures yet.</p>
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E] sm:px-0">No fixtures yet.</p>
       ) : (
         fixtures.map((fixture) => (
           <FixtureCorrectionRow
@@ -1893,6 +2612,9 @@ function FixtureCorrectionRow({
     <div className="border-t border-[#27272A] px-3 py-3">
       <div className="grid gap-3">
         <div>
+          <p className="mb-2 text-xs font-bold tracking-[0.14em] text-[#3FB950]">
+            Editing {fixture.name ?? `fixture ${fixture.sort_order + 1}`}
+          </p>
           <TextField label="Fixture name" value={name} onChange={setName} />
           <p className="mt-1 text-xs text-[#8B949E]">
             {fixture.participants.length} players · {fixture.segments.length} segments · {scoreCount} saved holes
@@ -1958,12 +2680,19 @@ function SegmentCorrectionRow({
 }) {
   const fixturePlayerIds = new Set(fixture.participants.map((participant) => participant.player_id));
   const fixturePlayers = players.filter((player) => fixturePlayerIds.has(player.id));
+  const isSideBasedSingles = isFullCourseSinglesSegment(fixture, segment);
   const usaPlayers = fixturePlayers.filter((player) => player.team === 'USA');
   const europePlayers = fixturePlayers.filter((player) => player.team === 'EUROPE');
   const hasScores = segment.holeScores.length > 0;
   const [name, setName] = useState(segment.name ?? '');
   const [usaPlayerId, setUsaPlayerId] = useState(segment.usa_player_id ?? '');
   const [europePlayerId, setEuropePlayerId] = useState(segment.europe_player_id ?? '');
+  const sideAPlayers = isSideBasedSingles
+    ? filterSelectedPlayerOptions(fixturePlayers, [europePlayerId], usaPlayerId)
+    : usaPlayers;
+  const sideBPlayers = isSideBasedSingles
+    ? filterSelectedPlayerOptions(fixturePlayers, [usaPlayerId], europePlayerId)
+    : europePlayers;
   const [frontNinePlayerIds, setFrontNinePlayerIds] = useState<string[]>(
     segment.players.map((player) => player.player_id)
   );
@@ -2084,15 +2813,15 @@ function SegmentCorrectionRow({
           <>
             <div className="grid gap-2 sm:grid-cols-2">
               <PlayerSelect
-                label="USA"
+                label={isSideBasedSingles ? 'Side A' : 'USA'}
                 value={usaPlayerId}
-                players={usaPlayers}
+                players={sideAPlayers}
                 onChange={setUsaPlayerId}
               />
               <PlayerSelect
-                label="Europe"
+                label={isSideBasedSingles ? 'Side B' : 'Europe'}
                 value={europePlayerId}
-                players={europePlayers}
+                players={sideBPlayers}
                 onChange={setEuropePlayerId}
               />
             </div>
@@ -2518,7 +3247,13 @@ function CustomFixtureForm({
   };
 
   return (
-    <SetupForm title="Mobile Fixture Builder" onSubmit={handleSubmit} error={error}>
+    <form onSubmit={handleSubmit} className="grid gap-3">
+      <div>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Fixture builder</p>
+        <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+          Pick the template, choose players, then confirm the scoring segments.
+        </p>
+      </div>
       {validationError && <StatusCard tone="warning">{validationError}</StatusCard>}
       <TextField label="Fixture name" value={name} onChange={setName} />
       <FixtureTemplatePicker template={template} onChange={setTemplate} />
@@ -2585,7 +3320,8 @@ function CustomFixtureForm({
       <SubmitButton isSaving={isSaving} disabled={!isReady}>
         Create fixture
       </SubmitButton>
-    </SetupForm>
+      {error && <p className="text-sm text-[#F85149]">{error}</p>}
+    </form>
   );
 }
 
@@ -2657,7 +3393,7 @@ function OneVsOnePicker({
   const sideBPlayers = filterSelectedPlayerOptions(players, [sideAPlayerId], sideBPlayerId);
 
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className="border-t border-[#27272A] pt-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">1v1 players</p>
       <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
         Pick any two players. Side A and Side B are the two scoring sides for this match.
@@ -2693,7 +3429,7 @@ function TeamSlotPicker({
   onChange: (slots: string[]) => void;
 }) {
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className="border-t border-[#27272A] pt-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">{label}</p>
       <div className="mt-2 space-y-2">
         {slots.map((playerId, index) => (
@@ -2724,7 +3460,7 @@ function FrontNinePicker({
   onChange: (playerIds: string[]) => void;
 }) {
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className="border-t border-[#27272A] pt-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Front 9 players</p>
       <div className="mt-2 grid gap-2">
         {players.map((player) => {
@@ -2747,7 +3483,7 @@ function FrontNinePicker({
                   : 'border-[#27272A] text-[#A1A1AA]'
               }`}
             >
-              {player.team} · {player.name}
+              {formatPlayerFixtureLabel(player)}
             </button>
           );
         })}
@@ -2770,11 +3506,11 @@ function SinglesPairPicker({
   const selectedSinglesPlayerIds = pairs.flatMap((pair) => [pair.usaPlayerId, pair.europePlayerId]);
 
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className="border-t border-[#27272A] pt-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Back 9 singles</p>
       <div className="mt-2 space-y-3">
         {pairs.map((pair, index) => (
-          <div key={index} className="rounded-md border border-[#27272A] bg-[#18181B] p-3">
+          <div key={index} className="border-t border-[#27272A] pt-3 first:border-t-0 first:pt-0">
             <p className="text-xs font-bold tracking-[0.14em] text-[#A1A1AA]">
               Singles {String.fromCharCode(65 + index)}
             </p>
@@ -2824,7 +3560,7 @@ function FixturePreview({
   const playerLookup = new Map(selectedPlayers.map((player) => [player.id, player]));
 
   return (
-    <div className="rounded-md border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className="border-t border-[#27272A] pt-3">
       <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Preview</p>
       <p className="mt-2 text-sm text-[#E6EDF3]">
         {templateConfig.title} · {selectedPlayers.length} players ·{' '}
@@ -2836,8 +3572,8 @@ function FixturePreview({
       <div className="mt-2 space-y-1 text-xs text-[#A1A1AA]">
         {singlesPairs.map((pair, index) => (
           <p key={`${pair.usaPlayerId}-${pair.europePlayerId}-${index}`}>
-            {String.fromCharCode(65 + index)}: {playerLookup.get(pair.usaPlayerId)?.name ?? 'USA'} vs{' '}
-            {playerLookup.get(pair.europePlayerId)?.name ?? 'Europe'} · CPI{' '}
+            {String.fromCharCode(65 + index)}: {formatPlayerFixtureLabel(playerLookup.get(pair.usaPlayerId))} vs{' '}
+            {formatPlayerFixtureLabel(playerLookup.get(pair.europePlayerId))} · CPI{' '}
             {pair.cpiEnabled ? 'on' : 'off'}
           </p>
         ))}
@@ -2894,6 +3630,26 @@ function filterSelectedPlayerOptions(
   const selectedIds = new Set(selectedPlayerIds.filter((playerId) => playerId && playerId !== currentPlayerId));
 
   return players.filter((player) => !selectedIds.has(player.id));
+}
+
+function isFullCourseSinglesSegment(
+  fixture: FixtureView,
+  segment: FixtureView['segments'][number]
+): boolean {
+  return (
+    segment.kind === 'singles' &&
+    segment.hole_start === 1 &&
+    segment.hole_end === 18 &&
+    fixture.participants.length === 2
+  );
+}
+
+function formatPlayerFixtureLabel(player: PlayerRow | undefined): string {
+  if (!player) {
+    return 'Select player';
+  }
+
+  return `${player.team} · ${player.name} · HCP ${player.current_cpi ?? '-'} · ${formatPlayerTier(player.tier)}`;
 }
 
 function clearUnavailablePlayerIds(playerIds: string[], availablePlayerIds: Set<string>): string[] {

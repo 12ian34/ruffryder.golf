@@ -34,6 +34,29 @@
   :where(.dark) input {
     @apply bg-[#050506] border-[#27272A] text-[#E6EDF3];
   }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #050506 inset !important;
+    -webkit-text-fill-color: #E6EDF3 !important;
+    caret-color: #E6EDF3;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  :where(.light) input:-webkit-autofill,
+  :where(.light) input:-webkit-autofill:hover,
+  :where(.light) input:-webkit-autofill:focus,
+  :where(.light) input:-webkit-autofill:active,
+  :where(.light) textarea:-webkit-autofill,
+  :where(.light) select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #f8f5ec inset !important;
+    -webkit-text-fill-color: #1f2937 !important;
+    caret-color: #1f2937;
+  }
 }
 
 .dark .bg-white {

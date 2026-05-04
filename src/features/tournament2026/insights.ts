@@ -5,6 +5,7 @@ import type {
 } from '../../services/tournament2026Queries';
 import type { CourseHoleMetadata } from '../../domain/2026/course';
 import { calculateSegmentMatchPlayStatus } from '../../domain/2026/matchPlayStatus';
+import { calculatePointTotals } from '../../domain/2026/points';
 import { normalizePlayerTier } from './viewUtils';
 
 type Team = 'USA' | 'EUROPE';
@@ -30,6 +31,9 @@ export interface ProgressPoint {
   europe: number;
   halved: number;
   updatedAt: string;
+  holeOutcome: 'USA' | 'EUROPE' | 'halved';
+  holeUsaScore: number | null;
+  holeEuropeScore: number | null;
 }
 
 interface ScoredSide {
@@ -61,6 +65,8 @@ export function buildProgressTimeline(fixtures: FixtureView[], players: PlayerRo
             outcome: score.outcome,
             sides: buildProgressSides(fixture, segment, playerLookup),
             updatedAt: score.updated_at,
+            usaScore: score.usa_score,
+            europeScore: score.europe_score,
           }))
       )
     )
@@ -85,6 +91,63 @@ export function buildProgressTimeline(fixtures: FixtureView[], players: PlayerRo
       europe: totals.EUROPE,
       halved: totals.halved,
       updatedAt: score.updatedAt,
+      holeOutcome: score.outcome === 'unplayed' ? 'halved' : score.outcome,
+      holeUsaScore: score.usaScore,
+      holeEuropeScore: score.europeScore,
+    };
+  });
+}
+
+export function buildPointsProgressTimeline(
+  fixtures: FixtureView[],
+  players: PlayerRow[] = []
+): ProgressPoint[] {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const events = fixtures
+    .flatMap((fixture) =>
+      fixture.segments.flatMap((segment) =>
+        segment.holeScores
+          .filter((score) => score.outcome !== 'unplayed')
+          .map((score) => ({ fixture, segment, score }))
+      )
+    )
+    .sort((a, b) => new Date(a.score.updated_at).getTime() - new Date(b.score.updated_at).getTime());
+
+  const segmentHoles = new Map<string, FixtureView['segments'][number]['holeScores']>();
+  for (const fixture of fixtures) {
+    for (const segment of fixture.segments) {
+      segmentHoles.set(segment.id, []);
+    }
+  }
+
+  return events.map((event) => {
+    const accumulated = segmentHoles.get(event.segment.id) ?? [];
+    const filtered = accumulated.filter((score) => score.hole_number !== event.score.hole_number);
+    filtered.push(event.score);
+    segmentHoles.set(event.segment.id, filtered);
+
+    const snapshotFixtures: FixtureView[] = fixtures.map((fixture) => ({
+      ...fixture,
+      segments: fixture.segments.map((segment) => ({
+        ...segment,
+        holeScores: segmentHoles.get(segment.id) ?? [],
+      })),
+    }));
+
+    const totals = calculatePointTotals(snapshotFixtures);
+
+    return {
+      id: event.score.id,
+      label: `${event.fixture.name ?? `Fixture ${event.fixture.sort_order + 1}`} H${event.score.hole_number}`,
+      holeNumber: event.score.hole_number,
+      sides: buildProgressSides(event.fixture, event.segment, playerLookup),
+      usa: totals.provisional.overall.USA,
+      europe: totals.provisional.overall.EUROPE,
+      halved: 0,
+      updatedAt: event.score.updated_at,
+      holeOutcome: event.score.outcome === 'unplayed' ? 'halved' : event.score.outcome,
+      holeUsaScore: event.score.usa_score,
+      holeEuropeScore: event.score.europe_score,
     };
   });
 }
