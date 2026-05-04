@@ -197,6 +197,9 @@ Admin is a phone-first operations console, not a desktop control room:
 - Organize admin work as collapsible task sections in this order: Tournament, Players, Fixtures, Course, Activity, Corrections.
 - Each section should explain the job in one sentence and hide details until needed.
 - The Admin route should be flat by default: one compact page header, then full-width divider rows. Do not wrap the whole admin console in the shared `Panel` shell or default-open task cards.
+- Keep active Admin task headers sticky and compact while their section is open, with the same `Open` / `Hide` plus chevron treatment used by other disclosure rows.
+- Use compact popovers for admin creation/edit forms that would otherwise turn lists into rows of input boxes. Tournament creation belongs below the activation list; player creation and roster edits should not interrupt roster scanning.
+- Player admin should use the Archive view's flat roster language: full list, thin dividers, team/name filters, player names wired to the shared player-history popover, and a left-side edit action for each row.
 - Keep the normal workflow top-to-bottom. Put dangerous repair work in `Corrections`, not beside everyday setup.
 - Course metadata, profile linking, access control, tournament activation, and player-history edits belong in `Admin`, not user `Profile`.
 - Admin `Activity` is an internal setup/audit trail. Keep it visually similar to the public activity feed, but label it as admin activity rather than exposing database or migration language.
@@ -359,3 +362,4 @@ Respect reduced-motion preferences.
 | 2026-05-04 | Flattened Admin into divider-led operations rows | Admin setup should feel like a modern command surface, not a panel wrapped around nested panels. |
 | 2026-05-04 | Added collapsible Tournament sections | Mobile users need to collapse chart, highlights, tournament overview, score movement, newsroom, fixture, and activity detail while keeping the live match state visible. |
 | 2026-05-04 | Standardized 2026 form input chrome | Profile and overview forms should use the terminal input palette and avoid extra nested card treatment inside page-level sections. |
+| 2026-05-04 | Moved Admin create/edit work into popovers | Admin lists should stay scannable; focused forms open only when an admin chooses to create or edit a record. |

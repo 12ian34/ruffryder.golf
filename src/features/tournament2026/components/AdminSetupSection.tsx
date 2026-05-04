@@ -29,6 +29,7 @@ import { track2026 } from '../../../utils/analytics';
 import { getErrorMessage } from '../viewUtils';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
 import { SetupForm, StatusCard, TerminalPageSection } from './Layout';
+import { PlayerHistoryTrigger, PlayerIdentity } from './PlayerHistory';
 import { ProfileLinkingPanel } from './ProfileSection';
 
 export function AdminSetupSection({
@@ -59,17 +60,17 @@ export function AdminSetupSection({
           title="Tournament"
           description="Create the active event, edit CPI settings, and finalize or reopen when scoring is done."
         >
-          <div className="grid gap-4 lg:grid-cols-2">
-            <TournamentForm onSaved={onSaved} />
-            <TournamentCorrections
-              tournament={data.activeTournament}
-              fixtures={data.fixtures}
-              players={data.players}
-              profileId={data.profile.id}
-              onSaved={onSaved}
-            />
-          </div>
+          <TournamentCorrections
+            tournament={data.activeTournament}
+            fixtures={data.fixtures}
+            players={data.players}
+            profileId={data.profile.id}
+            onSaved={onSaved}
+          />
           <TournamentList tournaments={data.tournaments} onSaved={onSaved} />
+          <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">
+            <CreateTournamentButton onSaved={onSaved} />
+          </div>
           <FinalizationPanel
             tournament={data.activeTournament}
             fixtures={data.fixtures}
@@ -79,12 +80,9 @@ export function AdminSetupSection({
         </AdminTaskSection>
         <AdminTaskSection
           title="Players"
-          description="Add players, correct player details, and link signed-in profiles to players."
+          description="Create players, correct player details, and link signed-in profiles to players."
         >
-          <div className="grid gap-4 lg:grid-cols-2">
-            <PlayerForm onSaved={onSaved} />
-            <PlayerCorrections players={data.players} onSaved={onSaved} />
-          </div>
+          <PlayerCorrections players={data.players} onSaved={onSaved} />
           <div className="mt-4">
             <ProfileLinkingPanel profiles={data.profiles} players={data.players} onSaved={onSaved} />
           </div>
@@ -203,20 +201,101 @@ function AdminTaskSection({
 }) {
   return (
     <details className="group border-b border-[#27272A] bg-transparent">
-      <summary className="cursor-pointer list-none px-3 py-3 focus:outline-none focus-visible:bg-[#0C0C0E] sm:px-4">
-        <div className="flex items-start justify-between gap-4">
+      <summary className="sticky top-0 z-20 cursor-pointer list-none bg-[#050506]/95 px-3 py-2.5 backdrop-blur transition hover:bg-[#0C0C0E] focus:outline-none focus-visible:bg-[#0C0C0E] sm:px-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-xl font-bold tracking-[-0.05em] text-[#FAFAFA]">{title}</h3>
-            <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p>
+            <h3 className="text-base font-bold tracking-[-0.03em] text-[#FAFAFA] sm:text-lg">{title}</h3>
+            <p className="mt-1 text-xs leading-5 text-[#8B949E] sm:text-sm">{description}</p>
           </div>
-          <span className="shrink-0 border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.16em] text-[#8B949E]">
+          <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold tracking-[0.16em] text-[#3FB950]">
             <span className="group-open:hidden">Open</span>
             <span className="hidden group-open:inline">Hide</span>
+            <span className="inline-block transition group-open:rotate-90">&gt;</span>
           </span>
         </div>
       </summary>
       <div className="border-t border-[#27272A] px-3 py-3 sm:px-4">{children}</div>
     </details>
+  );
+}
+
+function AdminActionPopover({
+  buttonLabel,
+  title,
+  description,
+  children,
+}: {
+  buttonLabel: string;
+  title: string;
+  description?: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      setIsOpen(false);
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  const close = () => setIsOpen(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="min-h-11 rounded-md border border-[#3FB950] px-4 py-2 text-xs font-bold tracking-[0.14em] text-[#3FB950] hover:bg-[#06170B] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#3FB950]"
+      >
+        {buttonLabel}
+      </button>
+      {isOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/70 px-3 py-4 sm:items-center sm:justify-center"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              close();
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-[#27272A] bg-[#09090B] shadow-[0_18px_42px_rgba(0,0,0,0.42)]"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-[#27272A] px-3 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold tracking-[0.22em] text-[#3FB950]">Admin action</p>
+                <h3 className="mt-1 text-xl font-bold tracking-[-0.04em] text-[#FAFAFA]">{title}</h3>
+                {description ? <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">{description}</p> : null}
+              </div>
+              <button
+                type="button"
+                onClick={close}
+                className="shrink-0 rounded-md border border-[#27272A] px-3 py-2 text-xs text-[#A1A1AA] hover:border-[#3FB950] hover:text-[#FAFAFA]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-3">{children(close)}</div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -363,7 +442,25 @@ function toCompletedAtIso(value: string): string {
   return `${value}T12:00:00.000Z`;
 }
 
-function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
+function CreateTournamentButton({ onSaved }: { onSaved: () => Promise<void> }) {
+  return (
+    <AdminActionPopover
+      buttonLabel="Create tournament"
+      title="Create tournament"
+      description="Add a new active event after reviewing the current activation list."
+    >
+      {(close) => <TournamentForm onSaved={onSaved} onComplete={close} />}
+    </AdminActionPopover>
+  );
+}
+
+function TournamentForm({
+  onSaved,
+  onComplete,
+}: {
+  onSaved: () => Promise<void>;
+  onComplete?: () => void;
+}) {
   const [name, setName] = useState('Ruff Ryders Cup 2026');
   const [year, setYear] = useState('2026');
   const [threshold, setThreshold] = useState('7');
@@ -384,6 +481,7 @@ function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
       });
       track2026('tournament_created', { year: Number(year) });
       await onSaved();
+      onComplete?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -392,7 +490,7 @@ function TournamentForm({ onSaved }: { onSaved: () => Promise<void> }) {
   };
 
   return (
-    <SetupForm title="Create Active Tournament" onSubmit={handleSubmit} error={error}>
+    <SetupForm title="Create tournament" onSubmit={handleSubmit} error={error}>
       <TextField label="Name" value={name} onChange={setName} />
       <TextField label="Year" value={year} onChange={setYear} type="number" />
       <TextField label="CPI threshold" value={threshold} onChange={setThreshold} type="number" />
@@ -411,7 +509,7 @@ function TournamentList({
   if (tournaments.length === 0) {
     return (
       <div className="mt-4 border-y border-[#27272A] bg-[#050506] px-3 py-3 sm:rounded-md sm:border">
-        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament list</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Active tournaments</p>
         <p className="mt-2 text-sm text-[#8B949E]">No tournaments have been created yet.</p>
       </div>
     );
@@ -420,7 +518,7 @@ function TournamentList({
   return (
     <div className="mt-4 border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
       <div className="px-3 py-3">
-        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Tournament list</p>
+        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Active tournaments</p>
         <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
           Activate the event players should see, or leave all events inactive during setup.
         </p>
@@ -512,7 +610,25 @@ function TournamentListRow({
   );
 }
 
-function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
+function CreatePlayerButton({ onSaved }: { onSaved: () => Promise<void> }) {
+  return (
+    <AdminActionPopover
+      buttonLabel="Create player"
+      title="Create player"
+      description="Add a player to the roster before assigning fixtures or profile access."
+    >
+      {(close) => <PlayerForm onSaved={onSaved} onComplete={close} />}
+    </AdminActionPopover>
+  );
+}
+
+function PlayerForm({
+  onSaved,
+  onComplete,
+}: {
+  onSaved: () => Promise<void>;
+  onComplete?: () => void;
+}) {
   const [name, setName] = useState('');
   const [team, setTeam] = useState<Team>('USA');
   const [cpi, setCpi] = useState('');
@@ -534,6 +650,7 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
       setName('');
       setCpi('');
       await onSaved();
+      onComplete?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -542,7 +659,7 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
   };
 
   return (
-    <SetupForm title="Add Player" onSubmit={handleSubmit} error={error}>
+    <SetupForm title="Create player" onSubmit={handleSubmit} error={error}>
       <TextField label="Name" value={name} onChange={setName} />
       <label className="font-data text-xs tracking-[0.14em] text-[#8B949E]">
         Team
@@ -556,7 +673,7 @@ function PlayerForm({ onSaved }: { onSaved: () => Promise<void> }) {
         </select>
       </label>
       <TextField label="Current CPI" value={cpi} onChange={setCpi} type="number" />
-      <SubmitButton isSaving={isSaving}>Add player</SubmitButton>
+      <SubmitButton isSaving={isSaving}>Create player</SubmitButton>
     </SetupForm>
   );
 }
@@ -1199,19 +1316,88 @@ function PlayerCorrections({
   players: PlayerRow[];
   onSaved: () => Promise<void>;
 }) {
+  const [teamFilter, setTeamFilter] = useState<'ALL' | Team>('ALL');
+  const [query, setQuery] = useState('');
+  const filteredPlayers = useMemo(
+    () =>
+      [...players]
+        .filter((player) => teamFilter === 'ALL' || player.team === teamFilter)
+        .filter((player) => player.name.toLowerCase().includes(query.trim().toLowerCase()))
+        .sort((a, b) => {
+          if (a.team !== b.team) {
+            return a.team.localeCompare(b.team);
+          }
+
+          return a.name.localeCompare(b.name);
+        }),
+    [players, query, teamFilter]
+  );
+
   return (
     <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
-      <div className="px-3 py-3">
-        <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Players</p>
+      <div className="grid gap-3 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-bold tracking-[0.16em] text-[#8B949E]">Players</p>
+          <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+            Full roster with archive-style history links. Edit details from the left-side action on each row.
+          </p>
+        </div>
+        <CreatePlayerButton onSaved={onSaved} />
       </div>
-      {players.length === 0 ? (
-        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">No players yet.</p>
+      <div className="border-t border-[#27272A] px-3 py-3">
+        <div className="flex flex-wrap gap-2">
+          <PlayerFilterButton label="All" isActive={teamFilter === 'ALL'} onClick={() => setTeamFilter('ALL')} />
+          <PlayerFilterButton label="USA" isActive={teamFilter === 'USA'} onClick={() => setTeamFilter('USA')} />
+          <PlayerFilterButton
+            label="Europe"
+            isActive={teamFilter === 'EUROPE'}
+            onClick={() => setTeamFilter('EUROPE')}
+          />
+        </div>
+        <label className="mt-3 block font-data text-xs tracking-[0.14em] text-[#8B949E]">
+          Filter by name
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Player name"
+            className="mt-1 min-h-11 w-full rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
+          />
+        </label>
+      </div>
+      {filteredPlayers.length === 0 ? (
+        <p className="border-t border-[#27272A] px-3 py-3 text-sm text-[#8B949E]">
+          {players.length === 0 ? 'No players yet.' : 'No players match this filter.'}
+        </p>
       ) : (
-        players.map((player) => (
+        filteredPlayers.map((player) => (
           <PlayerCorrectionRow key={player.id} player={player} onSaved={onSaved} />
         ))
       )}
     </div>
+  );
+}
+
+function PlayerFilterButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md border px-2.5 py-2 text-[11px] font-bold tracking-[0.14em] ${
+        isActive
+          ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+          : 'border-[#27272A] text-[#8B949E] hover:text-[#E6EDF3]'
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -1221,6 +1407,45 @@ function PlayerCorrectionRow({
 }: {
   player: PlayerRow;
   onSaved: () => Promise<void>;
+}) {
+  return (
+    <div className="border-t border-[#27272A] px-3 py-3">
+      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+        <div className="sm:order-none">
+          <AdminActionPopover
+            buttonLabel="Edit"
+            title={`Edit ${player.name}`}
+            description="Correct roster details and current CPI."
+          >
+            {(close) => <PlayerEditForm player={player} onSaved={onSaved} onComplete={close} />}
+          </AdminActionPopover>
+        </div>
+        <div className="min-w-0">
+          <PlayerHistoryTrigger player={player} className="font-bold tracking-[-0.03em] text-[#FAFAFA]">
+            <PlayerIdentity player={player} />
+          </PlayerHistoryTrigger>
+          <p className="mt-1 text-xs tracking-[0.12em] text-[#8B949E]">
+            Current CPI {player.current_cpi ?? '-'} · Updated {formatCompactDateTime(player.updated_at)}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <StatusPill tone={player.team === 'USA' ? 'warning' : 'muted'}>
+            {player.team === 'USA' ? 'USA' : 'Europe'}
+          </StatusPill>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlayerEditForm({
+  player,
+  onSaved,
+  onComplete,
+}: {
+  player: PlayerRow;
+  onSaved: () => Promise<void>;
+  onComplete: () => void;
 }) {
   const [name, setName] = useState(player.name);
   const [team, setTeam] = useState<Team>(player.team);
@@ -1251,6 +1476,7 @@ function PlayerCorrectionRow({
       });
       track2026('player_updated', { player_id: player.id });
       await onSaved();
+      onComplete();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -1259,7 +1485,7 @@ function PlayerCorrectionRow({
   };
 
   return (
-    <div className="border-t border-[#27272A] px-3 py-3">
+    <div>
       <div className="grid gap-2">
         <TextField label="Name" value={name} onChange={setName} />
         <div className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
