@@ -143,8 +143,8 @@ Rules:
 - **Leaderboard moments:** Large score treatments, but still inside terminal-like structure.
 - **Max content width:** The authenticated 2026 shell can use `max-w-screen-2xl` for wide tournament/admin surfaces. Keep individual cards and forms narrower when the task is simple.
 - **Mobile:** Single-column first, flat, and full-width. Important actions stay near the thumb zone.
-- **Navigation:** Authenticated 2026 screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 app is active. Hide native scrollbars. The rail should read as a single transparent glass sheet: heavy backdrop blur/saturation, light top border/sheen, low dark shadow, no boxed tab tiles, no gradient overlays, no chevrons, and no decorative top dot. Active state is a thin terminal-green underline/glow. Render labels lower-case in the rail while keeping source nav labels task-based: `My Game`, `Scores`, `Archive`, `Profile`; admins additionally see `Admin`.
-- **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Scores` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
+- **Navigation:** Authenticated 2026 screens should not use a persistent top nav/header. Primary app navigation lives in a fixed bottom rail with horizontal scrolling, including on wider screens when the 2026 app is active. Hide native scrollbars. The rail should read as a single transparent glass sheet: heavy backdrop blur/saturation, light top border/sheen, low dark shadow, no boxed tab tiles, no gradient overlays, no chevrons, and no decorative top dot. Active state is a thin terminal-green underline/glow. Render labels lower-case in the rail while keeping source nav labels task-based: `My Game`, `Tournament`, `Archive`, `Profile`; admins additionally see `Admin`.
+- **Information architecture:** Keep active scoring separate from archive browsing. `My Game` is for score entry, `Tournament` is for the live tournament board, `Archive` combines historical tournament and player-history views, `Profile` owns account actions, and `Admin` is hidden from non-admins.
 - **Profile vs Admin:** `Profile` is self-service only: own display name/avatar, linked player summary, and sign-out. Editing other users, admin roles, and profile-player links belongs in `Admin` → `Players`.
 - **Horizontal overflow:** App pages should not horizontally scroll. The only intentional horizontal scrolling surfaces are the bottom nav and explicitly contained tables/lists with local `overflow-x-auto`.
 - **Auth screen:** The unauthenticated app entry screen should be flat, minimal, and brand-led. Do not wrap it in the shared app shell or show a top header. Use `the al reynolds` as the small line and `ruff ryders cup 2026` as the main title. Keep copy brief: email field, send-link action, concise validation/status/error messages, and the minimal source/donation footer only. Email placeholders can use one lore reference, but should still look like plausible email addresses. Avoid visible backend/vendor language in normal player-facing auth copy.
@@ -174,6 +174,10 @@ Borders define the interface. Prefer full-width horizontal dividers and section 
 Button labels should be action-specific: `Save scores`, `Create fixture`, `Complete tournament`.
 
 Primary buttons should be rectangular with `6px-8px` radius. No pill CTAs for the main 2026 app.
+
+### Forms
+
+Form inputs should use the 2026 terminal palette by default: `#050506` background, `#27272A` border, `#E6EDF3` text, and terminal-green focus border with no browser-default focus ring. Profile and player-overview forms should avoid nested card chrome when they are already inside a page-level section.
 
 ### Cards
 
@@ -260,9 +264,9 @@ Leaderboard surfaces should feel more like a live terminal readout than a card d
 - Clear USA/EUR color accents.
 - Minimal decoration.
 - Obvious live/update state.
-- The `Scores` tab should share the Archive view's flat row language: full-width ledgers, thin dividers, expandable rows where useful, and no tile/card dashboard treatment for score summaries or feeds.
-- The `Scores` tab should be composed as a full-bleed scoreboard surface inside the app shell, not as a rounded panel that contains more bordered panels. Use section headers, score ledgers, and horizontal rules to create hierarchy.
-- Use collapsible disclosure sections for secondary Scores surfaces so mobile users can keep the live board focused. Keep the top match state visible even when lower sections are collapsed.
+- The `Tournament` tab should share the Archive view's flat row language: full-width ledgers, thin dividers, expandable rows where useful, and no tile/card dashboard treatment for score summaries or feeds.
+- The `Tournament` tab should be composed as a full-bleed scoreboard surface inside the app shell, not as a rounded panel that contains more bordered panels. Use section headers, score ledgers, and horizontal rules to create hierarchy.
+- Use collapsible disclosure sections for secondary Tournament surfaces so mobile users can keep the live board focused. Keep the top match state visible even when lower sections are collapsed.
 
 ### Live Score Charts
 
@@ -282,7 +286,7 @@ The live score curve should preserve the useful behavior from the legacy tournam
 Keep the three score-story surfaces distinct:
 
 - **Highlights Reel:** A curated, derived summary for quick scanning. It does not need every event.
-- **AI Newsroom:** Persisted commentary cards generated from the live board. Show only real generated cards. If none exist, show one compact status state.
+- **Newsroom:** Persisted commentary cards generated from the live board. Show only real generated cards. If none exist, show one compact status state. Do not put `AI` in player-facing Tournament section titles.
 - **Tournament Activity:** The complete user-facing event feed. It should include timestamps and cover score saves, corrections, clears, setup changes, finalization, and inferred match starts/finishes.
 
 Avoid backend/vendor labels in these player-facing areas. Prefer `Live scoring`, `Full event feed`, `saved holes`, `scoreboard`, and `booth` language over storage/provider names.
@@ -353,4 +357,5 @@ Respect reduced-motion preferences.
 | 2026-05-03 | Matched Scores to Archive row language | Live scoring should feel like a premium terminal ledger, not a grid of dashboard tiles. |
 | 2026-05-04 | Made Scores a full-bleed terminal board | The live leaderboard should not feel like a container nested inside another container; hierarchy comes from score scale, section rules, and ledgers. |
 | 2026-05-04 | Flattened Admin into divider-led operations rows | Admin setup should feel like a modern command surface, not a panel wrapped around nested panels. |
-| 2026-05-04 | Added collapsible Scores sections | Mobile users need to collapse chart, story, newsroom, fixture, and activity detail while keeping the live match state visible. |
+| 2026-05-04 | Added collapsible Tournament sections | Mobile users need to collapse chart, highlights, tournament overview, score movement, newsroom, fixture, and activity detail while keeping the live match state visible. |
+| 2026-05-04 | Standardized 2026 form input chrome | Profile and overview forms should use the terminal input palette and avoid extra nested card treatment inside page-level sections. |

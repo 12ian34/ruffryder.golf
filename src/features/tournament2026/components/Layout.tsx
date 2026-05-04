@@ -171,7 +171,7 @@ export function CollapsibleSection({
   description,
   eyebrow,
   meta,
-  defaultOpen = true,
+  defaultOpen = false,
   className = '',
   children,
 }: {

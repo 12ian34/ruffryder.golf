@@ -23,14 +23,14 @@ type Tournament2026Tab = 'score' | 'leaderboard' | 'archive' | 'setup' | 'profil
 
 const PLAYER_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
   { id: 'score', label: 'My Game' },
-  { id: 'leaderboard', label: 'Scores' },
+  { id: 'leaderboard', label: 'Tournament' },
   { id: 'archive', label: 'Archive' },
   { id: 'profile', label: 'Profile' },
 ];
 
 const ADMIN_NAV_ITEMS: AppNavItem<Tournament2026Tab>[] = [
   { id: 'score', label: 'My Game' },
-  { id: 'leaderboard', label: 'Scores' },
+  { id: 'leaderboard', label: 'Tournament' },
   { id: 'archive', label: 'Archive' },
   { id: 'setup', label: 'Admin' },
   { id: 'profile', label: 'Profile' },

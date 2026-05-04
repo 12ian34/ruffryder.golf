@@ -240,7 +240,7 @@ function OwnProfileForm({
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+              className="mt-1 w-full rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
             />
           </label>
           <button
@@ -465,7 +465,7 @@ function ProfileLinkRow({
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="mt-1 w-full rounded-md border border-[#27272A] bg-[#0C0C0E] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+            className="mt-1 w-full rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
           />
         </label>
         <AvatarEmojiPicker

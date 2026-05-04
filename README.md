@@ -15,7 +15,7 @@ Sign in with the email address linked to your player profile. If you are prompte
 The app is built for phones. The bottom navigation is the main way around:
 
 - `My Game`: your fixture and score-entry cards.
-- `Scores`: live leaderboard, fixture progress, highlights, and tournament activity.
+- `Tournament`: live leaderboard, fixture progress, highlights, and tournament activity.
 - `Archive`: previous tournament results and player history.
 - `Profile`: your account, display details, and sign out.
 - `Admin`: setup and corrections, shown only to admins.
@@ -50,7 +50,7 @@ When CPI applies, strokes are removed from the higher-CPI player's score on the 
 
 ## Following The Tournament
 
-Use `Scores` during the round. It shows the live team total, how many holes have been played, how the score is moving, and the latest activity.
+Use `Tournament` during the round. It shows the live team total, how many holes have been played, how the score is moving, and the latest activity.
 
 Use `Archive` after the round to look back at past tournaments and player history. Older tournaments preserve their original scoring rules, so historical adjusted results may not match the 2026 CPI method.
 

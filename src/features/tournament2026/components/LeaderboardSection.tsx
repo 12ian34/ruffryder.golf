@@ -214,21 +214,19 @@ export function LeaderboardSection({
         <LiveTournamentProgressChart points={timeline} totalHoles={totalChartHoles} />
       </CollapsibleSection>
       <CollapsibleSection
-        title="Score Story"
-        description="Highlights, booth overview, and the latest movement."
+        title="Highlights Reel"
+        description="Fast read on what matters right now."
         meta={`${highlights.length} highlights`}
       >
-        <div className="bg-[#050506] lg:grid lg:grid-cols-3">
-          <InsightCard title="Highlights Reel" items={highlights} />
-          <AiTournamentOverviewCard
-            overview={aiTournamentOverview}
-            error={overviewError}
-            isGenerating={isGeneratingOverview}
-            scoredHoleCount={scoredHoleCount}
-          />
-          <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
-        </div>
+        <InsightList items={highlights} />
       </CollapsibleSection>
+      <AiTournamentOverviewSection
+        overview={aiTournamentOverview}
+        error={overviewError}
+        isGenerating={isGeneratingOverview}
+        scoredHoleCount={scoredHoleCount}
+      />
+      <ProgressTimeline points={recentTimeline} totalPoints={timeline.length} />
       <AiNewsroomGrid
         artifacts={tournament ? aiNewsroomArtifacts.filter((artifact) => artifact.tournament_id === tournament.id) : []}
         error={newsroomError}
@@ -249,7 +247,7 @@ export function LeaderboardSection({
   );
 }
 
-function AiTournamentOverviewCard({
+function AiTournamentOverviewSection({
   overview,
   error,
   isGenerating,
@@ -261,47 +259,43 @@ function AiTournamentOverviewCard({
   scoredHoleCount: number;
 }) {
   return (
-    <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs tracking-[0.2em] text-[#8B949E]">AI Tournament Overview</p>
-          <p className="mt-1 text-xs text-[#8B949E]">
-            Auto-updates every 5 newly saved holes.
-          </p>
+    <CollapsibleSection
+      title="Tournament Overview"
+      description="Auto-updates every 5 newly saved holes."
+      meta={isGenerating ? 'Generating' : `${scoredHoleCount} holes`}
+    >
+      {error && (
+        <div className="px-3 sm:px-4">
+          <StatusCard tone="error">{error}</StatusCard>
         </div>
-        <span className="shrink-0 rounded border border-[#27272A] px-2 py-1 text-[10px] tracking-[0.12em] text-[#8B949E]">
-          {isGenerating ? 'Generating' : `${scoredHoleCount} holes`}
-        </span>
-      </div>
-      {error && <StatusCard tone="error">{error}</StatusCard>}
+      )}
       {overview ? (
-        <div className="mt-3">
+        <div className="px-3 py-3 sm:px-4">
           <MarkdownContent>{overview.overview_markdown}</MarkdownContent>
           <p className="mt-2 text-[10px] tracking-[0.12em] text-[#8B949E]">
             Generated at {overview.source_hole_score_count} saved holes.
           </p>
         </div>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-[#A1A1AA]">
+        <p className="px-3 py-3 text-sm leading-6 text-[#A1A1AA] sm:px-4">
           Waiting for the booth to file its first persisted dispatch.
         </p>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 
-function InsightCard({ title, items }: { title: string; items: string[] }) {
+function InsightList({ items }: { items: string[] }) {
   return (
-    <section className="px-3 py-3 lg:border-r lg:border-[#27272A]">
-      <p className="text-xs tracking-[0.2em] text-[#8B949E]">{title}</p>
-      <div className="mt-3 space-y-2">
+    <div className="px-3 py-3 sm:px-4">
+      <div className="space-y-2">
         {items.map((item) => (
           <p key={item} className="text-sm leading-6 text-[#E6EDF3]">
             {item}
           </p>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -321,10 +315,9 @@ function AiNewsroomGrid({
 
   return (
     <CollapsibleSection
-      title="AI Newsroom"
+      title="Newsroom"
       description="Live copy from the scoreboard once the round has enough signal."
       meta={isGenerating ? 'Filing copy' : `${artifacts.length}/${AI_NEWSROOM_ARTIFACT_KINDS.length} cards`}
-      defaultOpen={orderedArtifacts.length > 0 || isGenerating || Boolean(error)}
     >
       {error && (
         <div className="px-3 sm:px-4">
@@ -367,22 +360,21 @@ function ProgressTimeline({
 }) {
   if (points.length === 0) {
     return (
-      <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
-        <p className="text-xs tracking-[0.2em] text-[#8B949E]">Score Movement</p>
-        <StatusCard>No score movement yet.</StatusCard>
-      </section>
+      <CollapsibleSection title="Score Movement" description="Latest saved-hole movement." meta={`0 of ${totalPoints}`}>
+        <div className="px-3 pb-3 sm:px-4">
+          <StatusCard>No score movement yet.</StatusCard>
+        </div>
+      </CollapsibleSection>
     );
   }
 
   return (
-    <section className="border-t border-[#27272A] px-3 py-3 first:border-t-0 lg:border-l lg:border-t-0 lg:first:border-l-0">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs tracking-[0.2em] text-[#8B949E]">Score Movement</p>
-        <span className="text-[10px] tracking-[0.14em] text-[#8B949E]">
-          Last {points.length} of {totalPoints}
-        </span>
-      </div>
-      <div className="mt-3 space-y-2">
+    <CollapsibleSection
+      title="Score Movement"
+      description="Latest saved-hole movement."
+      meta={`Last ${points.length} of ${totalPoints}`}
+    >
+      <div className="space-y-2 px-3 py-3 sm:px-4">
         {points.map((point) => (
           <div key={point.id} className="grid gap-1 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
             <div className="min-w-0">
@@ -396,7 +388,7 @@ function ProgressTimeline({
           </div>
         ))}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }
 

@@ -18,7 +18,7 @@ This file tracks product gaps between the current `/2026` Supabase console, the 
 - CPI on singles only, with per-segment admin enable/disable.
 - Fixed course stroke index display.
 - Supabase-backed course metadata for stroke index, par, and Firebase-imported yardage display, with admin editing for par and yardage.
-- Mobile bottom navigation for My Game, Scores, Archive, Profile, and admin-only Admin.
+- Mobile bottom navigation for My Game, Tournament, Archive, Profile, and admin-only Admin.
 - Tap-first score picker with row-level dirty state, autosave, request timeout, local draft recovery, global sync banner, retry-all fallback, leave-page warning, and segment-level `Save all`.
 - Admin profile-to-player linking, profile access display, and player-only Score tab fixture filtering.
 - Tournament finalization that locks score entry, saves back-nine singles player stats, and updates current CPI.

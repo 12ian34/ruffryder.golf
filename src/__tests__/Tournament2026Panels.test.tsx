@@ -67,6 +67,10 @@ describe('2026 leaderboard panel', () => {
     expect(view.getByText('Singles A: All square')).toBeInTheDocument();
     expect(view.getByText('Captain note')).toBeInTheDocument();
     expect(view.getByText('Highlights Commentary')).toBeInTheDocument();
+    expect(view.getByText('Tournament Overview')).toBeInTheDocument();
+    expect(view.getByText('Newsroom')).toBeInTheDocument();
+    expect(view.queryByText('AI Tournament Overview')).not.toBeInTheDocument();
+    expect(view.queryByText('AI Newsroom')).not.toBeInTheDocument();
     expect(generateTournamentAiOverview).not.toHaveBeenCalled();
     expect(generateAiNewsroomArtifacts).not.toHaveBeenCalled();
   });
@@ -84,19 +88,20 @@ describe('2026 leaderboard panel', () => {
       />
     );
     const view = within(container);
-    const scoreStorySummary = view.getByText('Score Story').closest('summary');
-    const scoreStoryDetails = scoreStorySummary?.closest('details');
+    const highlightsSummary = view.getByText('Highlights Reel').closest('summary');
+    const highlightsDetails = highlightsSummary?.closest('details');
 
-    expect(scoreStorySummary).not.toBeNull();
-    expect(scoreStoryDetails).toHaveAttribute('open');
+    expect(highlightsSummary).not.toBeNull();
+    expect(container.querySelectorAll('details[open]')).toHaveLength(0);
+    expect(highlightsDetails).not.toHaveAttribute('open');
 
-    fireEvent.click(scoreStorySummary!);
+    fireEvent.click(highlightsSummary!);
 
-    expect(scoreStoryDetails).not.toHaveAttribute('open');
+    expect(highlightsDetails).toHaveAttribute('open');
 
-    fireEvent.click(scoreStorySummary!);
+    fireEvent.click(highlightsSummary!);
 
-    expect(scoreStoryDetails).toHaveAttribute('open');
+    expect(highlightsDetails).not.toHaveAttribute('open');
   });
 
   it('generates missing AI leaderboard artifacts and refreshes data after service success', async () => {

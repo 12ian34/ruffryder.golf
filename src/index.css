@@ -32,7 +32,7 @@
   }
 
   :where(.dark) input {
-    @apply bg-gray-900 border-gray-800 text-gray-100;
+    @apply bg-[#050506] border-[#27272A] text-[#E6EDF3];
   }
 }
 

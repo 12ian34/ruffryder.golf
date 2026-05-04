@@ -32,6 +32,8 @@ export function PlayerAiOverview({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const generateLabel = overview ? 'Regenerate' : 'Generate';
+  const containerClassName =
+    source === 'profile' ? '' : 'rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3';
 
   const generate = async () => {
     setIsGenerating(true);
@@ -67,7 +69,7 @@ export function PlayerAiOverview({
   };
 
   return (
-    <div className="rounded-lg border border-[#27272A] bg-[#0C0C0E] p-3">
+    <div className={containerClassName}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">AI overview</p>
@@ -112,7 +114,7 @@ export function PlayerAiOverview({
               onChange={(event) => setCustomPrompt(event.target.value)}
               maxLength={600}
               aria-describedby={directionHelpId}
-              className="min-h-10 flex-1 rounded-md border border-[#27272A] bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:border-[#3FB950]"
+              className="min-h-10 flex-1 rounded-md border border-[#27272A] !bg-[#050506] px-3 py-2 text-sm normal-case tracking-normal text-[#E6EDF3] outline-none focus:!border-[#3FB950] focus:!ring-0"
             />
             <button
               type="submit"
