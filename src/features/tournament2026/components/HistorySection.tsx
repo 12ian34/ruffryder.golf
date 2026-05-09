@@ -16,7 +16,7 @@ import {
   getPlayerArchiveScoreNumber,
 } from './PlayerHistory';
 
-type ArchiveView = 'tournaments' | 'players';
+type ArchiveView = 'tournaments' | 'players' | 'overall';
 type PlayerArchiveTeamFilter = 'ALL' | 'USA' | 'EUROPE';
 type PlayerArchiveSortField =
   | 'player'
@@ -26,7 +26,29 @@ type PlayerArchiveSortField =
   | 'pointsHandicap'
   | 'overallHandicap'
   | 'holesWon';
+type OverallSortField =
+  | 'player'
+  | 'tier'
+  | 'yearsPlayed'
+  | 'avgScoreRaw'
+  | 'avgScoreHandicap'
+  | 'avgPointsRaw'
+  | 'avgPointsHandicap'
+  | 'totalHolesWon'
+  | 'overallHandicap';
 type SortDirection = 'asc' | 'desc';
+
+interface PlayerCareerStats {
+  player_id: string;
+  tier: number | null;
+  yearsPlayed: number;
+  avgScoreRaw: number | null;
+  avgScoreHandicap: number | null;
+  avgPointsRaw: number | null;
+  avgPointsHandicap: number | null;
+  totalHolesWon: number | null;
+  latestCpiAfter: number | null;
+}
 
 const TEAM_EMOJI = {
   USA: '🇺🇸',
@@ -65,13 +87,20 @@ export function ArchiveSection({
             isActive={activeView === 'players'}
             onClick={() => changeView('players')}
           />
+          <ArchiveViewButton
+            label="overall"
+            isActive={activeView === 'overall'}
+            onClick={() => changeView('overall')}
+          />
         </div>
       }
     >
       {activeView === 'tournaments' ? (
         <TournamentArchive history={history} players={players} />
-      ) : (
+      ) : activeView === 'players' ? (
         <PlayerArchive players={players} playerStats={playerStats} />
+      ) : (
+        <PlayerOverallArchive players={players} playerStats={playerStats} />
       )}
     </TerminalPageSection>
   );
@@ -281,7 +310,7 @@ function PlayerArchive({
                 <thead className="border-b border-[#27272A] bg-[#0C0C0E] tracking-[0.16em] text-[#8B949E]">
                   <tr>
                     <th rowSpan={2} className="sticky left-0 z-20 min-w-44 bg-[#0C0C0E] px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label="Player"
                         field="player"
                         activeField={sortField}
@@ -292,7 +321,7 @@ function PlayerArchive({
                     <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Score</th>
                     <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Points</th>
                     <th rowSpan={2} className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label={<>Holes<br />won</>}
                         ariaLabel="Holes won"
                         field="holesWon"
@@ -302,7 +331,7 @@ function PlayerArchive({
                       />
                     </th>
                     <th rowSpan={2} className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label={<>Overall<br />handicap</>}
                         ariaLabel="Overall handicap"
                         field="overallHandicap"
@@ -314,7 +343,7 @@ function PlayerArchive({
                   </tr>
                   <tr className="border-t border-[#27272A] text-[10px]">
                     <th className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label="Raw"
                         field="scoreRaw"
                         activeField={sortField}
@@ -323,7 +352,7 @@ function PlayerArchive({
                       />
                     </th>
                     <th className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label="Legacy adj."
                         ariaLabel="Legacy handicap score"
                         field="scoreHandicap"
@@ -333,7 +362,7 @@ function PlayerArchive({
                       />
                     </th>
                     <th className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label="Raw"
                         field="pointsRaw"
                         activeField={sortField}
@@ -342,7 +371,7 @@ function PlayerArchive({
                       />
                     </th>
                     <th className="px-3 py-2">
-                      <PlayerArchiveSortButton
+                      <ArchiveSortButton
                         label="Legacy adj."
                         ariaLabel="Legacy handicap points"
                         field="pointsHandicap"
@@ -399,6 +428,206 @@ function PlayerArchive({
   );
 }
 
+function PlayerOverallArchive({
+  players,
+  playerStats,
+}: {
+  players: Tournament2026Data['players'];
+  playerStats: Tournament2026Data['playerStats'];
+}) {
+  const [teamFilter, setTeamFilter] = useState<PlayerArchiveTeamFilter>('ALL');
+  const [sortField, setSortField] = useState<OverallSortField>('player');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const playerLookup = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
+  const careerStats = useMemo(
+    () => aggregatePlayerCareerStats(playerStats, playerLookup, teamFilter, sortField, sortDirection),
+    [playerStats, playerLookup, teamFilter, sortField, sortDirection]
+  );
+
+  const changeFilter = (filter: PlayerArchiveTeamFilter) => {
+    setTeamFilter(filter);
+    track2026('player_overall_filtered', { team_filter: filter });
+  };
+
+  const changeSort = (field: OverallSortField) => {
+    if (sortField === field) {
+      setSortDirection((current) => {
+        const nextDirection = current === 'asc' ? 'desc' : 'asc';
+        track2026('player_overall_sorted', { sort_field: field, sort_direction: nextDirection });
+        return nextDirection;
+      });
+      return;
+    }
+    setSortField(field);
+    const nextDirection = field === 'player' ? 'asc' : 'desc';
+    setSortDirection(nextDirection);
+    track2026('player_overall_sorted', { sort_field: field, sort_direction: nextDirection });
+  };
+
+  return (
+    <div className="bg-[#050506]">
+      <div className="px-3 py-3 sm:px-4">
+        <p className="text-xs font-bold tracking-[0.18em] text-[#3FB950]">Career records</p>
+        <p className="mt-1 text-sm leading-6 text-[#A1A1AA]">
+          All-time averages per tournament across every year played. Holes won is a career total. Overall handicap is most recent.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <PlayerArchiveFilterButton label="All" isActive={teamFilter === 'ALL'} onClick={() => changeFilter('ALL')} />
+          <PlayerArchiveFilterButton
+            label={`${TEAM_EMOJI.USA} USA`}
+            isActive={teamFilter === 'USA'}
+            onClick={() => changeFilter('USA')}
+          />
+          <PlayerArchiveFilterButton
+            label={`${TEAM_EMOJI.EUROPE} Europe`}
+            isActive={teamFilter === 'EUROPE'}
+            onClick={() => changeFilter('EUROPE')}
+          />
+        </div>
+      </div>
+      {careerStats.length === 0 ? (
+        <p className="px-3 pb-3 text-sm text-[#8B949E]">
+          {playerStats.length === 0 ? 'No player stat rows have been saved yet.' : 'No player stat rows match this filter.'}
+        </p>
+      ) : (
+        <div className="overflow-x-auto border-t border-[#27272A]">
+          <table className="min-w-[52rem] text-left text-xs">
+            <thead className="border-b border-[#27272A] bg-[#0C0C0E] tracking-[0.16em] text-[#8B949E]">
+              <tr>
+                <th rowSpan={2} className="sticky left-0 z-20 min-w-44 bg-[#0C0C0E] px-3 py-2">
+                  <ArchiveSortButton
+                    label="Player"
+                    field="player"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th rowSpan={2} className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Years"
+                    field="yearsPlayed"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th rowSpan={2} className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Tier"
+                    field="tier"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Avg score</th>
+                <th colSpan={2} className="px-3 py-2 text-center text-[#3FB950]">Avg points</th>
+                <th rowSpan={2} className="px-3 py-2">
+                  <ArchiveSortButton
+                    label={<>Total<br />holes won</>}
+                    ariaLabel="Total holes won"
+                    field="totalHolesWon"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th rowSpan={2} className="px-3 py-2">
+                  <ArchiveSortButton
+                    label={<>Overall<br />handicap</>}
+                    ariaLabel="Overall handicap"
+                    field="overallHandicap"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+              </tr>
+              <tr className="border-t border-[#27272A] text-[10px]">
+                <th className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Raw"
+                    field="avgScoreRaw"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Legacy adj."
+                    ariaLabel="Legacy handicap score"
+                    field="avgScoreHandicap"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Raw"
+                    field="avgPointsRaw"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+                <th className="px-3 py-2">
+                  <ArchiveSortButton
+                    label="Legacy adj."
+                    ariaLabel="Legacy handicap points"
+                    field="avgPointsHandicap"
+                    activeField={sortField}
+                    direction={sortDirection}
+                    onClick={changeSort}
+                  />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#27272A]">
+              {careerStats.map((career) => {
+                const player = playerLookup.get(career.player_id);
+                return (
+                  <tr key={career.player_id} className="bg-[#050506]">
+                    <td className="sticky left-0 z-10 whitespace-nowrap bg-[#050506] px-3 py-2 text-[#FAFAFA]">
+                      <PlayerArchiveName player={player} showTier={false} />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {career.yearsPlayed}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-[#A1A1AA]">
+                      {player ? formatPlayerTier(player.tier) : '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatAverage(career.avgScoreRaw)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatAverage(career.avgScoreHandicap)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatAverage(career.avgPointsRaw)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatAverage(career.avgPointsHandicap)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatNumber(career.totalHolesWon)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-[#A1A1AA]">
+                      {formatNumber(career.latestCpiAfter)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function groupStatsByYear(
   stats: Tournament2026Data['playerStats'],
   playerLookup: Map<string, Tournament2026Data['players'][number]>,
@@ -427,6 +656,53 @@ function groupStatsByYear(
     .sort((a, b) => b.year - a.year);
 }
 
+function aggregatePlayerCareerStats(
+  stats: Tournament2026Data['playerStats'],
+  playerLookup: Map<string, Tournament2026Data['players'][number]>,
+  teamFilter: PlayerArchiveTeamFilter,
+  sortField: OverallSortField,
+  sortDirection: SortDirection
+): PlayerCareerStats[] {
+  const groups = new Map<string, Tournament2026Data['playerStats']>();
+
+  for (const stat of stats) {
+    const player = playerLookup.get(stat.player_id);
+    if (teamFilter !== 'ALL' && player?.team !== teamFilter) continue;
+    const existing = groups.get(stat.player_id) ?? [];
+    existing.push(stat);
+    groups.set(stat.player_id, existing);
+  }
+
+  const avg = (values: (number | null)[]): number | null => {
+    const nums = values.filter((v): v is number => v !== null);
+    return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+  };
+
+  const sum = (values: (number | null)[]): number | null => {
+    const nums = values.filter((v): v is number => v !== null);
+    return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : null;
+  };
+
+  const result: PlayerCareerStats[] = [];
+
+  for (const [player_id, playerYearStats] of groups.entries()) {
+    const sorted = [...playerYearStats].sort((a, b) => b.completion_year - a.completion_year);
+    result.push({
+      player_id,
+      tier: playerLookup.get(player_id)?.tier ?? null,
+      yearsPlayed: playerYearStats.length,
+      avgScoreRaw: avg(playerYearStats.map((s) => getPlayerArchiveScoreNumber(s, 'raw'))),
+      avgScoreHandicap: avg(playerYearStats.map((s) => getPlayerArchiveScoreNumber(s, 'handicap'))),
+      avgPointsRaw: avg(playerYearStats.map((s) => getPlayerArchivePointsNumber(s, 'raw'))),
+      avgPointsHandicap: avg(playerYearStats.map((s) => getPlayerArchivePointsNumber(s, 'handicap'))),
+      totalHolesWon: sum(playerYearStats.map((s) => getPlayerArchiveHolesWonNumber(s))),
+      latestCpiAfter: sorted[0]?.cpi_after ?? null,
+    });
+  }
+
+  return result.sort((a, b) => compareCareerStats(a, b, playerLookup, sortField, sortDirection));
+}
+
 function PlayerArchiveFilterButton({
   label,
   isActive,
@@ -451,7 +727,7 @@ function PlayerArchiveFilterButton({
   );
 }
 
-function PlayerArchiveSortButton({
+function ArchiveSortButton<F extends string>({
   label,
   ariaLabel,
   field,
@@ -461,10 +737,10 @@ function PlayerArchiveSortButton({
 }: {
   label: ReactNode;
   ariaLabel?: string;
-  field: PlayerArchiveSortField;
-  activeField: PlayerArchiveSortField;
+  field: F;
+  activeField: F;
   direction: SortDirection;
-  onClick: (field: PlayerArchiveSortField) => void;
+  onClick: (field: F) => void;
 }) {
   const isActive = field === activeField;
   const labelText = ariaLabel ?? (typeof label === 'string' ? label : undefined);
@@ -479,8 +755,8 @@ function PlayerArchiveSortButton({
       }`}
     >
       <span>{label}</span>
-      <span className={isActive ? 'text-[#3FB950]' : 'text-[#484F58]'}>
-        {isActive ? (direction === 'asc' ? 'ASC' : 'DESC') : 'SORT'}
+      <span className={isActive ? 'text-[#3FB950]' : 'text-[#484F58]'} aria-hidden="true">
+        {isActive ? (direction === 'asc' ? '↑' : '↓') : '↕'}
       </span>
     </button>
   );
@@ -523,6 +799,34 @@ function comparePlayerArchiveStats(
   return direction * (aValue - bValue);
 }
 
+function compareCareerStats(
+  a: PlayerCareerStats,
+  b: PlayerCareerStats,
+  playerLookup: Map<string, Tournament2026Data['players'][number]>,
+  sortField: OverallSortField,
+  sortDirection: SortDirection
+): number {
+  const direction = sortDirection === 'asc' ? 1 : -1;
+
+  if (sortField === 'player') {
+    const aName = playerLookup.get(a.player_id)?.name ?? '';
+    const bName = playerLookup.get(b.player_id)?.name ?? '';
+    return direction * aName.localeCompare(bName);
+  }
+
+  const aValue = getCareerStatsSortNumber(a, sortField);
+  const bValue = getCareerStatsSortNumber(b, sortField);
+
+  if (aValue === null && bValue === null) {
+    return compareCareerStats(a, b, playerLookup, 'player', 'asc');
+  }
+  if (aValue === null) return 1;
+  if (bValue === null) return -1;
+  if (aValue === bValue) return compareCareerStats(a, b, playerLookup, 'player', 'asc');
+
+  return direction * (aValue - bValue);
+}
+
 function getPlayerArchiveSortNumber(
   stat: Tournament2026Data['playerStats'][number],
   sortField: Exclude<PlayerArchiveSortField, 'player'>
@@ -547,18 +851,56 @@ function getPlayerArchiveSortNumber(
   }
 }
 
+function getCareerStatsSortNumber(
+  career: PlayerCareerStats,
+  sortField: Exclude<OverallSortField, 'player'>
+): number | null {
+  switch (sortField) {
+    case 'tier':
+      return career.tier;
+    case 'yearsPlayed':
+      return career.yearsPlayed;
+    case 'avgScoreRaw':
+      return career.avgScoreRaw;
+    case 'avgScoreHandicap':
+      return career.avgScoreHandicap;
+    case 'avgPointsRaw':
+      return career.avgPointsRaw;
+    case 'avgPointsHandicap':
+      return career.avgPointsHandicap;
+    case 'totalHolesWon':
+      return career.totalHolesWon;
+    case 'overallHandicap':
+      return career.latestCpiAfter;
+    default: {
+      const exhaustive: never = sortField;
+      return exhaustive;
+    }
+  }
+}
+
 function formatHolesWon(stat: Tournament2026Data['playerStats'][number]): string {
   return formatNumber(getPlayerArchiveHolesWonNumber(stat));
+}
+
+function formatAverage(value: number | null): string {
+  return value === null ? '-' : value.toFixed(1);
 }
 
 function formatPlayerCount(count: number): string {
   return `${count} ${count === 1 ? 'player' : 'players'}`;
 }
 
-function PlayerArchiveName({ player }: { player: Tournament2026Data['players'][number] | undefined }) {
+function PlayerArchiveName({
+  player,
+  showTier = true,
+}: {
+  player: Tournament2026Data['players'][number] | undefined;
+  showTier?: boolean;
+}) {
   return (
     <PlayerHistoryTrigger player={player} fallback="Unknown player" className="inline-flex max-w-48 items-center gap-2">
-      <PlayerIdentity player={player} fallback="Unknown player" showTier />
+      <PlayerIdentity player={player} fallback="Unknown player" showTier={showTier} />
     </PlayerHistoryTrigger>
   );
 }
