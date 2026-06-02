@@ -21,16 +21,12 @@ export interface PointsTotals {
   hasOneVOne: boolean;
 }
 
+const MATCH_PLAY_POINT_VALUE = 1;
+
 export function isOneVOneFixture(fixture: FixtureView): boolean {
   if (fixture.segments.length !== 1) return false;
   const [segment] = fixture.segments;
   return segment.kind === 'singles' && segment.hole_start === 1 && segment.hole_end === 18;
-}
-
-export function foursomesPlayerCount(segment: SegmentView): number {
-  const usa = segment.players.filter((player) => player.team === 'USA').length;
-  const europe = segment.players.filter((player) => player.team === 'EUROPE').length;
-  return Math.min(usa, europe) || 2;
 }
 
 export interface SegmentPointResult {
@@ -45,24 +41,23 @@ export function calculateSegmentPoints(
   options: { isOneVOneFixture: boolean }
 ): SegmentPointResult {
   const status = calculateSegmentMatchPlayStatus(segment);
-  const playersPerSide = segment.kind === 'foursomes' ? foursomesPlayerCount(segment) : 1;
 
   let matchPlayOnTable: TeamPoints = { USA: 0, EUROPE: 0 };
   let matchPlayProvisional: TeamPoints = { USA: 0, EUROPE: 0 };
 
   if (status.state === 'won' && status.leader) {
-    matchPlayOnTable = teamPoints(status.leader, playersPerSide);
-    matchPlayProvisional = teamPoints(status.leader, playersPerSide);
+    matchPlayOnTable = teamPoints(status.leader, MATCH_PLAY_POINT_VALUE);
+    matchPlayProvisional = teamPoints(status.leader, MATCH_PLAY_POINT_VALUE);
   } else if (status.state === 'halved') {
-    const halved = halvedPoints(playersPerSide);
+    const halved = halvedPoints();
     matchPlayOnTable = halved;
     matchPlayProvisional = halved;
   } else if (status.state === 'dormie' && status.leader) {
-    matchPlayProvisional = teamPoints(status.leader, playersPerSide);
+    matchPlayProvisional = teamPoints(status.leader, MATCH_PLAY_POINT_VALUE);
   } else if (status.state === 'in_progress') {
     matchPlayProvisional = status.leader
-      ? teamPoints(status.leader, playersPerSide)
-      : halvedPoints(playersPerSide);
+      ? teamPoints(status.leader, MATCH_PLAY_POINT_VALUE)
+      : halvedPoints();
   }
 
   let strokePlayOnTable: TeamPoints | null = null;
@@ -116,9 +111,8 @@ function teamPoints(team: Team, value: number): TeamPoints {
   return team === 'USA' ? { USA: value, EUROPE: 0 } : { USA: 0, EUROPE: value };
 }
 
-function halvedPoints(playersPerSide: number): TeamPoints {
-  const half = playersPerSide * 0.5;
-  return { USA: half, EUROPE: half };
+function halvedPoints(): TeamPoints {
+  return { USA: 0.5, EUROPE: 0.5 };
 }
 
 export function calculateFixturePoints(fixture: FixtureView): {

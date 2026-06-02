@@ -183,6 +183,7 @@ Current 2026 UI/service layout:
 - `audit_logs` is database-triggered, not client-authored. The browser should read it for admin/player activity views, but app code should not insert, update, or delete audit rows directly.
 - `src/services/tournament2026Service.ts` owns fixture setup persistence orchestration and rollback around fixture, fixture-player, segment, and segment-player inserts.
 - `src/domain/2026/scoring.ts` is the pure scoring core for CPI, foursomes, singles, halved/unplayed outcomes, and fixture summaries.
+- `src/domain/2026/points.ts` derives points-on-table and provisional points. Keep foursomes as 1 total match-play point, not 1 point per player; 4-player standard fixtures have 3 total points and 6-player flexible fixtures have 4 total points.
 - `src/domain/2026/persistence.ts` maps scored holes into Supabase `hole_scores` insert/upsert payloads.
 - `src/domain/2026/fixtures.ts` builds and validates fixture/segment setup payloads for 2-player full-18 singles, 4-player standard matches, and 6-player flexible matches.
 - `src/domain/2026/finalization.ts` validates completion and derives back-nine-singles-only player stats plus 18-hole-equivalent CPI updates.
@@ -199,6 +200,7 @@ Add focused tests for behavior changes:
 - Segment-level CPI toggles disable adjusted scoring and recalculate already-entered hole scores for that segment.
 - Halved holes display correctly and do not incorrectly award holes won.
 - Front-nine foursomes hole winners roll up correctly.
+- Front-nine foursomes points award 1 total point for a win and 0.5 per side for a halve, regardless of two-player team membership.
 - Back-nine singles scoring rolls up correctly.
 - Dormie/match-over and fixture progress count missing score rows as unplayed.
 - Only back-nine singles scores feed player history and CPI updates.
@@ -221,6 +223,7 @@ Current focused 2026 and support tests include:
 - `src/__tests__/analytics.test.ts`
 - `src/__tests__/aiServices.test.ts`
 - `src/__tests__/tournament2026Scoring.test.ts`
+- `src/__tests__/tournament2026Points.test.ts`
 - `src/__tests__/tournament2026Persistence.test.ts`
 - `src/__tests__/tournament2026Fixtures.test.ts`
 - `src/__tests__/tournament2026CustomFixture.test.ts`

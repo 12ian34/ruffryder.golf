@@ -40,7 +40,7 @@ Holes 1-9 are foursomes, also known as alternate shot. Each side enters one team
 
 Holes 10-18 are singles match play. Each singles match is scored hole by hole, and the lower score wins the hole. A tied hole is halved and does not add a hole won to either team.
 
-The 2026 tournament is match-play-only. There are no separate stroke-play points.
+Each foursomes or singles match is worth 1 team point, or 0.5 points to each side if halved. A 2-player full-18 fixture also has a separate 18-hole stroke-play point.
 
 For the full format, see the [2026 rules](./docs/2026-rules-spec.md).
 

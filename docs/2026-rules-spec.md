@@ -63,18 +63,18 @@ This is the canonical product rules spec for the 2026 tournament rebuild.
 
 A match awards points based on its result:
 
-- A match-play match (foursomes or singles) awards 1 point to the winning side, or 0.5 points to each side if the match is halved.
-- Foursomes points are credited to each player on the winning team. Both players on a winning 4-player-standard side score 1 point each, and both selected front-nine players on a winning 6-player-flexible side score 1 point each. A halved foursomes match awards 0.5 to each player on each side.
-- Singles points are credited to the individual winner.
+- A match-play match (foursomes or singles) awards 1 team point to the winning side, or 0.5 team points to each side if the match is halved.
+- A front-nine foursomes match is worth 1 total point, not 1 point per player. A halved foursomes match awards 0.5 to USA and 0.5 to Europe.
+- Each singles match is worth 1 total point. A halved singles match awards 0.5 to each side.
 - A 2-player full-18 fixture additionally awards 1 stroke-play point to the side with the lower total stroke score over the 18 holes, or 0.5 to each side on a tie. When CPI is enabled for the fixture, stroke-play uses CPI-adjusted (net) totals; otherwise it uses raw/gross totals.
 
 Maximum points per fixture template:
 
 - 2-player full 18: 2 points (1 match-play + 1 stroke-play).
-- 4-player standard: 4 points (2 from foursomes match + 2 from singles).
-- 6-player flexible: 5 points (2 from foursomes match + 3 from singles).
+- 4-player standard: 3 points (1 from foursomes match + 2 from singles).
+- 6-player flexible: 4 points (1 from foursomes match + 3 from singles).
 
-Team totals sum the individual point allocations across all fixtures.
+Team totals sum match and stroke-play point allocations across all fixtures.
 
 Points are reported in two views:
 
