@@ -51,7 +51,7 @@ describe('2026 view utilities', () => {
     expect(formatSegmentKind('foursomes')).toBe('Front 9 Foursomes');
     expect(formatSegmentKind('singles')).toBe('Singles Match');
     expect(formatSegmentMatchup(fixture.segments[0], players)).toBe('Ian vs Tommy');
-    expect(formatSegmentMatchup(fixture.segments[1], players)).toBe('Ian + Unknown USA vs Tommy');
+    expect(formatSegmentMatchup(fixture.segments[1], players)).toBe('Ian + Side A vs Tommy');
   });
 
   it('formats compact hole ranges, outcomes, and generic errors for UI copy', () => {
