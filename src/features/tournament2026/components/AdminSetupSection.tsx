@@ -31,6 +31,7 @@ import {
 } from '../../../services/tournament2026Queries';
 import { track2026 } from '../../../utils/analytics';
 import { downloadAuditLogCsv } from '../auditExport';
+import { downloadPlayerHistoryCsv } from '../playerHistoryExport';
 import { formatPlayerTier, getErrorMessage, normalizePlayerTier, type PlayerTier } from '../viewUtils';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { PlayerSelect, SubmitButton, TextField } from './FormControls';
@@ -1616,6 +1617,8 @@ function PlayerCorrections({
     key: 'team',
     direction: 'asc',
   });
+  const [historyExportError, setHistoryExportError] = useState<string | null>(null);
+  const [exportedHistoryCount, setExportedHistoryCount] = useState<number | null>(null);
   const profilesByPlayerId = useMemo(() => {
     const nextProfilesByPlayerId = new Map<string, ProfileRow[]>();
 
@@ -1692,6 +1695,29 @@ function PlayerCorrections({
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
     }));
   };
+  const exportPlayerHistory = () => {
+    setHistoryExportError(null);
+    setExportedHistoryCount(null);
+    track2026('player_history_export_started', { source: 'admin_players' });
+
+    try {
+      downloadPlayerHistoryCsv(players, playerStats);
+      setExportedHistoryCount(playerStats.length);
+      track2026('player_history_export_completed', {
+        source: 'admin_players',
+        player_count: players.length,
+        row_count: playerStats.length,
+        year_count: new Set(playerStats.map((stat) => stat.completion_year)).size,
+      });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      setHistoryExportError(message);
+      track2026('player_history_export_failed', {
+        source: 'admin_players',
+        error: message,
+      });
+    }
+  };
 
   return (
     <div className="border-y border-[#27272A] bg-[#050506] sm:rounded-md sm:border">
@@ -1702,8 +1728,30 @@ function PlayerCorrections({
             Full roster with archive-style history links. Edit details from the left-side action on each row.
           </p>
         </div>
-        <CreatePlayerButton onSaved={onSaved} />
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={exportPlayerHistory}
+            disabled={players.length === 0}
+            className="min-h-11 rounded-md border border-[#3FB950]/70 px-3 py-2 font-data text-sm font-bold text-[#3FB950] disabled:border-[#27272A] disabled:text-[#484F58]"
+          >
+            Export history CSV
+          </button>
+          <CreatePlayerButton onSaved={onSaved} />
+        </div>
       </div>
+      {historyExportError ? (
+        <div className="px-3 pb-3">
+          <StatusCard tone="error">Player history export failed: {historyExportError}</StatusCard>
+        </div>
+      ) : null}
+      {exportedHistoryCount !== null ? (
+        <div className="px-3 pb-3">
+          <StatusCard tone="success">
+            Exported {players.length} players and {exportedHistoryCount} history rows as CSV.
+          </StatusCard>
+        </div>
+      ) : null}
       <UnlinkedProfilesPanel profiles={unlinkedProfiles} players={players} onSaved={onSaved} />
       <div className="border-t border-[#27272A] px-3 py-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
