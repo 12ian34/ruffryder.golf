@@ -130,6 +130,8 @@ function buildArtifactPrompt(kind, context) {
   return [
     `Generate this Ruff Ryders Cup AI newsroom card: ${definition.title}.`,
     definition.instruction,
+    'Use context.snapshot.scoreboard.provisionalPoints and context.snapshot.scoreboard.pointsOnTable as the official score.',
+    'Use context.snapshot.momentum.holesWon only as momentum context; never describe holes-won totals as the match score.',
     'Use concise Markdown only when useful. Emojis are allowed sparingly, including wild choices when apt.',
     'Stay factual: do not invent scores, quotes, injuries, weather, or off-snapshot lore.',
     '',

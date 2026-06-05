@@ -11,7 +11,7 @@ import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
 } from '../../../domain/2026/matchPlayStatus';
-import { calculateCpiStrokesForHole } from '../../../domain/2026/scoring';
+import { calculateCpiStrokesForHole, type CpiStrokes } from '../../../domain/2026/scoring';
 import {
   getCourseStrokeIndex,
   getDefaultCourseHole,
@@ -51,6 +51,12 @@ interface ScoreLabels {
   europe: string;
   usaSubtitle?: string;
   europeSubtitle?: string;
+}
+
+interface HoleCpiDisplay {
+  summary: string;
+  usaStrokes: number;
+  europeStrokes: number;
 }
 
 type LengthUnit = 'metres' | 'yards';
@@ -460,27 +466,47 @@ function FixtureScoreCard({
 }
 
 function FixtureParticipantsLine({ fixture }: { fixture: FixtureView }) {
+  const usaParticipants = fixture.participants.filter((participant) => participant.team === 'USA');
+  const europeParticipants = fixture.participants.filter((participant) => participant.team === 'EUROPE');
+
   return (
     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs leading-5 text-[#8B949E]">
-      {fixture.participants.map((participant) => {
+      <FixtureTeamParticipants teamLabel="USA" participants={usaParticipants} />
+      <FixtureTeamParticipants teamLabel="Europe" participants={europeParticipants} />
+    </p>
+  );
+}
+
+function FixtureTeamParticipants({
+  teamLabel,
+  participants,
+}: {
+  teamLabel: string;
+  participants: FixtureView['participants'];
+}) {
+  if (participants.length === 0) {
+    return null;
+  }
+
+  return (
+    <span>
+      {teamLabel}:{' '}
+      {participants.map((participant, index) => {
         const playerName = participant.player?.name ?? 'Unknown player';
         const playerTeam = participant.player?.team;
-        const sideLabel = playerTeam && playerTeam !== participant.team
-          ? `${participant.team} side`
-          : participant.team;
-        const teamLabel = playerTeam && playerTeam !== participant.team ? ` (${playerTeam})` : '';
+        const teamSuffix = playerTeam && playerTeam !== participant.team ? ` (${playerTeam})` : '';
 
         return (
-          <span key={`${participant.fixture_id}-${participant.player_id}-${participant.team}`} className="whitespace-nowrap">
-            {sideLabel}:{' '}
+          <span key={`${participant.fixture_id}-${participant.player_id}-${participant.team}`}>
+            {index > 0 ? ', ' : ''}
             <PlayerHistoryTrigger player={participant.player} fallback={playerName}>
               {playerName}
             </PlayerHistoryTrigger>
-            {teamLabel}
+            {teamSuffix}
           </span>
         );
       })}
-    </p>
+    </span>
   );
 }
 
@@ -927,6 +953,7 @@ function SegmentScoreCard({
           const rowError = rowErrors[holeNumber] ?? null;
           const courseHole = courseHoleLookup.get(holeNumber) ?? getDefaultCourseHole(holeNumber);
           const isActive = holeNumber === currentHoleNumber;
+          const cpiDisplay = getHoleCpiDisplay(segment, players, tournament.cpi_threshold, scoreLabels, courseHole);
 
           return (
             <div
@@ -943,6 +970,7 @@ function SegmentScoreCard({
                 saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError })}
                 error={rowError}
                 scoreLabels={scoreLabels}
+                cpiDisplay={cpiDisplay}
                 lengthUnit={lengthUnit}
                 canClear={false}
                 onLengthUnitToggle={onLengthUnitToggle}
@@ -1142,6 +1170,7 @@ function SingleHoleScoreCard({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scoreLabels = getSegmentScoreLabels(segment, players);
+  const cpiDisplay = getHoleCpiDisplay(segment, players, tournament.cpi_threshold, scoreLabels, courseHole);
   const isDirty = isHoleDirty(draft, score);
 
   useEffect(() => {
@@ -1197,6 +1226,7 @@ function SingleHoleScoreCard({
       saveState={getHoleSaveState({ draft, isDirty, isSaving, rowError: error })}
       error={error}
       scoreLabels={scoreLabels}
+      cpiDisplay={cpiDisplay}
       showHoleMetadata={false}
       canClear={false}
       compact
@@ -1216,6 +1246,7 @@ function HoleScoreForm({
   saveState,
   error,
   scoreLabels,
+  cpiDisplay,
   lengthUnit,
   showHoleMetadata = true,
   canClear,
@@ -1233,6 +1264,7 @@ function HoleScoreForm({
   saveState: HoleSaveState;
   error: string | null;
   scoreLabels: ScoreLabels;
+  cpiDisplay?: HoleCpiDisplay | null;
   lengthUnit?: LengthUnit;
   showHoleMetadata?: boolean;
   canClear: boolean;
@@ -1248,6 +1280,9 @@ function HoleScoreForm({
   const retryRef = useRef(onSave);
   const borderClass =
     saveState === 'error' ? 'border-[#F85149]' : isDirty ? 'border-[#F59E0B]' : 'border-[#27272A]';
+  const draftPreview = getDraftCpiPreview(draft, scoreLabels, cpiDisplay);
+  const usaSubtitle = joinSubtitle(scoreLabels.usaSubtitle, formatStrokeSubtitle(cpiDisplay?.usaStrokes));
+  const europeSubtitle = joinSubtitle(scoreLabels.europeSubtitle, formatStrokeSubtitle(cpiDisplay?.europeStrokes));
 
   useEffect(() => {
     retryRef.current = onSave;
@@ -1341,6 +1376,7 @@ function HoleScoreForm({
           <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1 text-[#E6EDF3]">
             {formatOutcome(score.outcome, scoreLabels)}
           </span>
+          {score.cpi_applied && <CpiScoreChip score={score} scoreLabels={scoreLabels} />}
           <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
             saved {formatAuditTime(score.updated_at)}
           </span>
@@ -1399,18 +1435,20 @@ function HoleScoreForm({
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-end">
           <ScorePicker
             label={scoreLabels.usa}
-            subtitle={scoreLabels.usaSubtitle}
+            subtitle={usaSubtitle}
             value={draft.usaScore}
             onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
           />
           <ScorePicker
             label={scoreLabels.europe}
-            subtitle={scoreLabels.europeSubtitle}
+            subtitle={europeSubtitle}
             value={draft.europeScore}
             onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
           />
           {saveControls}
         </div>
+        {cpiDisplay && <CpiHoleNotice display={cpiDisplay} />}
+        {draftPreview && <p className="mt-2 font-data text-[10px] tracking-[0.12em] text-[#F59E0B]">{draftPreview}</p>}
         {score && <ScoreOutcomeChips score={score} scoreLabels={scoreLabels} />}
         {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
       </div>
@@ -1428,6 +1466,7 @@ function HoleScoreForm({
             lengthUnit={lengthUnit}
             onLengthUnitToggle={onLengthUnitToggle}
           />
+          {cpiDisplay && <CpiHoleNotice display={cpiDisplay} />}
         </>
       )}
       <div className="border-t border-dashed border-[#27272A]" />
@@ -1435,18 +1474,19 @@ function HoleScoreForm({
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-end">
           <ScorePicker
             label={scoreLabels.usa}
-            subtitle={scoreLabels.usaSubtitle}
+            subtitle={usaSubtitle}
             value={draft.usaScore}
             onChange={(usaScore) => onDraftChange({ ...draft, usaScore })}
           />
           <ScorePicker
             label={scoreLabels.europe}
-            subtitle={scoreLabels.europeSubtitle}
+            subtitle={europeSubtitle}
             value={draft.europeScore}
             onChange={(europeScore) => onDraftChange({ ...draft, europeScore })}
           />
           {saveControls}
         </div>
+        {draftPreview && <p className="mt-2 font-data text-[10px] tracking-[0.12em] text-[#F59E0B]">{draftPreview}</p>}
         {score && <ScoreOutcomeChips score={score} scoreLabels={scoreLabels} />}
         {error && <p className="mt-2 font-data text-xs text-[#F85149]">{error}</p>}
       </div>
@@ -1466,11 +1506,7 @@ function ScoreOutcomeChips({
       <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
         {formatOutcome(score.outcome, scoreLabels)}
       </span>
-      {score.cpi_applied && (
-        <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
-          CPI gap {score.cpi_difference}, USA {score.cpi_strokes_usa}, EUR {score.cpi_strokes_europe}
-        </span>
-      )}
+      {score.cpi_applied && <CpiScoreChip score={score} scoreLabels={scoreLabels} />}
       <span className="rounded border border-[#27272A] bg-[#0C0C0E] px-2 py-1">
         Saved {formatAuditTime(score.updated_at)}
       </span>
@@ -1480,6 +1516,34 @@ function ScoreOutcomeChips({
         </span>
       )}
     </div>
+  );
+}
+
+function CpiHoleNotice({ display }: { display: HoleCpiDisplay }) {
+  return (
+    <p className="border-t border-dashed border-[#27272A] px-3 py-2 font-data text-[10px] tracking-[0.12em] text-[#F59E0B]">
+      {display.summary}
+    </p>
+  );
+}
+
+function CpiScoreChip({
+  score,
+  scoreLabels,
+}: {
+  score: HoleScoreView;
+  scoreLabels: ScoreLabels;
+}) {
+  const recipient =
+    score.cpi_strokes_usa > 0
+      ? { name: scoreLabels.usa, strokes: score.cpi_strokes_usa }
+      : { name: scoreLabels.europe, strokes: score.cpi_strokes_europe };
+
+  return (
+    <span className="rounded border border-[#F59E0B]/50 bg-[#0C0C0E] px-2 py-1 text-[#F59E0B]">
+      CPI: {recipient.name} receives {formatStrokeCount(recipient.strokes)} · net {scoreLabels.usa}{' '}
+      {score.usa_net_score ?? '-'} - {scoreLabels.europe} {score.europe_net_score ?? '-'}
+    </span>
   );
 }
 
@@ -1900,6 +1964,90 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
 
 function formatAuditTime(value: string): string {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getHoleCpiDisplay(
+  segment: SegmentView,
+  players: PlayerRow[],
+  threshold: number,
+  labels: ScoreLabels,
+  courseHole: CourseHoleMetadata
+): HoleCpiDisplay | null {
+  if (segment.kind !== 'singles' || !segment.cpi_enabled) {
+    return null;
+  }
+
+  const cpi = getSegmentHoleCpi(segment, players, threshold, courseHole.strokeIndex);
+
+  if (!cpi.applies || !cpi.higherCpiTeam) {
+    return null;
+  }
+
+  const recipient = cpi.higherCpiTeam === 'USA' ? labels.usa : labels.europe;
+  const strokes = cpi.strokes[cpi.higherCpiTeam];
+
+  return {
+    summary: `${recipient} receives ${formatStrokeCount(strokes)} on this hole (stroke index ${courseHole.strokeIndex}).`,
+    usaStrokes: cpi.strokes.USA,
+    europeStrokes: cpi.strokes.EUROPE,
+  };
+}
+
+function getSegmentHoleCpi(
+  segment: SegmentView,
+  players: PlayerRow[],
+  threshold: number,
+  strokeIndex: number
+): CpiStrokes {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const usaPlayer = segment.usa_player_id ? playerLookup.get(segment.usa_player_id) : undefined;
+  const europePlayer = segment.europe_player_id ? playerLookup.get(segment.europe_player_id) : undefined;
+
+  return calculateCpiStrokesForHole(
+    {
+      usaCpi: usaPlayer?.current_cpi,
+      europeCpi: europePlayer?.current_cpi,
+      threshold,
+    },
+    strokeIndex
+  );
+}
+
+function getDraftCpiPreview(
+  draft: HoleDraft,
+  labels: ScoreLabels,
+  cpiDisplay: HoleCpiDisplay | null | undefined
+): string | null {
+  if (!cpiDisplay) {
+    return null;
+  }
+
+  const usaScore = parseOptionalPositiveInteger(draft.usaScore);
+  const europeScore = parseOptionalPositiveInteger(draft.europeScore);
+
+  if (usaScore === null || europeScore === null) {
+    return null;
+  }
+
+  const usaNet = usaScore - cpiDisplay.usaStrokes;
+  const europeNet = europeScore - cpiDisplay.europeStrokes;
+  const outcome = usaNet === europeNet ? 'halved' : usaNet < europeNet ? 'USA' : 'EUROPE';
+
+  return `gross ${usaScore}-${europeScore} · net ${usaNet}-${europeNet} · ${formatOutcome(outcome, labels)}`;
+}
+
+function joinSubtitle(...parts: Array<string | null | undefined>): string | undefined {
+  const present = parts.filter((part): part is string => Boolean(part));
+
+  return present.length > 0 ? present.join(' · ') : undefined;
+}
+
+function formatStrokeSubtitle(strokes: number | null | undefined): string | undefined {
+  return strokes && strokes > 0 ? `receives ${formatStrokeCount(strokes)}` : undefined;
+}
+
+function formatStrokeCount(strokes: number): string {
+  return `${strokes} shot${strokes === 1 ? '' : 's'}`;
 }
 
 function getSegmentCpiStatus(

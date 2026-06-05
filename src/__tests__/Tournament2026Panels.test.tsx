@@ -14,6 +14,7 @@ import {
 import {
   clearFixtureScores2026,
   clearHoleScore2026,
+  createCustomFixture2026,
   deleteFixture2026,
   fetchAuditLogExport2026,
   saveHoleScore2026,
@@ -50,6 +51,7 @@ vi.mock('../services/tournament2026Queries', async () => {
     ...actual,
     clearFixtureScores2026: vi.fn().mockResolvedValue(undefined),
     clearHoleScore2026: vi.fn().mockResolvedValue(undefined),
+    createCustomFixture2026: vi.fn().mockResolvedValue(undefined),
     deleteFixture2026: vi.fn().mockResolvedValue(undefined),
     fetchAuditLogExport2026: vi.fn().mockResolvedValue([]),
     saveHoleScore2026: vi.fn().mockResolvedValue(undefined),
@@ -93,8 +95,8 @@ describe('2026 leaderboard panel', () => {
     expect(view.getAllByText('Foursomes').length).toBeGreaterThan(0);
     expect(view.getAllByText('Singles').length).toBeGreaterThan(0);
     expect(view.getByText('Win Pressure')).toBeInTheDocument();
-    expect(view.getByText('Derived forecast from the live saved board. forecast, not fate.')).toBeInTheDocument();
-    expect(view.getByText('All square with 1 hole still live.')).toBeInTheDocument();
+    expect(view.getByText('Point-based forecast from live match positions. forecast, not fate.')).toBeInTheDocument();
+    expect(view.getByText('All square on projected points with 1 point still live.')).toBeInTheDocument();
     expect(view.getByText(/4\/5 holes · 80%/)).toBeInTheDocument();
     expect(view.getByText('Front 9: Match halved')).toBeInTheDocument();
     expect(view.getByText('Singles A: All square')).toBeInTheDocument();
@@ -616,13 +618,87 @@ describe('2026 admin setup panel', () => {
 
     expect(within(usaSlotsPanel).getAllByLabelText(/Slot \d/)).toHaveLength(3);
     expect(within(europeSlotsPanel).getAllByLabelText(/Slot \d/)).toHaveLength(3);
-    expect(view.getByText('Front 9 players')).toBeInTheDocument();
+    expect(view.getByText('Front 9 foursomes')).toBeInTheDocument();
     for (const select of [
       ...within(usaSlotsPanel).getAllByLabelText(/Slot \d/),
       ...within(europeSlotsPanel).getAllByLabelText(/Slot \d/),
     ]) {
       expect(select).toHaveValue('');
     }
+  });
+
+  it('creates a 6-player flexible fixture with a separate 2-per-team front nine', async () => {
+    const onSaved = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <AdminSetupSection
+        data={{
+          ...adminData,
+          activeTournament: activeAdminTournament,
+          players: fixtureBuilderPlayers,
+        }}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+    openAdminTask(container, 'Fixtures');
+    fireEvent.click(view.getByRole('button', { name: 'Create fixture', hidden: true }));
+    const fixtureForm = view.getByText('Fixture builder').closest('form') as HTMLFormElement;
+    fireEvent.click(view.getByText('6-player flexible match'));
+
+    const usaSlotsPanel = view.getByText('USA slots').closest('div') as HTMLElement;
+    const europeSlotsPanel = view.getByText('Europe slots').closest('div') as HTMLElement;
+    const usaSlotSelects = within(usaSlotsPanel).getAllByLabelText(/Slot \d/);
+    const europeSlotSelects = within(europeSlotsPanel).getAllByLabelText(/Slot \d/);
+
+    fireEvent.change(usaSlotSelects[0], { target: { value: 'usa-1' } });
+    fireEvent.change(usaSlotSelects[1], { target: { value: 'usa-2' } });
+    fireEvent.change(usaSlotSelects[2], { target: { value: 'usa-3' } });
+    fireEvent.change(europeSlotSelects[0], { target: { value: 'europe-1' } });
+    fireEvent.change(europeSlotSelects[1], { target: { value: 'europe-2' } });
+    fireEvent.change(europeSlotSelects[2], { target: { value: 'europe-3' } });
+
+    expect(view.getByText('Pick the front-nine foursomes subset: 2 USA and 2 Europe from this group.')).toBeInTheDocument();
+
+    const frontNineSection = view.getByText('Front 9 foursomes').closest('div')?.parentElement?.parentElement as HTMLElement;
+    const frontNineView = within(frontNineSection);
+    fireEvent.click(frontNineView.getByText('USA · Ian · HCP 88 · Tier 2'));
+    fireEvent.click(frontNineView.getByText('USA · Sam · HCP 82 · Tier 2'));
+    expect(frontNineView.getByText('USA · Reyno · HCP 91 · Tier 2').closest('button')).toBeDisabled();
+    fireEvent.click(frontNineView.getByText('EUROPE · Tom · HCP 78 · Tier 2'));
+    fireEvent.click(frontNineView.getByText('EUROPE · Alex · HCP 84 · Tier 2'));
+
+    const singlesPanel = view.getByText('Back 9 singles').closest('div') as HTMLElement;
+    const changeSinglesSelect = (index: number, value: string) => {
+      const singlesSelects = within(singlesPanel).getAllByLabelText(/USA|Europe/);
+      fireEvent.change(singlesSelects[index], { target: { value } });
+    };
+    changeSinglesSelect(0, 'usa-1');
+    changeSinglesSelect(1, 'europe-1');
+    changeSinglesSelect(2, 'usa-2');
+    changeSinglesSelect(3, 'europe-2');
+    changeSinglesSelect(4, 'usa-3');
+    changeSinglesSelect(5, 'europe-3');
+
+    const submitButton = within(fixtureForm).getByText('Create fixture').closest('button') as HTMLButtonElement;
+    expect(submitButton).not.toBeDisabled();
+    fireEvent.submit(fixtureForm);
+
+    await waitFor(() => {
+      expect(createCustomFixture2026).toHaveBeenCalledWith(
+        expect.objectContaining({
+          template: 'flexible_6_player',
+          usaPlayerIds: ['usa-1', 'usa-2', 'usa-3'],
+          europePlayerIds: ['europe-1', 'europe-2', 'europe-3'],
+          frontNinePlayerIds: ['usa-1', 'usa-2', 'europe-1', 'europe-2'],
+          singlesPairs: [
+            { usaPlayerId: 'usa-1', europePlayerId: 'europe-1', cpiEnabled: true },
+            { usaPlayerId: 'usa-2', europePlayerId: 'europe-2', cpiEnabled: true },
+            { usaPlayerId: 'usa-3', europePlayerId: 'europe-3', cpiEnabled: true },
+          ],
+        })
+      );
+    });
+    expect(onSaved).toHaveBeenCalled();
   });
 
   it('hides players already assigned to the tournament and current fixture draft', () => {

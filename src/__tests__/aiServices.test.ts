@@ -151,6 +151,28 @@ const snapshot = {
     foursomes: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
     singles: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
   },
+  scoreboard: {
+    pointsOnTable: {
+      overall: { USA: 0, EUROPE: 0 },
+      foursomes: { USA: 0, EUROPE: 0 },
+      singles: { USA: 0, EUROPE: 0 },
+      strokePlay: { USA: 0, EUROPE: 0 },
+    },
+    provisionalPoints: {
+      overall: { USA: 0, EUROPE: 0 },
+      foursomes: { USA: 0, EUROPE: 0 },
+      singles: { USA: 0, EUROPE: 0 },
+      strokePlay: { USA: 0, EUROPE: 0 },
+    },
+    hasOneVOne: false,
+  },
+  momentum: {
+    holesWon: {
+      overall: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
+      foursomes: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
+      singles: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
+    },
+  },
   fixtures: [],
   highlights: [],
   recentMovement: [],

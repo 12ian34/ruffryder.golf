@@ -1,9 +1,11 @@
 import {
   calculateWinProbability,
   type WinProbabilityForecast,
+  type WinProbabilityFixtureInput,
   type WinProbabilityInput,
   type WinProbabilitySegmentInput,
 } from '../../domain/2026/winProbability';
+import { isOneVOneFixture } from '../../domain/2026/points';
 import type {
   FixtureView,
   PlayerRow,
@@ -24,6 +26,11 @@ export function buildWinProbabilityInput({
 
   return {
     cpiThreshold: tournament?.cpi_threshold ?? null,
+    fixtures: fixtures.map((fixture) => ({
+      id: fixture.id,
+      isOneVOne: isOneVOneFixture(fixture),
+      segments: fixture.segments.map((segment) => buildSegmentInput(segment, playerLookup)),
+    }) satisfies WinProbabilityFixtureInput),
     segments: fixtures.flatMap((fixture) =>
       fixture.segments.map((segment) => buildSegmentInput(segment, playerLookup))
     ),
@@ -61,6 +68,10 @@ function buildSegmentInput(
     holeScores: segment.holeScores.map((score) => ({
       holeNumber: score.hole_number,
       outcome: score.outcome,
+      usaScore: score.usa_score,
+      europeScore: score.europe_score,
+      usaNetScore: score.usa_net_score,
+      europeNetScore: score.europe_net_score,
     })),
   };
 }

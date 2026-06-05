@@ -79,7 +79,7 @@ describe('2026 win probability model', () => {
     expect(forecast.probabilities.tie).toBeGreaterThan(0.2);
   });
 
-  it('uses CPI as a bounded singles-only nudge', () => {
+  it('uses CPI as a bounded singles-only nudge for the player receiving shots', () => {
     const base = calculateWinProbability({
       cpiThreshold: 7,
       segments: [
@@ -105,9 +105,35 @@ describe('2026 win probability model', () => {
       ],
     });
 
-    expect(base.probabilities.USA).toBeGreaterThan(foursomes.probabilities.USA);
-    expect(base.probabilities.USA - foursomes.probabilities.USA).toBeLessThan(0.12);
+    expect(base.probabilities.EUROPE).toBeGreaterThan(foursomes.probabilities.EUROPE);
+    expect(base.probabilities.EUROPE - foursomes.probabilities.EUROPE).toBeLessThan(0.12);
     expect(foursomes.probabilities.USA).toBeCloseTo(foursomes.probabilities.EUROPE, 5);
+  });
+
+  it('forecasts tournament points rather than pooled holes won', () => {
+    const forecast = calculateWinProbability({
+      segments: [
+        createSegment({
+          id: 'front',
+          kind: 'foursomes',
+          holeStart: 1,
+          holeEnd: 9,
+          holeScores: range(1, 5).map((holeNumber) => score(holeNumber, 'USA')),
+        }),
+        createSegment({
+          id: 'singles',
+          kind: 'singles',
+          holeStart: 10,
+          holeEnd: 18,
+          holeScores: [],
+        }),
+      ],
+    });
+
+    expect(forecast.currentScore.USA).toBe(5);
+    expect(forecast.currentPoints).toEqual({ USA: 1, EUROPE: 0 });
+    expect(forecast.probabilities.USA).toBeLessThan(0.9);
+    expect(forecast.probabilities.tie).toBeGreaterThan(0.05);
   });
 
   it('does not let closed segments contribute volatility', () => {
@@ -134,7 +160,7 @@ describe('2026 win probability adapter', () => {
       tournament: null,
     });
 
-    expect(input).toEqual({ cpiThreshold: null, segments: [] });
+    expect(input).toEqual({ cpiThreshold: null, fixtures: [], segments: [] });
     expect(calculateWinProbability(input).probabilities).toEqual({ USA: 0, EUROPE: 0, tie: 1 });
   });
 
@@ -158,6 +184,15 @@ describe('2026 win probability adapter', () => {
         holeScores: [{ holeNumber: 10, outcome: 'USA' }],
       },
     ]);
+    expect(input.fixtures?.[0]).toMatchObject({
+      isOneVOne: false,
+      segments: [
+        {
+          id: 'segment-1',
+          holeScores: [{ holeNumber: 10, outcome: 'USA' }],
+        },
+      ],
+    });
   });
 });
 

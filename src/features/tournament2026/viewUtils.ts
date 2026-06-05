@@ -14,6 +14,18 @@ export interface TeamScore {
 }
 
 export type PlayerTier = 1 | 2 | 3;
+type Team = 'USA' | 'EUROPE';
+
+export interface SegmentSideLabels {
+  usa: string;
+  europe: string;
+}
+
+interface SegmentSideLabelOptions {
+  fixture?: FixtureView;
+  includeTeam?: boolean;
+  separator?: string;
+}
 
 export function calculateTotals(fixtures: FixtureView[]): {
   overall: TeamScore;
@@ -85,26 +97,31 @@ export function formatSegmentKind(kind: SegmentView['kind']): string {
 }
 
 export function formatSegmentMatchup(segment: SegmentView, players: PlayerRow[]): string {
-  if (segment.kind === 'foursomes') {
-    const usaPlayers = segment.players
-      .filter((player) => player.team === 'USA')
-      .map((player) => player.player?.name ?? 'Unknown USA')
-      .join(' + ');
-    const europePlayers = segment.players
-      .filter((player) => player.team === 'EUROPE')
-      .map((player) => player.player?.name ?? 'Unknown Europe')
-      .join(' + ');
+  const labels = getSegmentSideLabels(segment, players, { separator: ' + ' });
 
-    return `${usaPlayers} vs ${europePlayers}`;
-  }
+  return `${labels.usa} vs ${labels.europe}`;
+}
 
-  const playerLookup = new Map(players.map((player) => [player.id, player.name]));
-  const usaPlayer = segment.usa_player_id ? playerLookup.get(segment.usa_player_id) : 'USA player';
-  const europePlayer = segment.europe_player_id
-    ? playerLookup.get(segment.europe_player_id)
-    : 'Europe player';
+export function getSegmentSideLabels(
+  segment: SegmentView,
+  players: PlayerRow[],
+  options: SegmentSideLabelOptions = {}
+): SegmentSideLabels {
+  return {
+    usa: getSegmentSideLabel(segment, 'USA', players, options),
+    europe: getSegmentSideLabel(segment, 'EUROPE', players, options),
+  };
+}
 
-  return `${usaPlayer} vs ${europePlayer}`;
+export function getSegmentOutcomeLabel(
+  segment: SegmentView,
+  players: PlayerRow[],
+  outcome: Exclude<HoleScoreRow['outcome'], 'halved' | 'unplayed'>,
+  options: SegmentSideLabelOptions = {}
+): string {
+  const labels = getSegmentSideLabels(segment, players, options);
+
+  return outcome === 'USA' ? labels.usa : labels.europe;
 }
 
 export function normalizePlayerTier(tier: number | null | undefined): PlayerTier {
@@ -136,6 +153,60 @@ export function getErrorMessage(error: unknown): string {
 
 function createEmptyScore(): TeamScore {
   return { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 };
+}
+
+function getSegmentSideLabel(
+  segment: SegmentView,
+  team: Team,
+  players: PlayerRow[],
+  options: SegmentSideLabelOptions
+): string {
+  const includeTeam = options.includeTeam ?? false;
+  const separator = options.separator ?? '/';
+  const teamLabel = formatTeamLabel(team);
+
+  if (segment.kind === 'foursomes') {
+    const names = getFoursomesSideNames(segment, team, players, options.fixture);
+    const label = names.length > 0 ? names.join(separator) : teamLabel;
+
+    return includeTeam ? `${label} (${teamLabel})` : label;
+  }
+
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const playerId = team === 'USA' ? segment.usa_player_id : segment.europe_player_id;
+  const label = playerId ? playerLookup.get(playerId)?.name ?? getSideFallback(team) : getSideFallback(team);
+
+  return includeTeam ? `${label} (${teamLabel})` : label;
+}
+
+function getFoursomesSideNames(
+  segment: SegmentView,
+  team: Team,
+  players: PlayerRow[],
+  fixture?: FixtureView
+): string[] {
+  const playerLookup = new Map(players.map((player) => [player.id, player]));
+  const segmentPlayers = segment.players.filter((player) => player.team === team);
+  const sourcePlayers =
+    segmentPlayers.length > 0
+      ? segmentPlayers
+      : fixture && fixture.participants.length <= 4
+        ? fixture.participants.filter((participant) => participant.team === team)
+        : [];
+
+  return sourcePlayers.map((entry) => {
+    const sourcePlayer = entry.player ?? playerLookup.get(entry.player_id);
+
+    return sourcePlayer?.name ?? getSideFallback(team);
+  });
+}
+
+function formatTeamLabel(team: Team): string {
+  return team === 'USA' ? 'USA' : 'Europe';
+}
+
+function getSideFallback(team: Team): string {
+  return team === 'USA' ? 'Side A' : 'Side B';
 }
 
 function applyOutcome(score: TeamScore, outcome: HoleScoreRow['outcome']): void {

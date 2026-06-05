@@ -36,6 +36,19 @@ describe('2026 AI recap helpers', () => {
         overall: { USA: 1, EUROPE: 1, halved: 1, unplayed: 0 },
         singles: { USA: 1, EUROPE: 1, halved: 1, unplayed: 0 },
       },
+      scoreboard: {
+        pointsOnTable: {
+          overall: { USA: 0, EUROPE: 0 },
+        },
+        provisionalPoints: {
+          overall: { USA: 0.5, EUROPE: 0.5 },
+        },
+      },
+      momentum: {
+        holesWon: {
+          overall: { USA: 1, EUROPE: 1, halved: 1, unplayed: 0 },
+        },
+      },
     });
     expect(snapshot.highlights).toContain('Ian birdied H10.');
     expect(snapshot.recentMovement).toHaveLength(3);
@@ -48,9 +61,9 @@ describe('2026 AI recap helpers', () => {
       matchup: 'Ian vs Tommy',
       status: 'All square',
       recentHoles: [
-        'H10: 2-5 (USA won)',
+        'H10: 2-5 (Ian won)',
         'H11: 4-4 (halved)',
-        'H12: 6-5 (EUROPE won)',
+        'H12: 6-5 (Tommy won)',
       ],
     });
   });
@@ -69,6 +82,8 @@ describe('2026 AI recap helpers', () => {
     ]);
     expect(snapshot.recentMovement).toEqual([]);
     expect(snapshot.totals.overall).toEqual({ USA: 0, EUROPE: 0, halved: 0, unplayed: 0 });
+    expect(snapshot.scoreboard.provisionalPoints.overall).toEqual({ USA: 0, EUROPE: 0 });
+    expect(snapshot.momentum.holesWon.overall).toEqual({ USA: 0, EUROPE: 0, halved: 0, unplayed: 0 });
   });
 
   it('builds a server request and prompt without leaking auth fields', () => {

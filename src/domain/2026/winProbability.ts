@@ -1,4 +1,7 @@
-import { calculateSegmentMatchPlayStatus } from './matchPlayStatus';
+import {
+  calculateSegmentMatchPlayStatus,
+  type MatchPlayStatus,
+} from './matchPlayStatus';
 import { DEFAULT_CPI_THRESHOLD } from './scoring';
 
 export type WinProbabilityTeam = 'USA' | 'EUROPE';
@@ -8,6 +11,10 @@ export type WinProbabilitySegmentKind = 'foursomes' | 'singles';
 export interface WinProbabilityHoleScore {
   holeNumber: number;
   outcome: WinProbabilityOutcome;
+  usaScore?: number | null;
+  europeScore?: number | null;
+  usaNetScore?: number | null;
+  europeNetScore?: number | null;
 }
 
 export interface WinProbabilitySegmentInput {
@@ -23,6 +30,7 @@ export interface WinProbabilitySegmentInput {
 }
 
 export interface WinProbabilityInput {
+  fixtures?: WinProbabilityFixtureInput[];
   segments: WinProbabilitySegmentInput[];
   cpiThreshold?: number | null;
 }
@@ -33,6 +41,17 @@ export interface WinProbabilityScore {
   halved: number;
 }
 
+export interface WinProbabilityPointScore {
+  USA: number;
+  EUROPE: number;
+}
+
+export interface WinProbabilityFixtureInput {
+  id: string;
+  isOneVOne: boolean;
+  segments: WinProbabilitySegmentInput[];
+}
+
 export interface WinProbabilityForecast {
   probabilities: {
     USA: number;
@@ -40,7 +59,9 @@ export interface WinProbabilityForecast {
     tie: number;
   };
   currentScore: WinProbabilityScore;
+  currentPoints: WinProbabilityPointScore;
   remainingHoles: number;
+  livePoints: number;
   scoredHoles: number;
   leader: WinProbabilityTeam | null;
   margin: number;
@@ -54,9 +75,14 @@ interface OutcomeCounts {
   halved: number;
 }
 
-interface ForecastHole {
-  segment: WinProbabilitySegmentInput;
-  probabilities: OutcomeCounts;
+interface SegmentPointDistribution {
+  usaWin: number;
+  europeWin: number;
+  halved: number;
+}
+
+interface StrokePointDistribution extends SegmentPointDistribution {
+  hasSignal: boolean;
 }
 
 const BASE_PRIOR: OutcomeCounts = { USA: 8, EUROPE: 8, halved: 5 };
@@ -64,69 +90,92 @@ const MAX_NON_LOCKED_TEAM_PROBABILITY = 0.98;
 
 export function calculateWinProbability(input: WinProbabilityInput): WinProbabilityForecast {
   const threshold = input.cpiThreshold ?? DEFAULT_CPI_THRESHOLD;
-  const currentScore = createEmptyScore();
+  const fixtures = normalizeFixtures(input);
+  const segments = fixtures.flatMap((fixture) => fixture.segments);
+  const currentHoles = createEmptyScore();
+  const currentPoints = createEmptyPointScore();
   const globalObserved = createEmptyCounts();
-  const remainingHoles: ForecastHole[] = [];
+  const segmentDistributions: SegmentPointDistribution[] = [];
+  let remainingHoles = 0;
+  let livePoints = 0;
   let cpiNudgedSegments = 0;
 
-  for (const segment of input.segments) {
-    const segmentObserved = countObservedOutcomes(segment.holeScores);
-    applyCounts(currentScore, segmentObserved);
-    applyCounts(globalObserved, segmentObserved);
+  for (const segment of segments) {
+    applyCounts(globalObserved, countObservedOutcomes(segment.holeScores));
+  }
 
-    const status = calculateSegmentMatchPlayStatus({
-      hole_start: segment.holeStart,
-      hole_end: segment.holeEnd,
-      holeScores: segment.holeScores.map((score) => ({
-        hole_number: score.holeNumber,
-        outcome: score.outcome,
-      })),
-    });
+  for (const fixture of fixtures) {
+    for (const segment of fixture.segments) {
+      const segmentObserved = countObservedOutcomes(segment.holeScores);
+      applyCounts(currentHoles, segmentObserved);
 
-    if (status.state === 'won') {
-      continue;
-    }
+      const status = calculateSegmentMatchPlayStatus({
+        hole_start: segment.holeStart,
+        hole_end: segment.holeEnd,
+        holeScores: segment.holeScores.map((score) => ({
+          hole_number: score.holeNumber,
+          outcome: score.outcome,
+        })),
+      });
+      const segmentDistribution = calculateSegmentPointDistribution(
+        segment,
+        segmentObserved,
+        globalObserved,
+        threshold,
+        status
+      );
+      segmentDistributions.push(segmentDistribution);
+      addCurrentMatchPoints(currentPoints, status);
 
-    const scoredByHole = new Map(segment.holeScores.map((score) => [score.holeNumber, score.outcome]));
-    const probabilities = calculateHoleProbabilities(segment, segmentObserved, globalObserved, threshold);
-    const hasCpiNudge = segment.kind === 'singles' && getCpiNudge(segment, threshold).amount > 0;
-
-    for (let holeNumber = segment.holeStart; holeNumber <= segment.holeEnd; holeNumber += 1) {
-      const outcome = scoredByHole.get(holeNumber);
-
-      if (outcome && outcome !== 'unplayed') {
-        continue;
+      if (segmentDistribution.usaWin !== 1 && segmentDistribution.europeWin !== 1 && segmentDistribution.halved !== 1) {
+        livePoints += 1;
       }
 
-      remainingHoles.push({ segment, probabilities });
-    }
+      remainingHoles += status.state === 'won' ? 0 : countRemainingHoles(segment);
 
-    if (hasCpiNudge && status.holesRemaining > 0) {
-      cpiNudgedSegments += 1;
+      if (fixture.isOneVOne && segment.kind === 'singles') {
+        const strokeDistribution = calculateStrokePointDistribution(segment, segmentDistribution);
+        segmentDistributions.push(strokeDistribution);
+        addCurrentStrokePoints(currentPoints, segment);
+        if (strokeDistribution.usaWin !== 1 && strokeDistribution.europeWin !== 1 && strokeDistribution.halved !== 1) {
+          livePoints += 1;
+        }
+      }
+
+      const hasCpiNudge = segment.kind === 'singles' && getCpiNudge(segment, threshold).amount > 0;
+      if (hasCpiNudge && status.holesRemaining > 0) {
+        cpiNudgedSegments += 1;
+      }
     }
   }
 
-  const scoredHoles = currentScore.USA + currentScore.EUROPE + currentScore.halved;
-  const scoreDiff = currentScore.USA - currentScore.EUROPE;
-  const leader = scoreDiff === 0 ? null : scoreDiff > 0 ? 'USA' : 'EUROPE';
-  const margin = Math.abs(scoreDiff);
-  const locked = scoredHoles > 0 && (margin > remainingHoles.length || remainingHoles.length === 0);
-  const probabilities = locked
-    ? calculateLockedProbabilities(scoreDiff)
-    : capNonLockedProbabilities(runProbabilityDp(scoreDiff, remainingHoles));
+  const scoredHoles = currentHoles.USA + currentHoles.EUROPE + currentHoles.halved;
+  const pointDiff = currentPoints.USA - currentPoints.EUROPE;
+  const leader = pointDiff === 0 ? null : pointDiff > 0 ? 'USA' : 'EUROPE';
+  const rawProbabilities = runPointProbabilityDp(segmentDistributions);
+  const locked = scoredHoles > 0 && (
+    rawProbabilities.USA === 1 ||
+    rawProbabilities.EUROPE === 1 ||
+    rawProbabilities.tie === 1
+  );
+  const probabilities = locked ? rawProbabilities : capNonLockedProbabilities(rawProbabilities);
+  const margin = Math.abs(pointDiff);
 
   return {
     probabilities,
-    currentScore,
-    remainingHoles: remainingHoles.length,
+    currentScore: currentHoles,
+    currentPoints,
+    remainingHoles,
+    livePoints,
     scoredHoles,
     leader,
     margin,
     locked,
     reasons: buildReasons({
-      currentScore,
+      currentPoints,
       scoredHoles,
-      remainingHoles: remainingHoles.length,
+      remainingHoles,
+      livePoints,
       leader,
       margin,
       locked,
@@ -187,25 +236,84 @@ function getCpiNudge(
   }
 
   const gap = Math.abs(segment.usaPlayerCpi - segment.europePlayerCpi);
-  const betterCpiTeam = segment.usaPlayerCpi < segment.europePlayerCpi ? 'USA' : 'EUROPE';
+  const higherCpiTeam = segment.usaPlayerCpi > segment.europePlayerCpi ? 'USA' : 'EUROPE';
   const nudge = Math.min(0.06, (gap / Math.max(threshold, 1)) * 0.015);
 
-  return { team: betterCpiTeam, amount: nudge };
+  return { team: higherCpiTeam, amount: nudge };
 }
 
-function runProbabilityDp(
+function calculateSegmentPointDistribution(
+  segment: WinProbabilitySegmentInput,
+  segmentObserved: OutcomeCounts,
+  globalObserved: OutcomeCounts,
+  threshold: number,
+  status: MatchPlayStatus
+): SegmentPointDistribution {
+  if (status.state === 'won' && status.leader) {
+    return fixedPointDistribution(status.leader);
+  }
+
+  if (status.state === 'halved') {
+    return fixedPointDistribution('halved');
+  }
+
+  const remainingHoles = countRemainingHoles(segment);
+  if (remainingHoles === 0) {
+    return fixedPointDistribution(status.leader ?? 'halved');
+  }
+
+  const holeProbabilities = calculateHoleProbabilities(segment, segmentObserved, globalObserved, threshold);
+  const currentDiff = segmentObserved.USA - segmentObserved.EUROPE;
+
+  return runSegmentHoleDp(currentDiff, remainingHoles, holeProbabilities);
+}
+
+function runSegmentHoleDp(
   currentDiff: number,
-  remainingHoles: ForecastHole[]
-): WinProbabilityForecast['probabilities'] {
+  remainingHoles: number,
+  probabilities: OutcomeCounts
+): SegmentPointDistribution {
   let distribution = new Map<number, number>([[currentDiff, 1]]);
 
-  for (const hole of remainingHoles) {
+  for (let index = 0; index < remainingHoles; index += 1) {
     const next = new Map<number, number>();
 
     for (const [diff, probability] of distribution) {
-      addProbability(next, diff + 1, probability * hole.probabilities.USA);
-      addProbability(next, diff - 1, probability * hole.probabilities.EUROPE);
-      addProbability(next, diff, probability * hole.probabilities.halved);
+      addProbability(next, diff + 1, probability * probabilities.USA);
+      addProbability(next, diff - 1, probability * probabilities.EUROPE);
+      addProbability(next, diff, probability * probabilities.halved);
+    }
+
+    distribution = next;
+  }
+
+  const result = { usaWin: 0, europeWin: 0, halved: 0 };
+
+  for (const [diff, probability] of distribution) {
+    if (diff > 0) {
+      result.usaWin += probability;
+    } else if (diff < 0) {
+      result.europeWin += probability;
+    } else {
+      result.halved += probability;
+    }
+  }
+
+  return normalizeSegmentDistribution(result);
+}
+
+function runPointProbabilityDp(
+  segmentDistributions: SegmentPointDistribution[]
+): WinProbabilityForecast['probabilities'] {
+  let distribution = new Map<number, number>([[0, 1]]);
+
+  for (const segment of segmentDistributions) {
+    const next = new Map<number, number>();
+
+    for (const [diff, probability] of distribution) {
+      addProbability(next, diff + 2, probability * segment.usaWin);
+      addProbability(next, diff - 2, probability * segment.europeWin);
+      addProbability(next, diff, probability * segment.halved);
     }
 
     distribution = next;
@@ -224,6 +332,72 @@ function runProbabilityDp(
   }
 
   return normalizeProbabilities(result);
+}
+
+function fixedPointDistribution(outcome: WinProbabilityTeam | 'halved'): SegmentPointDistribution {
+  if (outcome === 'USA') {
+    return { usaWin: 1, europeWin: 0, halved: 0 };
+  }
+
+  if (outcome === 'EUROPE') {
+    return { usaWin: 0, europeWin: 1, halved: 0 };
+  }
+
+  return { usaWin: 0, europeWin: 0, halved: 1 };
+}
+
+function normalizeSegmentDistribution(distribution: SegmentPointDistribution): SegmentPointDistribution {
+  const total = distribution.usaWin + distribution.europeWin + distribution.halved;
+
+  if (total === 0) {
+    return fixedPointDistribution('halved');
+  }
+
+  return {
+    usaWin: distribution.usaWin / total,
+    europeWin: distribution.europeWin / total,
+    halved: distribution.halved / total,
+  };
+}
+
+function calculateStrokePointDistribution(
+  segment: WinProbabilitySegmentInput,
+  matchDistribution: SegmentPointDistribution
+): StrokePointDistribution {
+  const scored = getStrokeSignal(segment);
+
+  if (scored.scoredHoles === 0) {
+    return { ...matchDistribution, hasSignal: false };
+  }
+
+  const remainingHoles = countRemainingHoles(segment);
+  let distribution = new Map<number, number>([[scored.diff, 1]]);
+
+  for (let index = 0; index < remainingHoles; index += 1) {
+    const next = new Map<number, number>();
+
+    for (const [diff, probability] of distribution) {
+      addProbability(next, diff + 1, probability * matchDistribution.usaWin);
+      addProbability(next, diff - 1, probability * matchDistribution.europeWin);
+      addProbability(next, diff, probability * matchDistribution.halved);
+    }
+
+    distribution = next;
+  }
+
+  const result = { usaWin: 0, europeWin: 0, halved: 0 };
+
+  for (const [diff, probability] of distribution) {
+    if (diff > 0) {
+      result.usaWin += probability;
+    } else if (diff < 0) {
+      result.europeWin += probability;
+    } else {
+      result.halved += probability;
+    }
+  }
+
+  return { ...normalizeSegmentDistribution(result), hasSignal: true };
 }
 
 function capNonLockedProbabilities(
@@ -262,18 +436,6 @@ function capTeamProbability(
   };
 }
 
-function calculateLockedProbabilities(currentDiff: number): WinProbabilityForecast['probabilities'] {
-  if (currentDiff > 0) {
-    return { USA: 1, EUROPE: 0, tie: 0 };
-  }
-
-  if (currentDiff < 0) {
-    return { USA: 0, EUROPE: 1, tie: 0 };
-  }
-
-  return { USA: 0, EUROPE: 0, tie: 1 };
-}
-
 function normalizeProbabilities(
   probabilities: WinProbabilityForecast['probabilities']
 ): WinProbabilityForecast['probabilities'] {
@@ -291,42 +453,44 @@ function normalizeProbabilities(
 }
 
 function buildReasons({
-  currentScore,
+  currentPoints,
   scoredHoles,
   remainingHoles,
+  livePoints,
   leader,
   margin,
   locked,
   cpiNudgedSegments,
 }: {
-  currentScore: WinProbabilityScore;
+  currentPoints: WinProbabilityPointScore;
   scoredHoles: number;
   remainingHoles: number;
+  livePoints: number;
   leader: WinProbabilityTeam | null;
   margin: number;
   locked: boolean;
   cpiNudgedSegments: number;
 }): string[] {
   if (scoredHoles === 0) {
-    const holeWord = remainingHoles === 1 ? 'hole' : 'holes';
+    const pointWord = livePoints === 1 ? 'point' : 'points';
 
     return [
-      'No saved holes yet; forecast starts neutral.',
-      `${remainingHoles} ${holeWord} still live. forecast, not fate.`,
+      'No saved holes yet; points forecast starts neutral.',
+      `${livePoints} ${pointWord} on the table. forecast, not fate.`,
     ];
   }
 
-  const holeWord = remainingHoles === 1 ? 'hole' : 'holes';
+  const pointWord = livePoints === 1 ? 'point' : 'points';
   const leadLine = leader
-    ? `${leader === 'USA' ? 'USA' : 'Europe'} lead +${margin} with ${remainingHoles} ${holeWord} still live.`
-    : `All square with ${remainingHoles} ${holeWord} still live.`;
+    ? `${leader === 'USA' ? 'USA' : 'Europe'} lead +${formatPointValue(margin)} on projected points with ${livePoints} ${pointWord} still live.`
+    : `All square on projected points with ${livePoints} ${pointWord} still live.`;
   const lines = [
     leadLine,
-    `Saved board is USA ${currentScore.USA} - Europe ${currentScore.EUROPE}; ${currentScore.halved} halved.`,
+    `Projected points board is USA ${formatPointValue(currentPoints.USA)} - Europe ${formatPointValue(currentPoints.EUROPE)}.`,
   ];
 
   if (locked && leader) {
-    lines.push(`${leader === 'USA' ? 'USA' : 'Europe'} are mathematically locked from the saved board.`);
+    lines.push(`${leader === 'USA' ? 'USA' : 'Europe'} are mathematically locked on points.`);
   } else if (cpiNudgedSegments > 0) {
     lines.push(`Singles CPI adds a small bounded nudge in ${cpiNudgedSegments} live matchup${cpiNudgedSegments === 1 ? '' : 's'}.`);
   } else if (remainingHoles >= Math.max(6, scoredHoles)) {
@@ -352,8 +516,106 @@ function countObservedOutcomes(scores: WinProbabilityHoleScore[]): OutcomeCounts
   return counts;
 }
 
+function countRemainingHoles(segment: WinProbabilitySegmentInput): number {
+  const scoredByHole = new Map(segment.holeScores.map((score) => [score.holeNumber, score.outcome]));
+  let count = 0;
+
+  for (let holeNumber = segment.holeStart; holeNumber <= segment.holeEnd; holeNumber += 1) {
+    const outcome = scoredByHole.get(holeNumber);
+    if (!outcome || outcome === 'unplayed') {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function addCurrentMatchPoints(points: WinProbabilityPointScore, status: MatchPlayStatus): void {
+  if (status.state === 'won' && status.leader) {
+    points[status.leader] += 1;
+  } else if (status.state === 'halved') {
+    points.USA += 0.5;
+    points.EUROPE += 0.5;
+  } else if (status.state === 'dormie' && status.leader) {
+    points[status.leader] += 1;
+  } else if (status.state === 'in_progress') {
+    if (status.leader) {
+      points[status.leader] += 1;
+    } else {
+      points.USA += 0.5;
+      points.EUROPE += 0.5;
+    }
+  }
+}
+
+function addCurrentStrokePoints(points: WinProbabilityPointScore, segment: WinProbabilitySegmentInput): void {
+  const signal = getStrokeSignal(segment);
+
+  if (signal.scoredHoles === 0) {
+    return;
+  }
+
+  if (signal.diff > 0) {
+    points.USA += 1;
+  } else if (signal.diff < 0) {
+    points.EUROPE += 1;
+  } else {
+    points.USA += 0.5;
+    points.EUROPE += 0.5;
+  }
+}
+
+function getStrokeSignal(segment: WinProbabilitySegmentInput): { diff: number; scoredHoles: number } {
+  let usaTotal = 0;
+  let europeTotal = 0;
+  let scoredHoles = 0;
+
+  for (const score of segment.holeScores) {
+    if (score.outcome === 'unplayed') continue;
+    const usa = getStrokeScore(score, 'USA', segment.cpiEnabled !== false);
+    const europe = getStrokeScore(score, 'EUROPE', segment.cpiEnabled !== false);
+
+    if (usa === null || europe === null) continue;
+    usaTotal += usa;
+    europeTotal += europe;
+    scoredHoles += 1;
+  }
+
+  return { diff: europeTotal - usaTotal, scoredHoles };
+}
+
+function getStrokeScore(
+  score: WinProbabilityHoleScore,
+  team: WinProbabilityTeam,
+  useNet: boolean
+): number | null {
+  if (team === 'USA') {
+    return useNet ? score.usaNetScore ?? score.usaScore ?? null : score.usaScore ?? null;
+  }
+
+  return useNet ? score.europeNetScore ?? score.europeScore ?? null : score.europeScore ?? null;
+}
+
+function normalizeFixtures(input: WinProbabilityInput): WinProbabilityFixtureInput[] {
+  if (input.fixtures) {
+    return input.fixtures;
+  }
+
+  return [
+    {
+      id: 'default',
+      isOneVOne: false,
+      segments: input.segments,
+    },
+  ];
+}
+
 function createEmptyScore(): WinProbabilityScore {
   return { USA: 0, EUROPE: 0, halved: 0 };
+}
+
+function createEmptyPointScore(): WinProbabilityPointScore {
+  return { USA: 0, EUROPE: 0 };
 }
 
 function createEmptyCounts(): OutcomeCounts {
@@ -368,4 +630,8 @@ function applyCounts(target: OutcomeCounts, source: OutcomeCounts): void {
 
 function addProbability(distribution: Map<number, number>, diff: number, probability: number): void {
   distribution.set(diff, (distribution.get(diff) ?? 0) + probability);
+}
+
+function formatPointValue(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }

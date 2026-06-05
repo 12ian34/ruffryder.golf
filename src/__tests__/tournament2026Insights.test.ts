@@ -49,6 +49,24 @@ describe('2026 tournament insights', () => {
     expect(highlights).toContain('Tommy birdied H1.');
   });
 
+  it('uses player pair labels for foursomes highlights', () => {
+    const foursomesPlayers = [
+      createPlayer('usa-1', 'Ian', 'USA', 20),
+      createPlayer('usa-2', 'Sam', 'USA', 24),
+      createPlayer('europe-1', 'Tommy', 'EUROPE', 10),
+      createPlayer('europe-2', 'Alex', 'EUROPE', 18),
+    ] satisfies PlayerRow[];
+    const highlights = generateTournamentHighlights({
+      tournament: null,
+      fixtures: [createFoursomesFixture(foursomesPlayers)],
+      players: foursomesPlayers,
+      courseHoles: [{ holeNumber: 1, strokeIndex: 1, par: 3, yardage: 150 }],
+    });
+
+    expect(highlights).toContain('Ian/Sam (USA) took 6 on H1.');
+    expect(highlights).toContain('Tommy/Alex (Europe) birdied H1.');
+  });
+
   it('weights positive and bad-hole highlights by player tier', () => {
     const tierPlayers = [
       createPlayer('usa-1', 'Ace', 'USA', 72, 1),
@@ -177,6 +195,72 @@ function createFixture(): FixtureView {
           createScore('score-1', 1, 1, 2, 'USA', '2026-05-03T07:01:00.000Z'),
           createScore('score-2', 2, 3, 3, 'halved', '2026-05-03T07:02:00.000Z'),
           createScore('score-3', 3, 7, 5, 'EUROPE', '2026-05-03T07:03:00.000Z'),
+        ],
+      },
+    ],
+  };
+}
+
+function createFoursomesFixture(players: PlayerRow[]): FixtureView {
+  return {
+    id: 'fixture-foursomes',
+    tournament_id: 'tournament-1',
+    name: 'Foursomes',
+    sort_order: 0,
+    status: 'not_started',
+    created_at: '2026-05-03T07:00:00.000Z',
+    updated_at: '2026-05-03T07:00:00.000Z',
+    participants: [],
+    segments: [
+      {
+        id: 'segment-foursomes',
+        fixture_id: 'fixture-foursomes',
+        kind: 'foursomes',
+        name: 'Front 9',
+        hole_start: 1,
+        hole_end: 9,
+        sort_order: 0,
+        cpi_enabled: false,
+        usa_player_id: null,
+        europe_player_id: null,
+        created_at: '2026-05-03T07:00:00.000Z',
+        updated_at: '2026-05-03T07:00:00.000Z',
+        players: [
+          {
+            segment_id: 'segment-foursomes',
+            player_id: 'usa-1',
+            team: 'USA',
+            slot: 1,
+            player: players[0],
+            created_at: '2026-05-03T07:00:00.000Z',
+          },
+          {
+            segment_id: 'segment-foursomes',
+            player_id: 'usa-2',
+            team: 'USA',
+            slot: 2,
+            player: players[1],
+            created_at: '2026-05-03T07:00:00.000Z',
+          },
+          {
+            segment_id: 'segment-foursomes',
+            player_id: 'europe-1',
+            team: 'EUROPE',
+            slot: 1,
+            player: players[2],
+            created_at: '2026-05-03T07:00:00.000Z',
+          },
+          {
+            segment_id: 'segment-foursomes',
+            player_id: 'europe-2',
+            team: 'EUROPE',
+            slot: 2,
+            player: players[3],
+            created_at: '2026-05-03T07:00:00.000Z',
+          },
+        ],
+        holeScores: [
+          createScore('score-foursomes-1', 1, 6, 2, 'EUROPE', '2026-05-03T07:01:00.000Z'),
         ],
       },
     ],

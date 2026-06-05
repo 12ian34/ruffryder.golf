@@ -3459,17 +3459,34 @@ function FrontNinePicker({
   selectedPlayerIds: string[];
   onChange: (playerIds: string[]) => void;
 }) {
+  const selectedPlayers = players.filter((player) => selectedPlayerIds.includes(player.id));
+  const usaCount = selectedPlayers.filter((player) => player.team === 'USA').length;
+  const europeCount = selectedPlayers.filter((player) => player.team === 'EUROPE').length;
+
   return (
     <div className="border-t border-[#27272A] pt-3">
-      <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Front 9 players</p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold tracking-[0.14em] text-[#8B949E]">Front 9 foursomes</p>
+          <p className="mt-1 text-xs leading-5 text-[#A1A1AA]">
+            Pick 2 USA and 2 Europe players from the fixture group.
+          </p>
+        </div>
+        <p className="font-data text-[10px] tracking-[0.14em] text-[#F59E0B]">
+          USA {usaCount}/2 · Europe {europeCount}/2
+        </p>
+      </div>
       <div className="mt-2 grid gap-2">
         {players.map((player) => {
           const isSelected = selectedPlayerIds.includes(player.id);
+          const wouldExceedTeam =
+            !isSelected && ((player.team === 'USA' && usaCount >= 2) || (player.team === 'EUROPE' && europeCount >= 2));
 
           return (
             <button
               key={player.id}
               type="button"
+              disabled={wouldExceedTeam}
               onClick={() =>
                 onChange(
                   isSelected
@@ -3480,6 +3497,8 @@ function FrontNinePicker({
               className={`rounded-md border px-3 py-2 text-left text-sm ${
                 isSelected
                   ? 'border-[#3FB950] bg-[#06170B] text-[#3FB950]'
+                  : wouldExceedTeam
+                    ? 'border-[#27272A] text-[#484F58]'
                   : 'border-[#27272A] text-[#A1A1AA]'
               }`}
             >
@@ -3687,10 +3706,99 @@ function getCustomFixtureValidationError({
     return 'A player can only appear once in a fixture.';
   }
 
+  switch (template) {
+    case 'full_18_singles':
+      if (selectedUsaPlayerIds.length !== 1 || selectedEuropePlayerIds.length !== 1) {
+        return 'Select two players for the full-18 singles match.';
+      }
+
+      {
+        const singlesError = getSinglesPairValidationError(
+          selectedUsaPlayerIds,
+          selectedEuropePlayerIds,
+          singlesPairs
+        );
+        if (singlesError) return singlesError;
+      }
+
+      if (completePairs.length !== 1) {
+        return 'The full-18 singles fixture needs one match.';
+      }
+
+      return null;
+    case 'standard_4_player':
+      if (selectedUsaPlayerIds.length !== 2 || selectedEuropePlayerIds.length !== 2) {
+        return 'Select exactly 2 USA players and 2 Europe players.';
+      }
+
+      {
+        const singlesError = getSinglesPairValidationError(
+          selectedUsaPlayerIds,
+          selectedEuropePlayerIds,
+          singlesPairs
+        );
+        if (singlesError) return singlesError;
+      }
+
+      if (completePairs.length !== 2) {
+        return 'Add exactly two back-nine singles matches.';
+      }
+
+      return null;
+    case 'flexible_6_player': {
+      if (selectedUsaPlayerIds.length !== 3 || selectedEuropePlayerIds.length !== 3) {
+        return 'Fixture group needs exactly 3 USA players and 3 Europe players.';
+      }
+
+      if (frontNinePlayerIds.length !== 4) {
+        return 'Pick the front-nine foursomes subset: 2 USA and 2 Europe from this group.';
+      }
+
+      const frontNineUsaCount = frontNinePlayerIds.filter((playerId) =>
+        selectedUsaPlayerIds.includes(playerId)
+      ).length;
+      const frontNineEuropeCount = frontNinePlayerIds.filter((playerId) =>
+        selectedEuropePlayerIds.includes(playerId)
+      ).length;
+
+      if (frontNineUsaCount !== 2 || frontNineEuropeCount !== 2) {
+        return 'Front-nine foursomes need exactly 2 USA and 2 Europe players.';
+      }
+
+      {
+        const singlesError = getSinglesPairValidationError(
+          selectedUsaPlayerIds,
+          selectedEuropePlayerIds,
+          singlesPairs
+        );
+        if (singlesError) return singlesError;
+      }
+
+      if (completePairs.length !== 3) {
+        return 'Add exactly three back-nine singles matches.';
+      }
+
+      return null;
+    }
+    default: {
+      const exhaustiveCheck: never = template;
+      return exhaustiveCheck;
+    }
+  }
+
+  return null;
+}
+
+function getSinglesPairValidationError(
+  selectedUsaPlayerIds: string[],
+  selectedEuropePlayerIds: string[],
+  singlesPairs: SinglesPairDraft[]
+): string | null {
   if (singlesPairs.some((pair) => Boolean(pair.usaPlayerId) !== Boolean(pair.europePlayerId))) {
     return 'Complete or clear each singles pairing.';
   }
 
+  const completePairs = singlesPairs.filter((pair) => pair.usaPlayerId && pair.europePlayerId);
   const singlesPlayerIds = completePairs.flatMap((pair) => [pair.usaPlayerId, pair.europePlayerId]);
 
   if (
@@ -3705,59 +3813,6 @@ function getCustomFixtureValidationError({
 
   if (new Set(singlesPlayerIds).size !== singlesPlayerIds.length) {
     return 'A player can only appear in one singles match.';
-  }
-
-  switch (template) {
-    case 'full_18_singles':
-      if (selectedUsaPlayerIds.length !== 1 || selectedEuropePlayerIds.length !== 1) {
-        return 'Select two players for the full-18 singles match.';
-      }
-
-      if (completePairs.length !== 1) {
-        return 'The full-18 singles fixture needs one match.';
-      }
-
-      return null;
-    case 'standard_4_player':
-      if (selectedUsaPlayerIds.length !== 2 || selectedEuropePlayerIds.length !== 2) {
-        return 'Select exactly 2 USA players and 2 Europe players.';
-      }
-
-      if (completePairs.length !== 2) {
-        return 'Add exactly two back-nine singles matches.';
-      }
-
-      return null;
-    case 'flexible_6_player': {
-      if (selectedUsaPlayerIds.length !== 3 || selectedEuropePlayerIds.length !== 3) {
-        return 'Select exactly 3 USA players and 3 Europe players.';
-      }
-
-      if (frontNinePlayerIds.length !== 4) {
-        return 'Select 2 USA and 2 Europe players for front-nine foursomes.';
-      }
-
-      const frontNineUsaCount = frontNinePlayerIds.filter((playerId) =>
-        selectedUsaPlayerIds.includes(playerId)
-      ).length;
-      const frontNineEuropeCount = frontNinePlayerIds.filter((playerId) =>
-        selectedEuropePlayerIds.includes(playerId)
-      ).length;
-
-      if (frontNineUsaCount !== 2 || frontNineEuropeCount !== 2) {
-        return 'Front-nine foursomes need exactly 2 USA and 2 Europe players.';
-      }
-
-      if (completePairs.length !== 3) {
-        return 'Add exactly three back-nine singles matches.';
-      }
-
-      return null;
-    }
-    default: {
-      const exhaustiveCheck: never = template;
-      return exhaustiveCheck;
-    }
   }
 
   return null;

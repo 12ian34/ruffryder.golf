@@ -6,7 +6,11 @@ import type {
 import type { CourseHoleMetadata } from '../../domain/2026/course';
 import { calculateSegmentMatchPlayStatus } from '../../domain/2026/matchPlayStatus';
 import { calculatePointTotals } from '../../domain/2026/points';
-import { normalizePlayerTier } from './viewUtils';
+import {
+  getSegmentOutcomeLabel,
+  getSegmentSideLabels,
+  normalizePlayerTier,
+} from './viewUtils';
 
 type Team = 'USA' | 'EUROPE';
 
@@ -296,12 +300,12 @@ function collectScoredSides(
 
   for (const fixture of fixtures) {
     for (const segment of fixture.segments) {
-      const usaLabel = segment.usa_player_id
-        ? playerLookup.get(segment.usa_player_id)?.name ?? 'Side A'
-        : 'USA';
-      const europeLabel = segment.europe_player_id
-        ? playerLookup.get(segment.europe_player_id)?.name ?? 'Side B'
-        : 'Europe';
+      const sideLabels = getSegmentSideLabels(segment, players, {
+        fixture,
+        includeTeam: segment.kind === 'foursomes',
+      });
+      const usaLabel = sideLabels.usa;
+      const europeLabel = sideLabels.europe;
       const usaTier = segment.usa_player_id
         ? normalizePlayerTier(playerLookup.get(segment.usa_player_id)?.tier)
         : 2;
@@ -448,7 +452,7 @@ function collectSmackdownHighlights(fixtures: FixtureView[], players: PlayerRow[
           continue;
         }
 
-        const winnerLabel = getSegmentSideLabel(segment, score.outcome, players);
+        const winnerLabel = getSegmentSideLabel(fixture, segment, score.outcome, players);
         highlights.push(`${winnerLabel} won H${score.hole_number} by ${margin} gross shots.`);
       }
     }
@@ -503,7 +507,7 @@ function getCloseMatchHighlight(
     }
 
     if (status.leader && status.margin === 1 && status.holesRemaining <= 3) {
-      const leaderLabel = getSegmentSideLabel(segment, status.leader, players);
+      const leaderLabel = getSegmentSideLabel(fixture, segment, status.leader, players);
       const holeLabel = status.holesRemaining === 1 ? 'hole' : 'holes';
 
       oneUpFallback ??= `${segmentLabel} is tight: ${leaderLabel} 1 up with ${status.holesRemaining} ${holeLabel} to play.`;
@@ -533,7 +537,7 @@ function getEarlyWinHighlight(
     });
 
     if (status.state === 'won' && status.holesRemaining > 0 && status.leader) {
-      const winnerLabel = getSegmentSideLabel(segment, status.leader, players);
+      const winnerLabel = getSegmentSideLabel(fixture, segment, status.leader, players);
       const segmentLabel = segment.name ?? fixture.name ?? 'the match';
 
       return `${winnerLabel} closed out ${segmentLabel} ${status.margin} & ${status.holesRemaining}.`;
@@ -585,18 +589,15 @@ function getUpsetHighlight(
 }
 
 function getSegmentSideLabel(
+  fixture: FixtureView,
   segment: FixtureView['segments'][number],
   team: Team,
   players: PlayerRow[]
 ): string {
-  if (segment.kind !== 'singles') {
-    return team;
-  }
-
-  const playerId = team === 'USA' ? segment.usa_player_id : segment.europe_player_id;
-  const player = playerId ? players.find((candidate) => candidate.id === playerId) : null;
-
-  return player?.name ?? team;
+  return getSegmentOutcomeLabel(segment, players, team, {
+    fixture,
+    includeTeam: segment.kind === 'foursomes',
+  });
 }
 
 function getSegmentWinner(scores: FixtureView['segments'][number]['holeScores']): Team | null {

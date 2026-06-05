@@ -261,7 +261,30 @@ describe('ScoreEntrySection', () => {
     expect(view.getByLabelText('Sam score')).toBeInTheDocument();
     expect(view.getByLabelText('Alex score')).toBeInTheDocument();
     expect(view.getByText('CPI enabled. Ian HCP 98; Tommy HCP 78. Gap 20.')).toBeInTheDocument();
-    expect(view.queryByText(/receives strokes/)).not.toBeInTheDocument();
+    expect(view.getByText('Ian receives 1 shot on this hole (stroke index 12).')).toBeInTheDocument();
+  });
+
+  it('explains saved CPI-adjusted outcomes in compact score rows', () => {
+    const { container } = render(
+      <ScoreEntrySection
+        tournament={tournament}
+        fixtures={[groupedFixtureWithCpiScore]}
+        players={groupedPlayers}
+        courseHoles={[
+          ...courseHoles,
+          { holeNumber: 10, yardage: 150, par: 3, strokeIndex: 12 },
+          { holeNumber: 11, yardage: 410, par: 3, strokeIndex: 4 },
+        ]}
+        profile={profile}
+        onSaved={onSaved}
+      />
+    );
+    const view = within(container);
+
+    fireEvent.click(view.getByText('Back 9'));
+
+    expect(view.getByText('Ian wins')).toBeInTheDocument();
+    expect(view.getByText('CPI: Ian receives 1 shot · net Ian 2 - Tommy 3')).toBeInTheDocument();
   });
 });
 
@@ -408,4 +431,34 @@ const groupedFixture = {
       holeScores: [],
     },
   ],
+} as unknown as FixtureView;
+
+const groupedFixtureWithCpiScore = {
+  ...groupedFixture,
+  segments: groupedFixture.segments.map((segment) =>
+    segment.id === 'segment-singles-a'
+      ? {
+          ...segment,
+          holeScores: [
+            {
+              id: 'score-cpi-1',
+              segment_id: 'segment-singles-a',
+              hole_number: 10,
+              usa_score: 3,
+              europe_score: 3,
+              usa_net_score: 2,
+              europe_net_score: 3,
+              outcome: 'USA',
+              cpi_applied: true,
+              cpi_difference: 20,
+              cpi_strokes_usa: 1,
+              cpi_strokes_europe: 0,
+              updated_by: 'profile-1',
+              updatedByProfile: { id: 'profile-1', display_name: 'Ian' },
+              updated_at: '2026-05-02T20:10:00.000Z',
+            },
+          ],
+        }
+      : segment
+  ),
 } as unknown as FixtureView;

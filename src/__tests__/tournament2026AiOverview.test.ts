@@ -236,6 +236,28 @@ function createSnapshot(): AiRecapSnapshot {
       foursomes: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
       singles: { USA: 1, EUROPE: 1, halved: 0, unplayed: 0 },
     },
+    scoreboard: {
+      pointsOnTable: {
+        overall: { USA: 0, EUROPE: 0 },
+        foursomes: { USA: 0, EUROPE: 0 },
+        singles: { USA: 0, EUROPE: 0 },
+        strokePlay: { USA: 0, EUROPE: 0 },
+      },
+      provisionalPoints: {
+        overall: { USA: 0.5, EUROPE: 0.5 },
+        foursomes: { USA: 0, EUROPE: 0 },
+        singles: { USA: 0.5, EUROPE: 0.5 },
+        strokePlay: { USA: 0, EUROPE: 0 },
+      },
+      hasOneVOne: false,
+    },
+    momentum: {
+      holesWon: {
+        overall: { USA: 1, EUROPE: 1, halved: 0, unplayed: 0 },
+        foursomes: { USA: 0, EUROPE: 0, halved: 0, unplayed: 0 },
+        singles: { USA: 1, EUROPE: 1, halved: 0, unplayed: 0 },
+      },
+    },
     highlights: ['Ian birdied H10.'],
     recentMovement: [],
     fixtures: [],

@@ -79,6 +79,8 @@ function buildTournamentPrompt(snapshot) {
     'Generate a persisted live tournament overview for The Ruff scoreboard.',
     'Use concise Markdown suitable for a compact card.',
     'The overview should summarize the current state and the biggest live narrative.',
+    'Use snapshot.scoreboard.provisionalPoints and snapshot.scoreboard.pointsOnTable as the official score.',
+    'Use snapshot.momentum.holesWon only as momentum context; never describe holes-won totals as the match score.',
     'Mention the score movement or lack of drama if useful.',
     'Do not invent new scores, holes, winners, or off-course incidents.',
     '',

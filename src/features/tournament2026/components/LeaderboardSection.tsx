@@ -74,7 +74,7 @@ export function LeaderboardSection({
   );
   const scoredHoleCount = countScoredTournamentHoles(fixtures);
   const boardStatus = getBoardStatus({
-    score: totals.overall,
+    score: tournament?.is_complete ? pointTotals.onTable.overall : pointTotals.provisional.overall,
     scoredHoleCount,
     totalHoleCount: totalChartHoles,
     tournament,
@@ -669,12 +669,12 @@ function WinPressureSection({ forecast }: { forecast: ReturnType<typeof buildWin
     ? 'Locked'
     : forecast.scoredHoles === 0
       ? 'No signal'
-      : `${forecast.remainingHoles} holes live`;
+      : `${forecast.livePoints} points live`;
 
   return (
     <CollapsibleSection
       title="Win Pressure"
-      description="Derived forecast from the live saved board. forecast, not fate."
+        description="Point-based forecast from live match positions. forecast, not fate."
       meta={meta}
     >
       <div className="px-3 py-3 sm:px-4">
@@ -950,7 +950,7 @@ function buildFallbackFixtureProgressPlayers(
 }
 
 interface BoardStatusInput {
-  score: TeamScore;
+  score: TeamPoints;
   scoredHoleCount: number;
   totalHoleCount: number;
   tournament: TournamentRow | null;
@@ -1046,18 +1046,19 @@ function getProgressLabel(scoredHoleCount: number, totalHoleCount: number): stri
   return `${scoredHoleCount}/${totalHoleCount} saved holes`;
 }
 
-function getScoreSummary(score: TeamScore): { label: string; className: string } {
+function getScoreSummary(score: TeamPoints): { label: string; className: string } {
   const lead = Math.abs(score.USA - score.EUROPE);
+  const scoreline = `${formatPointValue(score.USA)}-${formatPointValue(score.EUROPE)}`;
 
   if (lead === 0) {
-    return { label: 'All square', className: 'text-[#FAFAFA]' };
+    return { label: `All square · ${scoreline}`, className: 'text-[#FAFAFA]' };
   }
 
   if (score.USA > score.EUROPE) {
-    return { label: `USA +${lead}`, className: 'text-[#F2B84B]' };
+    return { label: `USA +${formatPointValue(lead)} · ${scoreline}`, className: 'text-[#F2B84B]' };
   }
 
-  return { label: `Europe +${lead}`, className: 'text-[#58A6FF]' };
+  return { label: `Europe +${formatPointValue(lead)} · ${scoreline}`, className: 'text-[#58A6FF]' };
 }
 
 function formatTeamName(team: 'USA' | 'EUROPE'): string {

@@ -1,7 +1,15 @@
 import {
   calculateFixtureProgress,
   calculateSegmentMatchPlayStatus,
+  type MatchPlayStatus,
 } from '../../domain/2026/matchPlayStatus';
+import {
+  calculatePointTotals,
+  calculateSegmentPoints,
+  isOneVOneFixture,
+  type PointsBreakdown,
+  type TeamPoints,
+} from '../../domain/2026/points';
 import type { CourseHoleMetadata } from '../../domain/2026/course';
 import type {
   FixtureView,
@@ -9,11 +17,13 @@ import type {
   PlayerRow,
   TournamentRow,
 } from '../../services/tournament2026Queries';
-import { buildProgressTimeline, generateTournamentHighlights } from './insights';
+import { buildPointsProgressTimeline, generateTournamentHighlights } from './insights';
 import {
   calculateTotals,
   formatSegmentKind,
   formatSegmentMatchup,
+  getSegmentOutcomeLabel,
+  getSegmentSideLabels,
   type TeamScore,
 } from './viewUtils';
 
@@ -26,6 +36,18 @@ export interface AiRecapSnapshot {
     isComplete: boolean;
     cpiThreshold: number;
   } | null;
+  scoreboard: {
+    pointsOnTable: PointsBreakdown;
+    provisionalPoints: PointsBreakdown;
+    hasOneVOne: boolean;
+  };
+  momentum: {
+    holesWon: {
+      overall: TeamScore;
+      foursomes: TeamScore;
+      singles: TeamScore;
+    };
+  };
   totals: {
     overall: TeamScore;
     foursomes: TeamScore;
@@ -54,6 +76,12 @@ export interface AiRecapSegmentSummary {
   matchup: string;
   status: string;
   score: TeamScore;
+  points: {
+    matchPlayOnTable: TeamPoints;
+    matchPlayProvisional: TeamPoints;
+    strokePlayOnTable: TeamPoints | null;
+    strokePlayProvisional: TeamPoints | null;
+  };
   recentHoles: string[];
 }
 
@@ -82,14 +110,15 @@ export function buildAiRecapSnapshot({
   generatedAt?: string;
 }): AiRecapSnapshot {
   const totals = calculateTotals(fixtures);
+  const pointTotals = calculatePointTotals(fixtures);
   const generatedHighlights = generateTournamentHighlights({ tournament, fixtures, players, courseHoles })
     .slice(0, MAX_HIGHLIGHTS);
   const highlights = generatedHighlights.length > 0 ? generatedHighlights : [EMPTY_HIGHLIGHTS_FALLBACK];
-  const recentMovement = buildProgressTimeline(fixtures, players)
+  const recentMovement = buildPointsProgressTimeline(fixtures, players)
     .slice(-MAX_MOVEMENT_POINTS)
     .map((point) => ({
       label: point.label,
-      scoreline: `USA ${point.usa} - Europe ${point.europe}${point.halved > 0 ? `, ${point.halved} halved` : ''}`,
+      scoreline: `Provisional points: USA ${formatPointValue(point.usa)} - Europe ${formatPointValue(point.europe)}`,
       updatedAt: point.updatedAt,
     }));
 
@@ -104,6 +133,14 @@ export function buildAiRecapSnapshot({
           cpiThreshold: tournament.cpi_threshold,
         }
       : null,
+    scoreboard: {
+      pointsOnTable: pointTotals.onTable,
+      provisionalPoints: pointTotals.provisional,
+      hasOneVOne: pointTotals.hasOneVOne,
+    },
+    momentum: {
+      holesWon: totals,
+    },
     totals,
     highlights,
     recentMovement,
@@ -119,6 +156,7 @@ export function buildAiRecapPrompt(snapshot: AiRecapSnapshot): string {
     'Formatting: headings, bold emphasis, bullets, and numbered lists are allowed when useful.',
     'Emojis: allowed sparingly, maximum two, only when they add flavour.',
     'Rules: do not invent scores, injuries, weather, quotes, or events not in the snapshot.',
+    'Scoring rule: scoreboard.provisionalPoints and scoreboard.pointsOnTable are the official match score. momentum.holesWon is only momentum, never the result.',
     'If little has happened, say the board is still waiting for drama.',
     '',
     JSON.stringify(snapshot),
@@ -131,20 +169,26 @@ export function buildAiRecapRequestBody(snapshot: AiRecapSnapshot): AiRecapReque
 
 function summarizeFixture(fixture: FixtureView, players: PlayerRow[]): AiRecapFixtureSummary {
   const progress = calculateFixtureProgress(fixture.segments);
+  const isOneVOne = isOneVOneFixture(fixture);
 
   return {
     name: fixture.name ?? `Fixture ${fixture.sort_order + 1}`,
     progress: `${progress.completedHoles}/${progress.totalHoles} holes (${progress.percent}%)`,
     segments: fixture.segments
       .slice(0, MAX_SEGMENTS_PER_FIXTURE)
-      .map((segment) => ({
-        name: segment.name ?? formatSegmentKind(segment.kind),
-        kind: formatSegmentKind(segment.kind),
-        matchup: formatSegmentMatchup(segment, players),
-        status: calculateSegmentMatchPlayStatus(segment).label,
-        score: summarizeSegmentScore(segment.holeScores),
-        recentHoles: summarizeRecentHoles(segment.holeScores),
-      })),
+      .map((segment) => {
+        const status = calculateSegmentMatchPlayStatus(segment);
+
+        return {
+          name: segment.name ?? formatSegmentKind(segment.kind),
+          kind: formatSegmentKind(segment.kind),
+          matchup: formatSegmentMatchup(segment, players),
+          status: formatSegmentStatus(status, segment, fixture, players),
+          score: summarizeSegmentScore(segment.holeScores),
+          points: calculateSegmentPoints(segment, { isOneVOneFixture: isOneVOne }),
+          recentHoles: summarizeRecentHoles(segment, fixture, players),
+        };
+      }),
   };
 }
 
@@ -167,13 +211,62 @@ function summarizeSegmentScore(scores: HoleScoreRow[]): TeamScore {
   );
 }
 
-function summarizeRecentHoles(scores: HoleScoreRow[]): string[] {
-  return scores
+function summarizeRecentHoles(
+  segment: FixtureView['segments'][number],
+  fixture: FixtureView,
+  players: PlayerRow[]
+): string[] {
+  return segment.holeScores
     .filter((score) => score.outcome !== 'unplayed')
     .sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
     .slice(-MAX_RECENT_HOLES_PER_SEGMENT)
     .map((score) => {
-      const result = score.outcome === 'halved' ? 'halved' : `${score.outcome} won`;
+      const result =
+        score.outcome === 'USA' || score.outcome === 'EUROPE'
+          ? `${getSegmentOutcomeLabel(segment, players, score.outcome, {
+              fixture,
+              includeTeam: segment.kind === 'foursomes',
+            })} won`
+          : 'halved';
       return `H${score.hole_number}: ${score.usa_score ?? '-'}-${score.europe_score ?? '-'} (${result})`;
     });
+}
+
+function formatSegmentStatus(
+  status: MatchPlayStatus,
+  segment: FixtureView['segments'][number],
+  fixture: FixtureView,
+  players: PlayerRow[]
+): string {
+  if (!status.leader) {
+    return status.label;
+  }
+
+  const labels = getSegmentSideLabels(segment, players, {
+    fixture,
+    includeTeam: segment.kind === 'foursomes',
+  });
+  const leader = status.leader === 'USA' ? labels.usa : labels.europe;
+
+  switch (status.state) {
+    case 'won':
+      return status.holesRemaining === 0
+        ? `${leader} wins by ${status.margin}`
+        : `${leader} wins ${status.margin} & ${status.holesRemaining}`;
+    case 'dormie':
+      return `${leader} dormie ${status.margin}`;
+    case 'in_progress':
+      return `${leader} ${status.margin} up`;
+    case 'halved':
+    case 'not_started':
+      return status.label;
+    default: {
+      const exhaustiveCheck: never = status.state;
+      return exhaustiveCheck;
+    }
+  }
+}
+
+function formatPointValue(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
