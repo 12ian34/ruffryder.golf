@@ -36,6 +36,7 @@ import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
 import { buildWinPressureForecast } from '../winProbability';
 import { BackNineIndividualTotalsCard } from './BackNineIndividualTotalsCard';
+import { CpiComparisonCard } from './CpiComparisonCard';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { CollapsibleSection, StatusCard } from './Layout';
 import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
@@ -74,6 +75,10 @@ export function LeaderboardSection({
         }))
         .filter((entry) => entry.segments.length > 0),
     [fixtures]
+  );
+  const cpiBackNineSegments = useMemo(
+    () => backNineFixtures.flatMap((entry) => entry.segments),
+    [backNineFixtures]
   );
   const pointsTimeline = useMemo(() => buildPointsProgressTimeline(fixtures, players), [fixtures, players]);
   const winPressure = useMemo(
@@ -238,6 +243,15 @@ export function LeaderboardSection({
           </p>
         </div>
       </header>
+      {cpiBackNineSegments.length > 0 && (
+        <CollapsibleSection
+          title="CPI vs Back 9 (×2)"
+          description="Each player's CPI against their live back 9 doubled to 18 holes. Negative diff means they're beating their index. Sortable by any column."
+          meta="back 9 ×2"
+        >
+          <CpiComparisonCard segments={cpiBackNineSegments} players={players} />
+        </CollapsibleSection>
+      )}
       {backNineFixtures.length > 0 && (
         <CollapsibleSection
           title="Back 9 Singles Totals"

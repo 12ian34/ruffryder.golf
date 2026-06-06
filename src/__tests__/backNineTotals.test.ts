@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { calculateBackNineIndividualTotals } from '../domain/2026/backNineTotals';
+import {
+  calculateBackNineIndividualTotals,
+  calculateCpiComparisons,
+} from '../domain/2026/backNineTotals';
 import type {
   HoleScoreView,
   PlayerRow,
@@ -103,6 +106,92 @@ describe('calculateBackNineIndividualTotals', () => {
   });
 });
 
+describe('calculateCpiComparisons', () => {
+  it('doubles back 9 gross to 18 holes and diffs against CPI', () => {
+    const players = [
+      createPlayer({ id: 'usa-1', name: 'Ian', team: 'USA', currentCpi: 82 }),
+      createPlayer({ id: 'europe-1', name: 'Tommy', team: 'EUROPE', currentCpi: 92 }),
+    ];
+    const segment = createSinglesSegment({
+      id: 'segment-1',
+      usaPlayerId: 'usa-1',
+      europePlayerId: 'europe-1',
+      cpiEnabled: true,
+      holes: [
+        { holeNumber: 10, usaScore: 4, europeScore: 5, usaNetScore: 4, europeNetScore: 4, outcome: 'halved' },
+        { holeNumber: 11, usaScore: 3, europeScore: 4, usaNetScore: 3, europeNetScore: 4, outcome: 'USA' },
+        { holeNumber: 12, usaScore: 5, europeScore: 4, usaNetScore: 5, europeNetScore: 4, outcome: 'EUROPE' },
+      ],
+    });
+
+    const comparisons = calculateCpiComparisons([segment], players);
+
+    // Ian: gross 12 → projected 24, diff 24 − 82 = −58 (well under his index).
+    expect(comparisons.find((row) => row.playerId === 'usa-1')).toEqual({
+      playerId: 'usa-1',
+      playerName: 'Ian',
+      team: 'USA',
+      currentCpi: 82,
+      backNineGross: 12,
+      holesPlayed: 3,
+      projected: 24,
+      diff: -58,
+    });
+    // Tommy: gross 13 → projected 26, diff 26 − 92 = −66.
+    expect(comparisons.find((row) => row.playerId === 'europe-1')).toMatchObject({
+      projected: 26,
+      diff: -66,
+    });
+  });
+
+  it('aggregates a player across multiple back 9 singles segments', () => {
+    const players = [
+      createPlayer({ id: 'usa-1', name: 'Ian', team: 'USA', currentCpi: 80 }),
+      createPlayer({ id: 'europe-1', name: 'Tommy', team: 'EUROPE', currentCpi: 90 }),
+      createPlayer({ id: 'europe-2', name: 'Rory', team: 'EUROPE', currentCpi: 88 }),
+    ];
+    const first = createSinglesSegment({
+      id: 'segment-1',
+      usaPlayerId: 'usa-1',
+      europePlayerId: 'europe-1',
+      cpiEnabled: false,
+      holes: [{ holeNumber: 10, usaScore: 4, europeScore: 5, usaNetScore: 4, europeNetScore: 5, outcome: 'EUROPE' }],
+    });
+    const second = createSinglesSegment({
+      id: 'segment-2',
+      usaPlayerId: 'usa-1',
+      europePlayerId: 'europe-2',
+      cpiEnabled: false,
+      holes: [{ holeNumber: 11, usaScore: 3, europeScore: 4, usaNetScore: 3, europeNetScore: 4, outcome: 'USA' }],
+    });
+
+    const ian = calculateCpiComparisons([first, second], players).find((row) => row.playerId === 'usa-1');
+
+    expect(ian).toMatchObject({ backNineGross: 7, holesPlayed: 2, projected: 14 });
+  });
+
+  it('leaves diff null when the player has no CPI and skips players with no holes', () => {
+    const players = [
+      createPlayer({ id: 'usa-1', name: 'Ian', team: 'USA', currentCpi: null }),
+      createPlayer({ id: 'europe-1', name: 'Tommy', team: 'EUROPE', currentCpi: 90 }),
+    ];
+    const segment = createSinglesSegment({
+      id: 'segment-1',
+      usaPlayerId: 'usa-1',
+      europePlayerId: 'europe-1',
+      cpiEnabled: false,
+      holes: [{ holeNumber: 10, usaScore: 4, europeScore: 5, usaNetScore: 4, europeNetScore: 5, outcome: 'EUROPE' }],
+    });
+
+    const comparisons = calculateCpiComparisons([segment], players);
+
+    expect(comparisons.find((row) => row.playerId === 'usa-1')).toMatchObject({
+      currentCpi: null,
+      diff: null,
+    });
+  });
+});
+
 function createPlayer({
   id,
   name,
@@ -112,7 +201,7 @@ function createPlayer({
   id: string;
   name: string;
   team: PlayerRow['team'];
-  currentCpi: number;
+  currentCpi: number | null;
 }): PlayerRow {
   return {
     created_at: timestamp,

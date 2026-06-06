@@ -89,3 +89,57 @@ export function calculateBackNineIndividualTotals(
 export function hasAnyBackNineTotals(totals: BackNineIndividualTotal[]): boolean {
   return totals.some((row) => row.holesPlayed > 0);
 }
+
+export interface CpiComparison {
+  playerId: string;
+  playerName: string;
+  team: 'USA' | 'EUROPE';
+  currentCpi: number | null;
+  /** Gross strokes across this player's back 9 singles holes. */
+  backNineGross: number;
+  holesPlayed: number;
+  /** Back 9 gross doubled to an 18-hole equivalent, to compare against CPI. */
+  projected: number;
+  /** projected − currentCpi. Negative means under their index (playing better). */
+  diff: number | null;
+}
+
+/**
+ * Per-player comparison of the live back 9 (doubled to an 18-hole equivalent)
+ * against each player's current CPI. Aggregates a player's back 9 singles holes
+ * across every fixture into a single row.
+ */
+export function calculateCpiComparisons(
+  segments: SegmentView[],
+  players: PlayerRow[]
+): CpiComparison[] {
+  const byPlayer = new Map<string, CpiComparison>();
+
+  for (const total of calculateBackNineIndividualTotals(segments, players)) {
+    if (total.holesPlayed === 0) continue;
+
+    const existing = byPlayer.get(total.playerId);
+    if (existing) {
+      existing.backNineGross += total.grossStrokes;
+      existing.holesPlayed += total.holesPlayed;
+    } else {
+      byPlayer.set(total.playerId, {
+        playerId: total.playerId,
+        playerName: total.playerName,
+        team: total.team,
+        currentCpi: total.currentCpi,
+        backNineGross: total.grossStrokes,
+        holesPlayed: total.holesPlayed,
+        projected: 0,
+        diff: null,
+      });
+    }
+  }
+
+  return Array.from(byPlayer.values()).map((row) => {
+    const projected = row.backNineGross * 2;
+    const diff =
+      row.currentCpi === null ? null : Math.round((projected - row.currentCpi) * 100) / 100;
+    return { ...row, projected, diff };
+  });
+}
