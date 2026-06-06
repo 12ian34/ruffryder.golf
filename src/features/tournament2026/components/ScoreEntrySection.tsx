@@ -36,6 +36,7 @@ import {
   getErrorMessage,
   parseOptionalPositiveInteger,
 } from '../viewUtils';
+import { BackNineIndividualTotalsCard } from './BackNineIndividualTotalsCard';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { ScorePicker } from './FormControls';
 import { StatusCard, TerminalPageSection } from './Layout';
@@ -416,19 +417,24 @@ function FixtureScoreCard({
               onSaved={onSaved}
             />
           ) : (
-            visibleSegments.map((segment) => (
-              <SegmentScoreCard
-                key={segment.id}
-                tournament={tournament}
-                segment={segment}
-                players={players}
-                profile={profile}
-                courseHoles={courseHoles}
-                lengthUnit={lengthUnit}
-                onLengthUnitToggle={onLengthUnitToggle}
-                onSaved={onSaved}
-              />
-            ))
+            <>
+              {activeView === 'back' && (
+                <BackNineIndividualTotalsCard segments={backSegments} players={players} />
+              )}
+              {visibleSegments.map((segment) => (
+                <SegmentScoreCard
+                  key={segment.id}
+                  tournament={tournament}
+                  segment={segment}
+                  players={players}
+                  profile={profile}
+                  courseHoles={courseHoles}
+                  lengthUnit={lengthUnit}
+                  onLengthUnitToggle={onLengthUnitToggle}
+                  onSaved={onSaved}
+                />
+              ))}
+            </>
           )}
           {hasFrontAndBack && activeView === 'front' && (
             <FixtureViewAdvance
@@ -1030,7 +1036,8 @@ function BackNineGroupedScoreCard({
 
   return (
     <div className="border-t border-[#27272A] bg-[#050506]">
-      <div className="px-3 py-3">
+      <BackNineIndividualTotalsCard segments={segments} players={players} />
+      <div className="border-t border-[#27272A] px-3 py-3">
         <p className="font-data text-lg font-bold tracking-[-0.04em] text-[#FAFAFA]">
           Back 9 Singles
         </p>

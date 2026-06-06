@@ -35,6 +35,7 @@ import { calculatePointTotals, type PointsBreakdown, type TeamPoints } from '../
 import { calculateTotals, getErrorMessage } from '../viewUtils';
 import type { TeamScore } from '../viewUtils';
 import { buildWinPressureForecast } from '../winProbability';
+import { BackNineIndividualTotalsCard } from './BackNineIndividualTotalsCard';
 import { FixtureTitleTrigger } from './FixtureDetailsPopover';
 import { CollapsibleSection, StatusCard } from './Layout';
 import { LiveTournamentProgressChart } from './LiveTournamentProgressChart';
@@ -60,6 +61,20 @@ export function LeaderboardSection({
 }) {
   const totals = calculateTotals(fixtures);
   const pointTotals = useMemo(() => calculatePointTotals(fixtures), [fixtures]);
+  const backNineFixtures = useMemo(
+    () =>
+      fixtures
+        .map((fixture) => ({
+          fixture,
+          segments: fixture.segments.filter(
+            (segment) =>
+              segment.kind === 'singles' &&
+              segment.holeScores.some((score) => score.outcome !== 'unplayed')
+          ),
+        }))
+        .filter((entry) => entry.segments.length > 0),
+    [fixtures]
+  );
   const pointsTimeline = useMemo(() => buildPointsProgressTimeline(fixtures, players), [fixtures, players]);
   const winPressure = useMemo(
     () => buildWinPressureForecast({ fixtures, players, tournament }),
@@ -223,6 +238,30 @@ export function LeaderboardSection({
           </p>
         </div>
       </header>
+      {backNineFixtures.length > 0 && (
+        <CollapsibleSection
+          title="Back 9 Singles Totals"
+          description="Per-player strokes on the back 9, with handicap-adjusted net where CPI applies."
+          meta={`${backNineFixtures.length} ${backNineFixtures.length === 1 ? 'fixture' : 'fixtures'}`}
+        >
+          <div>
+            {backNineFixtures.map(({ fixture, segments }) => (
+              <div key={fixture.id} className="border-b border-[#27272A] last:border-b-0">
+                <div className="px-3 py-2 sm:px-4">
+                  <p className="font-data text-[10px] lowercase tracking-[0.16em] text-[#8B949E]">
+                    {fixture.name ?? `Fixture ${fixture.sort_order + 1}`}
+                  </p>
+                </div>
+                <BackNineIndividualTotalsCard
+                  segments={segments}
+                  players={players}
+                  variant="standalone"
+                />
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
       <CollapsibleSection
         title="Overall Score"
         description="Match-play points (and stroke-play in 1v1 fixtures). On-table is decided matches; provisional projects current leaders."
